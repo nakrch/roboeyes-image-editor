@@ -1,7 +1,13 @@
-import type { EyeGeometry, FaceModel, Point } from '../../core/model'
+import { canFitEyesInCanvas, type EyeGeometry, type FaceModel, type Point } from '../../core/model'
 
 export type EyeSide = 'left' | 'right'
 export type GeometryKey = 'width' | 'height' | 'cornerRadius' | 'rotation'
+export type RotationRange = { min: number; max: number }
+
+const PAIR_ROTATION_MIN = -45
+const PAIR_ROTATION_MAX = 45
+const ROTATION_SCAN_STEP = 0.25
+const ROTATION_REFINE_STEPS = 18
 
 export function updateEyeGeometry(
   model: FaceModel,
@@ -98,6 +104,62 @@ export function rotatePair(model: FaceModel, rotation: number): FaceModel {
       },
     },
   }
+}
+
+function refineRotationBoundary(
+  baseline: FaceModel,
+  safeAngle: number,
+  unsafeAngle: number,
+): number {
+  let safe = safeAngle
+  let unsafe = unsafeAngle
+  for (let index = 0; index < ROTATION_REFINE_STEPS; index += 1) {
+    const midpoint = (safe + unsafe) / 2
+    if (canFitEyesInCanvas(rotatePair(baseline, midpoint))) safe = midpoint
+    else unsafe = midpoint
+  }
+  return safe
+}
+
+function scanRotationBoundary(baseline: FaceModel, direction: -1 | 1): number {
+  const endpoint = direction < 0 ? PAIR_ROTATION_MIN : PAIR_ROTATION_MAX
+  if (canFitEyesInCanvas(rotatePair(baseline, endpoint))) return endpoint
+
+  let previous = 0
+  for (
+    let angle = direction * ROTATION_SCAN_STEP;
+    direction > 0 ? angle <= endpoint : angle >= endpoint;
+    angle += direction * ROTATION_SCAN_STEP
+  ) {
+    if (!canFitEyesInCanvas(rotatePair(baseline, angle))) {
+      return refineRotationBoundary(baseline, previous, angle)
+    }
+    previous = angle
+  }
+
+  return previous
+}
+
+/**
+ * Safe absolute linked-rotation interval around neutral. The range is limited to the
+ * editor's supported ±45° interval and only includes angles for which some gaze
+ * translation can keep both rendered eyes fully inside the canvas.
+ */
+export function pairRotationLimits(model: FaceModel): RotationRange {
+  const baseline = rotatePair(model, 0)
+  if (!canFitEyesInCanvas(baseline)) return { min: 0, max: 0 }
+
+  return {
+    min: scanRotationBoundary(baseline, -1),
+    max: scanRotationBoundary(baseline, 1),
+  }
+}
+
+/** Clamp a requested linked rotation to the current canvas-safe interval. */
+export function rotatePairSafely(model: FaceModel, rotation: number): FaceModel {
+  const limits = pairRotationLimits(model)
+  const safeRotation = Math.min(limits.max, Math.max(limits.min, rotation))
+  return rotatePair(model, safeRotation)
 }
 
 export function setHorizontalLayout(
