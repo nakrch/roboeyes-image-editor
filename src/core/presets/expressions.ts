@@ -30,15 +30,20 @@ export const expressionPresets: readonly ExpressionPreset[] = [
   {
     id: 'expression:surprised',
     name: 'Surprised',
-    expression: { upperLid: 0, lowerLid: 0, tilt: 0 },
+    expression: { upperLid: 0, lowerLid: 0, tilt: 0, heightScale: 1.22 },
   },
 ]
+
+function normalizedHeightScale(expression: ExpressionModel): number {
+  return expression.heightScale ?? 1
+}
 
 export function matchExpressionPreset(expression: ExpressionModel): string {
   if (expression.leftEye || expression.rightEye) return 'custom'
   return expressionPresets.find((preset) =>
     preset.expression.upperLid === expression.upperLid &&
     preset.expression.lowerLid === expression.lowerLid &&
-    preset.expression.tilt === expression.tilt,
+    preset.expression.tilt === expression.tilt &&
+    normalizedHeightScale(preset.expression) === normalizedHeightScale(expression),
   )?.id ?? 'custom'
 }
