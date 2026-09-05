@@ -3,7 +3,7 @@ type NumericControlProps = {
   value: number
   min: number
   max: number
-  step?: number
+  step?: number | 'any'
   onChange: (value: number) => void
 }
 
