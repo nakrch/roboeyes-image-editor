@@ -1,6 +1,14 @@
-import { isGazeCanvasSafe, type EyeExpression, type FaceModel } from '../../core/model'
+import {
+  canFitEyesInCanvas,
+  clampGaze,
+  isGazeCanvasSafe,
+  visibleEyesOverlap,
+  type EyeExpression,
+  type FaceModel,
+} from '../../core/model'
 
 export type ExpressionGeometryKey = 'tilt' | 'heightScale'
+export type LidKey = 'upperLid' | 'lowerLid'
 export type ValueRange = { min: number; max: number }
 
 const REFINE_STEPS = 18
@@ -10,6 +18,10 @@ const TILT_MIN = -30
 const TILT_MAX = 30
 const HEIGHT_SCALE_MIN = 0.5
 const HEIGHT_SCALE_MAX = 1.5
+
+function clamp01(value: number): number {
+  return Math.min(1, Math.max(0, value))
+}
 
 function pairAxis(model: FaceModel): { x: number; y: number } {
   const left = model.leftEye.geometry.position
@@ -92,14 +104,39 @@ function safeLowerBound(
   return safe
 }
 
+/** Minimum pair spacing that keeps the currently visible lid-clipped eyes from overlapping. */
+export function anchoredPairSpacingMin(model: FaceModel): number {
+  const current = Math.min(SPACING_MAX, Math.max(SPACING_MIN, anchoredPairSpacing(model)))
+  const apply = (value: number) => setAnchoredPairSpacing(model, value)
+
+  if (!visibleEyesOverlap(apply(SPACING_MIN))) return SPACING_MIN
+
+  let safe = current
+  if (visibleEyesOverlap(apply(safe))) {
+    if (visibleEyesOverlap(apply(SPACING_MAX))) return current
+    safe = SPACING_MAX
+  }
+
+  let unsafe = SPACING_MIN
+  for (let index = 0; index < REFINE_STEPS; index += 1) {
+    const midpoint = (unsafe + safe) / 2
+    if (visibleEyesOverlap(apply(midpoint))) unsafe = midpoint
+    else safe = midpoint
+  }
+
+  return safe
+}
+
 export function anchoredPairSpacingMax(model: FaceModel): number {
   const current = Math.max(SPACING_MIN, anchoredPairSpacing(model))
   return safeUpperBound(current, SPACING_MAX, (value) => setAnchoredPairSpacing(model, value))
 }
 
 export function setAnchoredPairSpacingSafely(model: FaceModel, spacing: number): FaceModel {
+  const minimum = anchoredPairSpacingMin(model)
   const maximum = anchoredPairSpacingMax(model)
-  return setAnchoredPairSpacing(model, Math.min(maximum, Math.max(SPACING_MIN, spacing)))
+  if (minimum > maximum) return model
+  return setAnchoredPairSpacing(model, Math.min(maximum, Math.max(minimum, spacing)))
 }
 
 function sharedExpressionValue(model: FaceModel, key: ExpressionGeometryKey): number {
@@ -200,6 +237,115 @@ export function setSideExpressionGeometrySafely(
   return applySideExpressionValue(model, side, key, safe)
 }
 
+function applySharedLidValue(model: FaceModel, key: LidKey, value: number): FaceModel {
+  return {
+    ...model,
+    expression: {
+      ...model.expression,
+      [key]: value,
+      leftEye: undefined,
+      rightEye: undefined,
+    },
+  }
+}
+
+function applySideLidValue(
+  model: FaceModel,
+  side: 'left' | 'right',
+  key: LidKey,
+  value: number,
+): FaceModel {
+  const property = side === 'left' ? 'leftEye' : 'rightEye'
+  return {
+    ...model,
+    expression: {
+      ...model.expression,
+      [property]: { ...model.expression[property], [key]: value },
+    },
+  }
+}
+
+function nearestFittableLidValue(
+  current: number,
+  requested: number,
+  apply: (value: number) => FaceModel,
+): number {
+  const target = clamp01(requested)
+  if (canFitEyesInCanvas(apply(target))) return target
+  if (!canFitEyesInCanvas(apply(current))) return current
+
+  let safe = current
+  let unsafe = target
+  for (let index = 0; index < REFINE_STEPS; index += 1) {
+    const midpoint = (safe + unsafe) / 2
+    if (canFitEyesInCanvas(apply(midpoint))) safe = midpoint
+    else unsafe = midpoint
+  }
+  return safe
+}
+
+/**
+ * Keep the current gaze value, but translate the eye pair by the smallest amount that
+ * produces the same safe rendered position clampGaze would have chosen.
+ */
+export function translatePairToKeepCurrentGaze(model: FaceModel): FaceModel {
+  const clamped = clampGaze(model)
+  const deltaX = clamped.gaze.x - model.gaze.x
+  const deltaY = clamped.gaze.y - model.gaze.y
+  if (Math.abs(deltaX) < 1e-9 && Math.abs(deltaY) < 1e-9) return model
+
+  return {
+    ...model,
+    leftEye: {
+      ...model.leftEye,
+      geometry: {
+        ...model.leftEye.geometry,
+        position: {
+          x: model.leftEye.geometry.position.x + deltaX,
+          y: model.leftEye.geometry.position.y + deltaY,
+        },
+      },
+    },
+    rightEye: {
+      ...model.rightEye,
+      geometry: {
+        ...model.rightEye.geometry,
+        position: {
+          x: model.rightEye.geometry.position.x + deltaX,
+          y: model.rightEye.geometry.position.y + deltaY,
+        },
+      },
+    },
+    gaze: model.gaze,
+  }
+}
+
+export function setSharedLidSafely(model: FaceModel, key: LidKey, value: number): FaceModel {
+  const current = model.expression[key]
+  const safe = nearestFittableLidValue(current, value, (candidate) =>
+    applySharedLidValue(model, key, candidate),
+  )
+  return translatePairToKeepCurrentGaze(applySharedLidValue(model, key, safe))
+}
+
+export function setSideLidSafely(
+  model: FaceModel,
+  side: 'left' | 'right',
+  key: LidKey,
+  value: number,
+): FaceModel {
+  const expression = side === 'left' ? model.expression.leftEye : model.expression.rightEye
+  const current = expression?.[key] ?? model.expression[key]
+  const safe = nearestFittableLidValue(current, value, (candidate) =>
+    applySideLidValue(model, side, key, candidate),
+  )
+  return translatePairToKeepCurrentGaze(applySideLidValue(model, side, key, safe))
+}
+
 export function isExpressionGeometryKey(key: keyof EyeExpression): key is ExpressionGeometryKey {
   return key === 'tilt' || key === 'heightScale'
+}
+
+export function isLidKey(key: keyof EyeExpression): key is LidKey {
+  return key === 'upperLid' || key === 'lowerLid'
 }

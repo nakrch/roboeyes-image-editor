@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { FaceModel } from './face'
-import { clampGaze, gazeLimits, minimumCanvasSize } from './gaze'
+import { clampGaze, gazeLimits, minimumCanvasSize, visibleEyesOverlap } from './gaze'
 
 function model(overrides: Partial<FaceModel> = {}): FaceModel {
   const base: FaceModel = {
@@ -110,6 +110,28 @@ describe('gaze constraints', () => {
     expect(limits.x.max - limits.x.min).toBeGreaterThan(
       gazeLimits(base).x.max - gazeLimits(base).x.min,
     )
+  })
+
+  it('detects overlap between visible eye rectangles', () => {
+    const base = model()
+    const overlapping = model({
+      leftEye: { geometry: { ...base.leftEye.geometry, position: { x: 55, y: 32 }, rotation: 20 } },
+      rightEye: { geometry: { ...base.rightEye.geometry, position: { x: 73, y: 32 }, rotation: -20 } },
+    })
+
+    expect(visibleEyesOverlap(overlapping)).toBe(true)
+    expect(visibleEyesOverlap(base)).toBe(false)
+  })
+
+  it('ignores fully lid-hidden eyes when checking overlap', () => {
+    const base = model()
+    const coincident = model({
+      leftEye: { geometry: { ...base.leftEye.geometry, position: { x: 64, y: 32 } } },
+      rightEye: { geometry: { ...base.rightEye.geometry, position: { x: 64, y: 32 } } },
+      expression: { ...base.expression, upperLid: 1 },
+    })
+
+    expect(visibleEyesOverlap(coincident)).toBe(false)
   })
 
   it('collapses an impossible axis to neutral gaze', () => {
