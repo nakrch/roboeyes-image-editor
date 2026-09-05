@@ -1,4 +1,4 @@
-import { gazeLimits, type FaceModel } from '../../core/model'
+import { gazeLimits, minimumCanvasSize, type FaceModel } from '../../core/model'
 import { resizeCanvasFromCenter } from '../editor/modelEditing'
 import { EyeControls } from './EyeControls'
 import { ExpressionControls } from './ExpressionControls'
@@ -24,6 +24,9 @@ const resolutionPresets = [
   { key: '320x320', width: 320, height: 320 },
 ] as const
 
+const CANVAS_MIN = 16
+const CANVAS_MAX = 640
+
 export function ParameterPanel({
   model,
   linkedEyes,
@@ -40,11 +43,21 @@ export function ParameterPanel({
       (preset) => preset.width === model.canvas.width && preset.height === model.canvas.height,
     )?.key ?? 'custom'
   const safeGaze = gazeLimits(model)
+  const requiredCanvas = minimumCanvasSize(model)
+  const minCanvasWidth = Math.min(CANVAS_MAX, Math.max(CANVAS_MIN, Math.ceil(requiredCanvas.width)))
+  const minCanvasHeight = Math.min(CANVAS_MAX, Math.max(CANVAS_MIN, Math.ceil(requiredCanvas.height)))
 
   const applyResolution = (key: string) => {
     const preset = resolutionPresets.find((candidate) => candidate.key === key)
     if (preset) {
-      onChange((current) => resizeCanvasFromCenter(current, preset.width, preset.height))
+      onChange((current) => {
+        const minimum = minimumCanvasSize(current)
+        return resizeCanvasFromCenter(
+          current,
+          Math.max(preset.width, Math.ceil(minimum.width)),
+          Math.max(preset.height, Math.ceil(minimum.height)),
+        )
+      })
     }
   }
 
@@ -84,23 +97,25 @@ export function ParameterPanel({
             <NumericControl
               label="Canvas width"
               value={model.canvas.width}
-              min={16}
-              max={640}
+              min={minCanvasWidth}
+              max={CANVAS_MAX}
               onChange={(value) =>
-                onChange((current) =>
-                  resizeCanvasFromCenter(current, value, current.canvas.height),
-                )
+                onChange((current) => {
+                  const minimum = Math.max(CANVAS_MIN, Math.ceil(minimumCanvasSize(current).width))
+                  return resizeCanvasFromCenter(current, Math.max(value, minimum), current.canvas.height)
+                })
               }
             />
             <NumericControl
               label="Canvas height"
               value={model.canvas.height}
-              min={16}
-              max={640}
+              min={minCanvasHeight}
+              max={CANVAS_MAX}
               onChange={(value) =>
-                onChange((current) =>
-                  resizeCanvasFromCenter(current, current.canvas.width, value),
-                )
+                onChange((current) => {
+                  const minimum = Math.max(CANVAS_MIN, Math.ceil(minimumCanvasSize(current).height))
+                  return resizeCanvasFromCenter(current, current.canvas.width, Math.max(value, minimum))
+                })
               }
             />
           </div>
