@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { FaceModel } from '../../core/model'
+import { clampGaze, type FaceModel } from '../../core/model'
 import {
   builtInPresets,
   clonePreset,
@@ -31,7 +31,7 @@ const initialPreset = builtInPresets[0]
 
 function snapshotFromPreset(preset: FacePreset): EditorSnapshot {
   return {
-    model: structuredClone(preset.model),
+    model: clampGaze(structuredClone(preset.model)),
     transparentBackground: preset.preview?.transparentBackground ?? false,
   }
 }
@@ -65,7 +65,7 @@ export function EditorShell() {
   }
 
   const updateModel = (updater: (current: FaceModel) => FaceModel) => {
-    commit((current) => ({ ...current, model: updater(current.model) }))
+    commit((current) => ({ ...current, model: clampGaze(updater(current.model)) }))
   }
 
   const undo = () => {

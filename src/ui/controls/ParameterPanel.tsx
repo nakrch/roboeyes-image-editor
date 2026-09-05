@@ -1,4 +1,4 @@
-import type { FaceModel } from '../../core/model'
+import { gazeLimits, type FaceModel } from '../../core/model'
 import { resizeCanvasFromCenter } from '../editor/modelEditing'
 import { EyeControls } from './EyeControls'
 import { ExpressionControls } from './ExpressionControls'
@@ -39,6 +39,7 @@ export function ParameterPanel({
     resolutionPresets.find(
       (preset) => preset.width === model.canvas.width && preset.height === model.canvas.height,
     )?.key ?? 'custom'
+  const safeGaze = gazeLimits(model)
 
   const applyResolution = (key: string) => {
     const preset = resolutionPresets.find((candidate) => candidate.key === key)
@@ -112,15 +113,17 @@ export function ParameterPanel({
             <NumericControl
               label="Gaze X"
               value={model.gaze.x}
-              min={-64}
-              max={64}
+              min={safeGaze.x.min}
+              max={safeGaze.x.max}
+              step="any"
               onChange={(value) => onChange((current) => ({ ...current, gaze: { ...current.gaze, x: value } }))}
             />
             <NumericControl
               label="Gaze Y"
               value={model.gaze.y}
-              min={-64}
-              max={64}
+              min={safeGaze.y.min}
+              max={safeGaze.y.max}
+              step="any"
               onChange={(value) => onChange((current) => ({ ...current, gaze: { ...current.gaze, y: value } }))}
             />
           </div>
