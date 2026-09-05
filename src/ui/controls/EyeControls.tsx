@@ -8,6 +8,7 @@ import {
 import {
   anchoredPairSpacing,
   anchoredPairSpacingMax,
+  anchoredPairSpacingMin,
   setAnchoredPairSpacingSafely,
 } from '../editor/geometrySafety'
 import {
@@ -41,6 +42,7 @@ export function EyeControls({
   const linkedRotationLimits = pairRotationLimits(model)
   const linkedDimensionLimits = linkedEyeDimensionLimits(model)
   const spacing = anchoredPairSpacing(model)
+  const spacingMin = anchoredPairSpacingMin(model)
   const spacingMax = anchoredPairSpacingMax(model)
 
   const updateLinkedGeometry = (key: GeometryKey, value: number) => {
@@ -146,7 +148,7 @@ export function EyeControls({
         <NumericControl
           label="Eye spacing"
           value={spacing}
-          min={0}
+          min={spacingMin}
           max={spacingMax}
           step="any"
           onChange={(value) => onChange((current) => setAnchoredPairSpacingSafely(current, value))}
