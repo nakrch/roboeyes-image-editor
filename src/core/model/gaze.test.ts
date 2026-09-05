@@ -58,6 +58,60 @@ describe('gaze constraints', () => {
     expect(gazeLimits(surprised).y.max).toBeLessThan(gazeLimits(base).y.max)
   })
 
+  it('excludes the region hidden by the upper lid from vertical constraints', () => {
+    const base = model()
+    const upperClosed = model({ expression: { ...base.expression, upperLid: 0.5 } })
+    const normal = gazeLimits(base)
+    const closed = gazeLimits(upperClosed)
+
+    expect(closed.y.min).toBeLessThan(normal.y.min)
+    expect(closed.y.min).toBeCloseTo(-31.5)
+    expect(closed.y.max).toBeCloseTo(normal.y.max)
+  })
+
+  it('excludes the region hidden by the lower lid from vertical constraints', () => {
+    const base = model()
+    const lowerClosed = model({ expression: { ...base.expression, lowerLid: 0.5 } })
+    const normal = gazeLimits(base)
+    const closed = gazeLimits(lowerClosed)
+
+    expect(closed.y.min).toBeCloseTo(normal.y.min)
+    expect(closed.y.max).toBeGreaterThan(normal.y.max)
+    expect(closed.y.max).toBeCloseTo(31.5)
+  })
+
+  it('uses the shifted visible aperture center when a lidded eye is rotated', () => {
+    const base = model()
+    const rotated = model({
+      leftEye: { geometry: { ...base.leftEye.geometry, rotation: 45 } },
+      rightEye: { geometry: { ...base.rightEye.geometry, rotation: 45 } },
+    })
+    const upperClosed = model({
+      leftEye: { geometry: { ...base.leftEye.geometry, rotation: 45 } },
+      rightEye: { geometry: { ...base.rightEye.geometry, rotation: 45 } },
+      expression: { ...base.expression, upperLid: 0.5 },
+    })
+
+    const full = gazeLimits(rotated)
+    const visible = gazeLimits(upperClosed)
+    expect(visible.x.min).toBeLessThan(full.x.min)
+    expect(visible.y.min).toBeLessThan(full.y.min)
+  })
+
+  it('keeps fully closed eyes numerically stable with minimal constraints', () => {
+    const base = model()
+    const closed = model({ expression: { ...base.expression, upperLid: 1, lowerLid: 0 } })
+    const limits = gazeLimits(closed)
+
+    expect(Number.isFinite(limits.x.min)).toBe(true)
+    expect(Number.isFinite(limits.x.max)).toBe(true)
+    expect(Number.isFinite(limits.y.min)).toBe(true)
+    expect(Number.isFinite(limits.y.max)).toBe(true)
+    expect(limits.x.max - limits.x.min).toBeGreaterThan(
+      gazeLimits(base).x.max - gazeLimits(base).x.min,
+    )
+  })
+
   it('collapses an impossible axis to neutral gaze', () => {
     const base = model()
     const impossible = model({
@@ -81,6 +135,13 @@ describe('gaze constraints', () => {
 
   it('derives the minimum center-preserving canvas size for the current face', () => {
     expect(minimumCanvasSize(model())).toEqual({ width: 73, height: 19 })
+  })
+
+  it('reduces minimum canvas height when lids hide vertical eye regions', () => {
+    const base = model()
+    const lidded = model({ expression: { ...base.expression, upperLid: 0.25, lowerLid: 0.25 } })
+
+    expect(minimumCanvasSize(lidded).height).toBeLessThan(minimumCanvasSize(base).height)
   })
 
   it('includes gaze and rotation when deriving minimum canvas size', () => {
