@@ -110,6 +110,16 @@ MVP でも内部実装は最初から `RoboEyes → adapter → generic model �
 - [`docs/roadmap.md`](docs/roadmap.md) — Phase 1〜4 の実装範囲
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — 開発時の基本ルール
 
+## Acknowledgements
+
+This project is inspired by [FluxGarage RoboEyes](https://github.com/FluxGarage/RoboEyes), created by Dennis Hoelscher / FluxGarage and licensed under GPL-3.0-or-later.
+
+`roboeyes-image-editor` is an independent implementation and is not an official FluxGarage project. RoboEyes compatibility and design concepts are implemented through a separate adapter/model architecture rather than by treating the original library as the renderer itself.
+
+## License
+
+`roboeyes-image-editor` is licensed under **GNU General Public License v3.0 or later (GPL-3.0-or-later)**. See [`LICENSE`](LICENSE).
+
 ## Status
 
 初期設計・基礎ドキュメント整備中です。実装は GitHub Issues に沿って段階的に進めます。
