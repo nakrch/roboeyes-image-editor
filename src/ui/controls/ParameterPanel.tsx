@@ -86,14 +86,22 @@ export function ParameterPanel({
               value={model.canvas.width}
               min={16}
               max={640}
-              onChange={(value) => onChange((current) => ({ ...current, canvas: { ...current.canvas, width: value } }))}
+              onChange={(value) =>
+                onChange((current) =>
+                  resizeCanvasFromCenter(current, value, current.canvas.height),
+                )
+              }
             />
             <NumericControl
               label="Canvas height"
               value={model.canvas.height}
               min={16}
               max={640}
-              onChange={(value) => onChange((current) => ({ ...current, canvas: { ...current.canvas, height: value } }))}
+              onChange={(value) =>
+                onChange((current) =>
+                  resizeCanvasFromCenter(current, current.canvas.width, value),
+                )
+              }
             />
           </div>
         </details>
