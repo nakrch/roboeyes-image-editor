@@ -1,6 +1,7 @@
 import type { FaceModel } from '../../core/model'
 import { resizeCanvasFromCenter } from '../editor/modelEditing'
 import { EyeControls } from './EyeControls'
+import { ExpressionControls } from './ExpressionControls'
 import { NumericControl } from './NumericControl'
 
 type ParameterPanelProps = {
@@ -103,6 +104,8 @@ export function ParameterPanel({
           onLinkedEyesChange={onLinkedEyesChange}
         />
 
+        <ExpressionControls model={model} linkedEyes={linkedEyes} onChange={onChange} />
+
         <details className="control-group collapsible-control-group" open>
           <summary className="control-group-summary">Gaze</summary>
           <div className="nested-controls control-group-body">
@@ -138,15 +141,6 @@ export function ParameterPanel({
               <span>Background</span>
               <input type="color" value={model.colors.background} onChange={(event) => onChange((current) => ({ ...current, colors: { ...current.colors, background: event.target.value } }))} />
             </label>
-          </div>
-        </details>
-
-        <details className="advanced-controls collapsible-control-group">
-          <summary>Expression parameters</summary>
-          <div className="nested-controls control-group-body">
-            <NumericControl label="Upper lid" value={model.expression.upperLid} min={0} max={1} step={0.05} onChange={(value) => onChange((current) => ({ ...current, expression: { ...current.expression, upperLid: value } }))} />
-            <NumericControl label="Lower lid" value={model.expression.lowerLid} min={0} max={1} step={0.05} onChange={(value) => onChange((current) => ({ ...current, expression: { ...current.expression, lowerLid: value } }))} />
-            <NumericControl label="Expression tilt" value={model.expression.tilt} min={-30} max={30} onChange={(value) => onChange((current) => ({ ...current, expression: { ...current.expression, tilt: value } }))} />
           </div>
         </details>
       </div>
