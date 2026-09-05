@@ -158,6 +158,18 @@ export function EditorShell() {
       </header>
 
       <section className="editor-workspace" aria-label="Editor workspace">
+        <div className="editor-preview-column">
+          <PreviewArea
+            model={model}
+            transparentBackground={transparentBackground}
+            pixelPerfect={pixelPerfect}
+            onTransparentBackgroundChange={(value) =>
+              commit((current) => ({ ...current, transparentBackground: value }))
+            }
+            onPixelPerfectChange={setPixelPerfect}
+          />
+        </div>
+
         <div className="editor-sidebar">
           <PresetPanel
             presets={presets}
@@ -180,15 +192,6 @@ export function EditorShell() {
             onReset={reset}
           />
         </div>
-        <PreviewArea
-          model={model}
-          transparentBackground={transparentBackground}
-          pixelPerfect={pixelPerfect}
-          onTransparentBackgroundChange={(value) =>
-            commit((current) => ({ ...current, transparentBackground: value }))
-          }
-          onPixelPerfectChange={setPixelPerfect}
-        />
       </section>
     </main>
   )
