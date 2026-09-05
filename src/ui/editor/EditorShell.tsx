@@ -12,6 +12,7 @@ import {
 } from '../../core/presets'
 import { ParameterPanel } from '../controls/ParameterPanel'
 import { PresetPanel } from '../controls/PresetPanel'
+import { ExportPanel } from '../export/ExportPanel'
 import { PreviewArea } from '../preview/PreviewArea'
 
 type EditorSnapshot = {
@@ -191,6 +192,7 @@ export function EditorShell() {
             onRedo={redo}
             onReset={reset}
           />
+          <ExportPanel model={model} transparentBackground={transparentBackground} />
         </div>
       </section>
     </main>
