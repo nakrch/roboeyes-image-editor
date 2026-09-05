@@ -52,6 +52,26 @@ describe('generic editor model operations', () => {
     expect(pairSpacing(next)).toBe(pairSpacing(model))
   })
 
+  it('recenters horizontally when only canvas width changes', () => {
+    const model = createModel()
+    const next = resizeCanvasFromCenter(model, 256, model.canvas.height)
+
+    expect(next.canvas).toEqual({ width: 256, height: 64 })
+    expect(pairCenterX(next)).toBe(128)
+    expect(pairCenterY(next)).toBe(pairCenterY(model))
+    expect(pairSpacing(next)).toBe(pairSpacing(model))
+  })
+
+  it('recenters vertically when only canvas height changes', () => {
+    const model = createModel()
+    const next = resizeCanvasFromCenter(model, model.canvas.width, 128)
+
+    expect(next.canvas).toEqual({ width: 128, height: 128 })
+    expect(pairCenterX(next)).toBe(pairCenterX(model))
+    expect(pairCenterY(next)).toBe(64)
+    expect(pairSpacing(next)).toBe(pairSpacing(model))
+  })
+
   it('keeps a zero-degree pair rotation unchanged', () => {
     const model = createModel()
 
