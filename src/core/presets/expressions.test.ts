@@ -18,4 +18,14 @@ describe('expression presets', () => {
     expect(matchExpressionPreset(happy.expression)).toBe(happy.id)
     expect(matchExpressionPreset({ ...happy.expression, leftEye: { upperLid: 0.7 } })).toBe('custom')
   })
+
+  it('keeps Neutral and Surprised distinct', () => {
+    const neutral = expressionPresets.find((preset) => preset.name === 'Neutral')!
+    const surprised = expressionPresets.find((preset) => preset.name === 'Surprised')!
+
+    expect(surprised.expression).not.toEqual(neutral.expression)
+    expect((surprised.expression.heightScale ?? 1)).toBeGreaterThan(neutral.expression.heightScale ?? 1)
+    expect(matchExpressionPreset(neutral.expression)).toBe('expression:neutral')
+    expect(matchExpressionPreset(surprised.expression)).toBe('expression:surprised')
+  })
 })
