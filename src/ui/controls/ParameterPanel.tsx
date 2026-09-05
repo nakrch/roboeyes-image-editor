@@ -6,9 +6,19 @@ type ParameterPanelProps = {
   onChange: Dispatch<SetStateAction<RoboEyesParameters>>
 }
 
-type NumericKey = {
-  [K in keyof RoboEyesParameters]: RoboEyesParameters[K] extends number ? K : never
-}[keyof RoboEyesParameters]
+type NumericKey =
+  | 'canvasWidth'
+  | 'canvasHeight'
+  | 'eyeWidth'
+  | 'eyeHeight'
+  | 'eyeRadius'
+  | 'eyeSpacing'
+  | 'gazeX'
+  | 'gazeY'
+  | 'rotation'
+  | 'upperLid'
+  | 'lowerLid'
+  | 'expressionTilt'
 
 const numericControls: Array<{
   key: NumericKey
@@ -53,7 +63,7 @@ export function ParameterPanel({ parameters, onChange }: ParameterPanelProps) {
                 min={min}
                 max={max}
                 step={step}
-                value={parameters[key] as number}
+                value={parameters[key]}
                 onChange={(event) => updateNumber(key, Number(event.target.value))}
               />
               <input
@@ -62,7 +72,7 @@ export function ParameterPanel({ parameters, onChange }: ParameterPanelProps) {
                 min={min}
                 max={max}
                 step={step}
-                value={parameters[key] as number}
+                value={parameters[key]}
                 onChange={(event) => updateNumber(key, Number(event.target.value))}
               />
             </div>
