@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { FaceModel } from './face'
-import { clampGaze, gazeLimits } from './gaze'
+import { clampGaze, gazeLimits, minimumCanvasSize } from './gaze'
 
 function model(overrides: Partial<FaceModel> = {}): FaceModel {
   const base: FaceModel = {
@@ -77,5 +77,22 @@ describe('gaze constraints', () => {
 
     expect(clamped.gaze.x).toBeCloseTo(limits.x.max)
     expect(clamped.gaze.y).toBeCloseTo(limits.y.min)
+  })
+
+  it('derives the minimum center-preserving canvas size for the current face', () => {
+    expect(minimumCanvasSize(model())).toEqual({ width: 73, height: 19 })
+  })
+
+  it('includes gaze and rotation when deriving minimum canvas size', () => {
+    const base = model()
+    const changed = model({
+      leftEye: { geometry: { ...base.leftEye.geometry, rotation: 45 } },
+      rightEye: { geometry: { ...base.rightEye.geometry, rotation: 45 } },
+      gaze: { x: 10, y: -5 },
+    })
+    const minimum = minimumCanvasSize(changed)
+
+    expect(minimum.width).toBeGreaterThan(minimumCanvasSize(base).width)
+    expect(minimum.height).toBeGreaterThan(minimumCanvasSize(base).height)
   })
 })
