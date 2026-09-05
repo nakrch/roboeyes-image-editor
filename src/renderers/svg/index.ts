@@ -1,4 +1,4 @@
-import type { EyeGeometry, FaceModel } from '../../core/model'
+import { resolveEyeExpression, type EyeGeometry, type FaceModel } from '../../core/model'
 
 export type SvgRenderOptions = {
   transparentBackground?: boolean
@@ -37,11 +37,12 @@ function renderEye(
     0,
     Math.min(geometry.cornerRadius, geometry.width / 2, geometry.height / 2),
   )
-  const upper = clamp01(model.expression.upperLid)
-  const lower = clamp01(model.expression.lowerLid)
+  const expression = resolveEyeExpression(model.expression, id)
+  const upper = clamp01(expression.upperLid)
+  const lower = clamp01(expression.lowerLid)
   const visibleY = y + geometry.height * upper
   const visibleHeight = Math.max(0, geometry.height * (1 - upper - lower))
-  const expressionRotation = id === 'left' ? -model.expression.tilt : model.expression.tilt
+  const expressionRotation = id === 'left' ? -expression.tilt : expression.tilt
   const rotation = geometry.rotation + expressionRotation
   const clipId = `eye-clip-${id}`
   const stroke = model.colors.stroke ?? model.colors.eye
