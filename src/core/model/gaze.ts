@@ -24,14 +24,24 @@ type Bounds = {
   bottom: number
 }
 
+type VisibleEyeRect = {
+  center: { x: number; y: number }
+  axisX: { x: number; y: number }
+  axisY: { x: number; y: number }
+  halfWidth: number
+  halfHeight: number
+  hasVisibleArea: boolean
+}
+
 const STROKE_HALF_WIDTH = 0.5
+const OVERLAP_EPSILON = 1e-9
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 
-function eyeBounds(
+function visibleEyeRect(
   model: FaceModel,
   side: 'left' | 'right',
   geometry: EyeGeometry,
-): Bounds {
+): VisibleEyeRect {
   const expression = resolveEyeExpression(model.expression, side)
   const scaledHeight = Math.max(0, geometry.height * expression.heightScale)
   const upper = clamp01(expression.upperLid)
@@ -42,31 +52,73 @@ function eyeBounds(
   const radians = (effectiveRotation * Math.PI) / 180
   const cos = Math.cos(radians)
   const sin = Math.sin(radians)
-  const absCos = Math.abs(cos)
-  const absSin = Math.abs(sin)
 
   // The renderer clips each eye to the lid-defined visible aperture before rotation.
   // Rotate that aperture's shifted center around the eye pivot so constraints follow
   // the portion that is actually visible instead of the hidden full-eye rectangle.
-  const centerX = geometry.position.x - visibleCenterOffsetY * sin
-  const centerY = geometry.position.y + visibleCenterOffsetY * cos
+  const center = {
+    x: geometry.position.x - visibleCenterOffsetY * sin,
+    y: geometry.position.y + visibleCenterOffsetY * cos,
+  }
 
   // Preserve the existing 1px-stroke safety margin for any non-empty aperture.
   // A fully closed eye renders no visible area, so collapse it to its aperture center.
   const hasVisibleArea = visibleHeight > 0
-  const halfWidth = hasVisibleArea
-    ? Math.max(0, geometry.width) / 2 + STROKE_HALF_WIDTH
-    : 0
-  const halfHeight = hasVisibleArea ? visibleHeight / 2 + STROKE_HALF_WIDTH : 0
-  const halfExtentX = absCos * halfWidth + absSin * halfHeight
-  const halfExtentY = absSin * halfWidth + absCos * halfHeight
 
   return {
-    left: centerX - halfExtentX,
-    right: centerX + halfExtentX,
-    top: centerY - halfExtentY,
-    bottom: centerY + halfExtentY,
+    center,
+    axisX: { x: cos, y: sin },
+    axisY: { x: -sin, y: cos },
+    halfWidth: hasVisibleArea ? Math.max(0, geometry.width) / 2 + STROKE_HALF_WIDTH : 0,
+    halfHeight: hasVisibleArea ? visibleHeight / 2 + STROKE_HALF_WIDTH : 0,
+    hasVisibleArea,
   }
+}
+
+function eyeBounds(
+  model: FaceModel,
+  side: 'left' | 'right',
+  geometry: EyeGeometry,
+): Bounds {
+  const rect = visibleEyeRect(model, side, geometry)
+  const halfExtentX = Math.abs(rect.axisX.x) * rect.halfWidth + Math.abs(rect.axisY.x) * rect.halfHeight
+  const halfExtentY = Math.abs(rect.axisX.y) * rect.halfWidth + Math.abs(rect.axisY.y) * rect.halfHeight
+
+  return {
+    left: rect.center.x - halfExtentX,
+    right: rect.center.x + halfExtentX,
+    top: rect.center.y - halfExtentY,
+    bottom: rect.center.y + halfExtentY,
+  }
+}
+
+function projectionRadius(rect: VisibleEyeRect, axis: { x: number; y: number }): number {
+  const dotX = Math.abs(axis.x * rect.axisX.x + axis.y * rect.axisX.y)
+  const dotY = Math.abs(axis.x * rect.axisY.x + axis.y * rect.axisY.y)
+  return rect.halfWidth * dotX + rect.halfHeight * dotY
+}
+
+/** Whether the two currently visible, lid-clipped eye rectangles overlap. */
+export function visibleEyesOverlap(model: FaceModel): boolean {
+  const left = visibleEyeRect(model, 'left', model.leftEye.geometry)
+  const right = visibleEyeRect(model, 'right', model.rightEye.geometry)
+  if (!left.hasVisibleArea || !right.hasVisibleArea) return false
+
+  const centerDelta = {
+    x: right.center.x - left.center.x,
+    y: right.center.y - left.center.y,
+  }
+  const axes = [left.axisX, left.axisY, right.axisX, right.axisY]
+
+  // Separating-axis theorem for the two oriented visible-eye rectangles.
+  // Edge contact is allowed; only positive-area intersection counts as overlap.
+  for (const axis of axes) {
+    const centerDistance = Math.abs(centerDelta.x * axis.x + centerDelta.y * axis.y)
+    const requiredDistance = projectionRadius(left, axis) + projectionRadius(right, axis)
+    if (centerDistance >= requiredDistance - OVERLAP_EPSILON) return false
+  }
+
+  return true
 }
 
 function rawSafeRange(bounds: Bounds[], size: number, start: 'left' | 'top', end: 'right' | 'bottom'): NumericRange {
