@@ -8,6 +8,8 @@ export type CanvasModel = {
 
 export type ColorModel = {
   eye: string
+  /** Optional eye outline color. Falls back to the fill color when omitted. */
+  stroke?: string
   background: string
 }
 
