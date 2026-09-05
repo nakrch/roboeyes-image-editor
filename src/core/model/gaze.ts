@@ -25,6 +25,7 @@ type Bounds = {
 }
 
 const STROKE_HALF_WIDTH = 0.5
+const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 
 function eyeBounds(
   model: FaceModel,
@@ -33,21 +34,38 @@ function eyeBounds(
 ): Bounds {
   const expression = resolveEyeExpression(model.expression, side)
   const scaledHeight = Math.max(0, geometry.height * expression.heightScale)
+  const upper = clamp01(expression.upperLid)
+  const lower = clamp01(expression.lowerLid)
+  const visibleHeight = Math.max(0, scaledHeight * (1 - upper - lower))
+  const visibleCenterOffsetY = scaledHeight * (upper - lower) / 2
   const effectiveRotation = geometry.rotation + (side === 'left' ? -expression.tilt : expression.tilt)
   const radians = (effectiveRotation * Math.PI) / 180
-  const cos = Math.abs(Math.cos(radians))
-  const sin = Math.abs(Math.sin(radians))
+  const cos = Math.cos(radians)
+  const sin = Math.sin(radians)
+  const absCos = Math.abs(cos)
+  const absSin = Math.abs(sin)
 
-  const halfWidth = Math.max(0, geometry.width) / 2 + STROKE_HALF_WIDTH
-  const halfHeight = scaledHeight / 2 + STROKE_HALF_WIDTH
-  const halfExtentX = cos * halfWidth + sin * halfHeight
-  const halfExtentY = sin * halfWidth + cos * halfHeight
+  // The renderer clips each eye to the lid-defined visible aperture before rotation.
+  // Rotate that aperture's shifted center around the eye pivot so constraints follow
+  // the portion that is actually visible instead of the hidden full-eye rectangle.
+  const centerX = geometry.position.x - visibleCenterOffsetY * sin
+  const centerY = geometry.position.y + visibleCenterOffsetY * cos
+
+  // Preserve the existing 1px-stroke safety margin for any non-empty aperture.
+  // A fully closed eye renders no visible area, so collapse it to its aperture center.
+  const hasVisibleArea = visibleHeight > 0
+  const halfWidth = hasVisibleArea
+    ? Math.max(0, geometry.width) / 2 + STROKE_HALF_WIDTH
+    : 0
+  const halfHeight = hasVisibleArea ? visibleHeight / 2 + STROKE_HALF_WIDTH : 0
+  const halfExtentX = absCos * halfWidth + absSin * halfHeight
+  const halfExtentY = absSin * halfWidth + absCos * halfHeight
 
   return {
-    left: geometry.position.x - halfExtentX,
-    right: geometry.position.x + halfExtentX,
-    top: geometry.position.y - halfExtentY,
-    bottom: geometry.position.y + halfExtentY,
+    left: centerX - halfExtentX,
+    right: centerX + halfExtentX,
+    top: centerY - halfExtentY,
+    bottom: centerY + halfExtentY,
   }
 }
 
