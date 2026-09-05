@@ -3,7 +3,9 @@ import {
   movePair,
   pairCenterX,
   pairCenterY,
+  pairRotation,
   pairSpacing,
+  rotatePair,
   setHorizontalLayout,
   updateEyeGeometry,
   type EyeSide,
@@ -94,7 +96,7 @@ export function EyeControls({
             <NumericControl label="Corner radius" value={(left.cornerRadius + right.cornerRadius) / 2} min={0} max={80} onChange={(value) => updateLinkedGeometry('cornerRadius', value)} />
             <NumericControl label="Position X" value={pairCenterX(model)} min={-320} max={640} onChange={(value) => onChange((current) => movePair(current, value, undefined))} />
             <NumericControl label="Position Y" value={pairCenterY(model)} min={-320} max={640} onChange={(value) => onChange((current) => movePair(current, undefined, value))} />
-            <NumericControl label="Rotation" value={(left.rotation + right.rotation) / 2} min={-45} max={45} onChange={(value) => updateLinkedGeometry('rotation', value)} />
+            <NumericControl label="Rotation" value={pairRotation(model)} min={-45} max={45} onChange={(value) => onChange((current) => rotatePair(current, value))} />
           </div>
         ) : (
           <div className="eye-columns">

@@ -1,4 +1,4 @@
-import type { EyeGeometry, FaceModel } from '../../core/model'
+import type { EyeGeometry, FaceModel, Point } from '../../core/model'
 
 export type EyeSide = 'left' | 'right'
 export type GeometryKey = 'width' | 'height' | 'cornerRadius' | 'rotation'
@@ -37,6 +37,67 @@ export function pairCenterX(model: FaceModel): number {
 
 export function pairCenterY(model: FaceModel): number {
   return (model.leftEye.geometry.position.y + model.rightEye.geometry.position.y) / 2
+}
+
+/** Center point between the two eye centers, used as the rigid-pair rotation pivot. */
+export function pairRotationCenter(model: FaceModel): Point {
+  const left = model.leftEye.geometry.position
+  const right = model.rightEye.geometry.position
+
+  return {
+    x: (left.x + right.x) / 2,
+    y: (left.y + right.y) / 2,
+  }
+}
+
+/** Current linked/group rotation represented by the mean eye orientation. */
+export function pairRotation(model: FaceModel): number {
+  return (model.leftEye.geometry.rotation + model.rightEye.geometry.rotation) / 2
+}
+
+function rotatePointAround(point: Point, center: Point, radians: number): Point {
+  const cos = Math.cos(radians)
+  const sin = Math.sin(radians)
+  const x = point.x - center.x
+  const y = point.y - center.y
+
+  return {
+    x: center.x + x * cos - y * sin,
+    y: center.y + x * sin + y * cos,
+  }
+}
+
+/**
+ * Rotate both eyes as one rigid pair around the midpoint between their centers.
+ * `rotation` is an absolute group angle; any pre-existing relative eye tilt is preserved.
+ */
+export function rotatePair(model: FaceModel, rotation: number): FaceModel {
+  const currentRotation = pairRotation(model)
+  const delta = rotation - currentRotation
+  if (delta === 0) return model
+
+  const center = pairRotationCenter(model)
+  const radians = (delta * Math.PI) / 180
+
+  return {
+    ...model,
+    leftEye: {
+      ...model.leftEye,
+      geometry: {
+        ...model.leftEye.geometry,
+        position: rotatePointAround(model.leftEye.geometry.position, center, radians),
+        rotation: model.leftEye.geometry.rotation + delta,
+      },
+    },
+    rightEye: {
+      ...model.rightEye,
+      geometry: {
+        ...model.rightEye.geometry,
+        position: rotatePointAround(model.rightEye.geometry.position, center, radians),
+        rotation: model.rightEye.geometry.rotation + delta,
+      },
+    },
+  }
 }
 
 export function setHorizontalLayout(
