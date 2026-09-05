@@ -2,10 +2,14 @@ import { resolveEyeExpression, type FaceModel, type EyeExpression } from '../../
 import { expressionPresets, matchExpressionPreset } from '../../core/presets'
 import {
   isExpressionGeometryKey,
+  isLidKey,
   setSharedExpressionGeometrySafely,
+  setSharedLidSafely,
   setSideExpressionGeometrySafely,
+  setSideLidSafely,
   sharedExpressionGeometryRange,
   sideExpressionGeometryRange,
+  translatePairToKeepCurrentGaze,
 } from '../editor/geometrySafety'
 import { NumericControl } from './NumericControl'
 
@@ -31,12 +35,22 @@ export function ExpressionControls({ model, linkedEyes, onChange }: Props) {
   const applyPreset = (id: string) => {
     const preset = expressionPresets.find((item) => item.id === id)
     if (!preset) return
-    onChange((current) => ({ ...current, expression: structuredClone(preset.expression) }))
+    onChange((current) =>
+      translatePairToKeepCurrentGaze({
+        ...current,
+        expression: structuredClone(preset.expression),
+      }),
+    )
   }
 
   const updateShared = (key: keyof EyeExpression, value: number) => {
     if (isExpressionGeometryKey(key)) {
       onChange((current) => setSharedExpressionGeometrySafely(current, key, value))
+      return
+    }
+
+    if (isLidKey(key)) {
+      onChange((current) => setSharedLidSafely(current, key, value))
       return
     }
 
@@ -54,6 +68,11 @@ export function ExpressionControls({ model, linkedEyes, onChange }: Props) {
   const updateSide = (side: 'left' | 'right', key: keyof EyeExpression, value: number) => {
     if (isExpressionGeometryKey(key)) {
       onChange((current) => setSideExpressionGeometrySafely(current, side, key, value))
+      return
+    }
+
+    if (isLidKey(key)) {
+      onChange((current) => setSideLidSafely(current, side, key, value))
       return
     }
 
