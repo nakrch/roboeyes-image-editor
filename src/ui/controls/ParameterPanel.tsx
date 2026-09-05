@@ -115,7 +115,7 @@ export function ParameterPanel({
               value={model.gaze.x}
               min={safeGaze.x.min}
               max={safeGaze.x.max}
-              step={0.5}
+              step="any"
               onChange={(value) => onChange((current) => ({ ...current, gaze: { ...current.gaze, x: value } }))}
             />
             <NumericControl
@@ -123,7 +123,7 @@ export function ParameterPanel({
               value={model.gaze.y}
               min={safeGaze.y.min}
               max={safeGaze.y.max}
-              step={0.5}
+              step="any"
               onChange={(value) => onChange((current) => ({ ...current, gaze: { ...current.gaze, y: value } }))}
             />
           </div>
