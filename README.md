@@ -10,6 +10,14 @@ Instead of editing fixed images, eye shape, spacing, gaze, expression, canvas si
 
 このプロジェクトは RoboEyes の単純なブラウザ移植ではありません。目・表情・視線・状態を固定画像ではなく **パラメータで定義されたモデル** として扱い、RoboEyes はその上に載る互換レイヤー / プリセットの一つとして扱います。
 
+## Live editor
+
+The current editor is published with GitHub Pages:
+
+https://nakrch.github.io/roboeyes-image-editor/
+
+The site is rebuilt and redeployed automatically whenever changes are pushed or merged to `main`. Deployment status and failures are visible in GitHub Actions under the **Deploy GitHub Pages** workflow.
+
 ## Planned Features
 
 - realtime preview
