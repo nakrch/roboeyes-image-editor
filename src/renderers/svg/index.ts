@@ -44,10 +44,11 @@ function renderEye(
   const expressionRotation = id === 'left' ? -model.expression.tilt : model.expression.tilt
   const rotation = geometry.rotation + expressionRotation
   const clipId = `eye-clip-${id}`
+  const stroke = model.colors.stroke ?? model.colors.eye
 
   return {
     clipPath: `<clipPath id="${clipId}"><rect x="${number(x)}" y="${number(visibleY)}" width="${number(geometry.width)}" height="${number(visibleHeight)}" /></clipPath>`,
-    shape: `<rect data-eye="${id}" x="${number(x)}" y="${number(y)}" width="${number(geometry.width)}" height="${number(geometry.height)}" rx="${number(radius)}" ry="${number(radius)}" fill="${escapeAttribute(model.colors.eye)}" stroke="none" clip-path="url(#${clipId})" transform="rotate(${number(rotation)} ${number(centerX)} ${number(centerY)})" />`,
+    shape: `<rect data-eye="${id}" x="${number(x)}" y="${number(y)}" width="${number(geometry.width)}" height="${number(geometry.height)}" rx="${number(radius)}" ry="${number(radius)}" fill="${escapeAttribute(model.colors.eye)}" stroke="${escapeAttribute(stroke)}" stroke-width="1" clip-path="url(#${clipId})" transform="rotate(${number(rotation)} ${number(centerX)} ${number(centerY)})" />`,
   }
 }
 
