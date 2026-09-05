@@ -1,8 +1,35 @@
 # RoboEyes Image Editor
 
-**RoboEyes の思想を汎用化した、組込みディスプレイ向け Parametric Robot Face Editor** を目指すブラウザアプリです。
+> 🚧 **Under active development**
+>
+> This project is still in an early development phase. The editor is not yet ready for general use, and several features described below are planned rather than implemented.
+
+**RoboEyes Image Editor** is a browser-based parametric editor for creating robot eye and face graphics for small displays.
+
+Instead of editing fixed images, eye shape, spacing, gaze, expression, canvas size, and other properties are represented as parameters and rendered dynamically.
 
 このプロジェクトは RoboEyes の単純なブラウザ移植ではありません。目・表情・視線・状態を固定画像ではなく **パラメータで定義されたモデル** として扱い、RoboEyes はその上に載る互換レイヤー / プリセットの一つとして扱います。
+
+## Planned Features
+
+- realtime preview
+- independent left / right eye editing
+- RoboEyes-compatible parameters through an adapter layer
+- eye geometry, spacing, gaze, rotation, and canvas controls
+- SVG export
+- PNG export
+- small-display resolution presets
+- transparent and pixel-perfect preview workflows
+- expression presets and custom expression parameters
+- future animation and embedded-display export support
+
+## Current Status
+
+The project is currently in **Phase 1 / foundation development**.
+
+At this stage, the React / TypeScript / Vite application foundation and project architecture are being established. Actual eye rendering, realtime parameter editing, and image export are still under development.
+
+Implementation progresses incrementally through GitHub Issues so that the generic model, RoboEyes adapter, renderer, editor UI, and export layers remain separated from the beginning.
 
 ## Core concept
 
@@ -119,7 +146,3 @@ This project is inspired by [FluxGarage RoboEyes](https://github.com/FluxGarage/
 ## License
 
 `roboeyes-image-editor` is licensed under **GNU General Public License v3.0 or later (GPL-3.0-or-later)**. See [`LICENSE`](LICENSE).
-
-## Status
-
-初期設計・基礎ドキュメント整備中です。実装は GitHub Issues に沿って段階的に進めます。
