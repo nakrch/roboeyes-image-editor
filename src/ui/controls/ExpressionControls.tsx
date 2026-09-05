@@ -12,7 +12,13 @@ const fields: Array<{ key: keyof EyeExpression; label: string; min: number; max:
   { key: 'upperLid', label: 'Upper lid', min: 0, max: 1, step: 0.05 },
   { key: 'lowerLid', label: 'Lower lid', min: 0, max: 1, step: 0.05 },
   { key: 'tilt', label: 'Expression tilt', min: -30, max: 30 },
+  { key: 'heightScale', label: 'Eye height scale', min: 0.5, max: 1.5, step: 0.02 },
 ]
+
+function sharedValue(expression: FaceModel['expression'], key: keyof EyeExpression): number {
+  if (key === 'heightScale') return expression.heightScale ?? 1
+  return expression[key] as number
+}
 
 export function ExpressionControls({ model, linkedEyes, onChange }: Props) {
   const applyPreset = (id: string) => {
@@ -65,7 +71,7 @@ export function ExpressionControls({ model, linkedEyes, onChange }: Props) {
           <NumericControl
             key={field.key}
             label={field.label}
-            value={model.expression[field.key] as number}
+            value={sharedValue(model.expression, field.key)}
             min={field.min}
             max={field.max}
             step={field.step}
