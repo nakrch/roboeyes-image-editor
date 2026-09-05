@@ -12,6 +12,11 @@ export type GazeLimits = {
   y: NumericRange
 }
 
+export type CanvasMinimumSize = {
+  width: number
+  height: number
+}
+
 type Bounds = {
   left: number
   right: number
@@ -33,7 +38,6 @@ function eyeBounds(
   const cos = Math.abs(Math.cos(radians))
   const sin = Math.abs(Math.sin(radians))
 
-  // Include the renderer's 1px stroke so the complete rendered shape remains inside the canvas.
   const halfWidth = Math.max(0, geometry.width) / 2 + STROKE_HALF_WIDTH
   const halfHeight = scaledHeight / 2 + STROKE_HALF_WIDTH
   const halfExtentX = cos * halfWidth + sin * halfHeight
@@ -56,13 +60,9 @@ function rawSafeRange(bounds: Bounds[], size: number, start: 'left' | 'top', end
 
 function safeRange(bounds: Bounds[], size: number, start: 'left' | 'top', end: 'right' | 'bottom'): NumericRange {
   const range = rawSafeRange(bounds, size, start, end)
-
-  // If the current geometry cannot fit on this axis at any translation, keep gaze neutral
-  // rather than allowing gaze to introduce even more overflow.
   if (!Number.isFinite(range.min) || !Number.isFinite(range.max) || range.min > range.max) {
     return { min: 0, max: 0 }
   }
-
   return range
 }
 
@@ -73,7 +73,6 @@ function modelBounds(model: FaceModel): Bounds[] {
   ]
 }
 
-/** Whether some gaze translation can place both rendered eyes fully inside the canvas. */
 export function canFitEyesInCanvas(model: FaceModel): boolean {
   const bounds = modelBounds(model)
   const x = rawSafeRange(bounds, Math.max(0, model.canvas.width), 'left', 'right')
@@ -83,9 +82,28 @@ export function canFitEyesInCanvas(model: FaceModel): boolean {
     Number.isFinite(y.min) && Number.isFinite(y.max) && y.min <= y.max
 }
 
+export function minimumCanvasSize(model: FaceModel): CanvasMinimumSize {
+  const bounds = modelBounds(model).map((bound) => ({
+    left: bound.left + model.gaze.x,
+    right: bound.right + model.gaze.x,
+    top: bound.top + model.gaze.y,
+    bottom: bound.bottom + model.gaze.y,
+  }))
+  const centerX = model.canvas.width / 2
+  const centerY = model.canvas.height / 2
+  const left = Math.min(...bounds.map((bound) => bound.left))
+  const right = Math.max(...bounds.map((bound) => bound.right))
+  const top = Math.min(...bounds.map((bound) => bound.top))
+  const bottom = Math.max(...bounds.map((bound) => bound.bottom))
+
+  return {
+    width: 2 * Math.max(centerX - left, right - centerX),
+    height: 2 * Math.max(centerY - top, bottom - centerY),
+  }
+}
+
 export function gazeLimits(model: FaceModel): GazeLimits {
   const bounds = modelBounds(model)
-
   return {
     x: safeRange(bounds, Math.max(0, model.canvas.width), 'left', 'right'),
     y: safeRange(bounds, Math.max(0, model.canvas.height), 'top', 'bottom'),
@@ -100,11 +118,6 @@ export function clampGaze(model: FaceModel): FaceModel {
   const limits = gazeLimits(model)
   const x = clamp(model.gaze.x, limits.x)
   const y = clamp(model.gaze.y, limits.y)
-
   if (x === model.gaze.x && y === model.gaze.y) return model
-
-  return {
-    ...model,
-    gaze: { x, y },
-  }
+  return { ...model, gaze: { x, y } }
 }
