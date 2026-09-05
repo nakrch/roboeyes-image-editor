@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - issue-1-bootstrap-app
   pull_request:
     branches:
       - main
