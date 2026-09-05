@@ -4,6 +4,11 @@ export type SvgRenderOptions = {
   transparentBackground?: boolean
 }
 
+type RenderedEye = {
+  clipPath: string
+  shape: string
+}
+
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 
 function number(value: number): string {
@@ -23,14 +28,15 @@ function renderEye(
   id: 'left' | 'right',
   geometry: EyeGeometry,
   model: FaceModel,
-): string {
-  const gazeX = model.gaze.x
-  const gazeY = model.gaze.y
-  const centerX = geometry.position.x + gazeX
-  const centerY = geometry.position.y + gazeY
+): RenderedEye {
+  const centerX = geometry.position.x + model.gaze.x
+  const centerY = geometry.position.y + model.gaze.y
   const x = centerX - geometry.width / 2
   const y = centerY - geometry.height / 2
-  const radius = Math.max(0, Math.min(geometry.cornerRadius, geometry.width / 2, geometry.height / 2))
+  const radius = Math.max(
+    0,
+    Math.min(geometry.cornerRadius, geometry.width / 2, geometry.height / 2),
+  )
   const upper = clamp01(model.expression.upperLid)
   const lower = clamp01(model.expression.lowerLid)
   const visibleY = y + geometry.height * upper
@@ -39,10 +45,10 @@ function renderEye(
   const rotation = geometry.rotation + expressionRotation
   const clipId = `eye-clip-${id}`
 
-  return [
-    `<clipPath id="${clipId}"><rect x="${number(x)}" y="${number(visibleY)}" width="${number(geometry.width)}" height="${number(visibleHeight)}" /></clipPath>`,
-    `<rect data-eye="${id}" x="${number(x)}" y="${number(y)}" width="${number(geometry.width)}" height="${number(geometry.height)}" rx="${number(radius)}" ry="${number(radius)}" fill="${escapeAttribute(model.colors.eye)}" stroke="none" clip-path="url(#${clipId})" transform="rotate(${number(rotation)} ${number(centerX)} ${number(centerY)})" />`,
-  ].join('')
+  return {
+    clipPath: `<clipPath id="${clipId}"><rect x="${number(x)}" y="${number(visibleY)}" width="${number(geometry.width)}" height="${number(visibleHeight)}" /></clipPath>`,
+    shape: `<rect data-eye="${id}" x="${number(x)}" y="${number(y)}" width="${number(geometry.width)}" height="${number(geometry.height)}" rx="${number(radius)}" ry="${number(radius)}" fill="${escapeAttribute(model.colors.eye)}" stroke="none" clip-path="url(#${clipId})" transform="rotate(${number(rotation)} ${number(centerX)} ${number(centerY)})" />`,
+  }
 }
 
 export function renderFaceToSvg(
@@ -51,6 +57,8 @@ export function renderFaceToSvg(
 ): string {
   const width = Math.max(0, model.canvas.width)
   const height = Math.max(0, model.canvas.height)
+  const left = renderEye('left', model.leftEye.geometry, model)
+  const right = renderEye('right', model.rightEye.geometry, model)
   const background = options.transparentBackground
     ? ''
     : `<rect data-background="true" x="0" y="0" width="${number(width)}" height="${number(height)}" fill="${escapeAttribute(model.colors.background)}" />`
@@ -58,12 +66,9 @@ export function renderFaceToSvg(
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${number(width)}" height="${number(height)}" viewBox="0 0 ${number(width)} ${number(height)}">`,
     background,
-    '<defs>',
-    renderEye('left', model.leftEye.geometry, model).split('</clipPath>')[0] + '</clipPath>',
-    renderEye('right', model.rightEye.geometry, model).split('</clipPath>')[0] + '</clipPath>',
-    '</defs>',
-    renderEye('left', model.leftEye.geometry, model).split('</clipPath>')[1],
-    renderEye('right', model.rightEye.geometry, model).split('</clipPath>')[1],
+    `<defs>${left.clipPath}${right.clipPath}</defs>`,
+    left.shape,
+    right.shape,
     '</svg>',
   ].join('')
 }
