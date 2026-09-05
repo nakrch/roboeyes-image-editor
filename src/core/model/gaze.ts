@@ -47,24 +47,44 @@ function eyeBounds(
   }
 }
 
+function rawSafeRange(bounds: Bounds[], size: number, start: 'left' | 'top', end: 'right' | 'bottom'): NumericRange {
+  return {
+    min: Math.max(...bounds.map((bound) => -bound[start])),
+    max: Math.min(...bounds.map((bound) => size - bound[end])),
+  }
+}
+
 function safeRange(bounds: Bounds[], size: number, start: 'left' | 'top', end: 'right' | 'bottom'): NumericRange {
-  const min = Math.max(...bounds.map((bound) => -bound[start]))
-  const max = Math.min(...bounds.map((bound) => size - bound[end]))
+  const range = rawSafeRange(bounds, size, start, end)
 
   // If the current geometry cannot fit on this axis at any translation, keep gaze neutral
   // rather than allowing gaze to introduce even more overflow.
-  if (!Number.isFinite(min) || !Number.isFinite(max) || min > max) {
+  if (!Number.isFinite(range.min) || !Number.isFinite(range.max) || range.min > range.max) {
     return { min: 0, max: 0 }
   }
 
-  return { min, max }
+  return range
 }
 
-export function gazeLimits(model: FaceModel): GazeLimits {
-  const bounds = [
+function modelBounds(model: FaceModel): Bounds[] {
+  return [
     eyeBounds(model, 'left', model.leftEye.geometry),
     eyeBounds(model, 'right', model.rightEye.geometry),
   ]
+}
+
+/** Whether some gaze translation can place both rendered eyes fully inside the canvas. */
+export function canFitEyesInCanvas(model: FaceModel): boolean {
+  const bounds = modelBounds(model)
+  const x = rawSafeRange(bounds, Math.max(0, model.canvas.width), 'left', 'right')
+  const y = rawSafeRange(bounds, Math.max(0, model.canvas.height), 'top', 'bottom')
+
+  return Number.isFinite(x.min) && Number.isFinite(x.max) && x.min <= x.max &&
+    Number.isFinite(y.min) && Number.isFinite(y.max) && y.min <= y.max
+}
+
+export function gazeLimits(model: FaceModel): GazeLimits {
+  const bounds = modelBounds(model)
 
   return {
     x: safeRange(bounds, Math.max(0, model.canvas.width), 'left', 'right'),
