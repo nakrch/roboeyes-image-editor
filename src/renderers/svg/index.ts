@@ -31,17 +31,18 @@ function renderEye(
 ): RenderedEye {
   const centerX = geometry.position.x + model.gaze.x
   const centerY = geometry.position.y + model.gaze.y
+  const expression = resolveEyeExpression(model.expression, id)
+  const scaledHeight = geometry.height * Math.max(0, expression.heightScale)
   const x = centerX - geometry.width / 2
-  const y = centerY - geometry.height / 2
+  const y = centerY - scaledHeight / 2
   const radius = Math.max(
     0,
-    Math.min(geometry.cornerRadius, geometry.width / 2, geometry.height / 2),
+    Math.min(geometry.cornerRadius, geometry.width / 2, scaledHeight / 2),
   )
-  const expression = resolveEyeExpression(model.expression, id)
   const upper = clamp01(expression.upperLid)
   const lower = clamp01(expression.lowerLid)
-  const visibleY = y + geometry.height * upper
-  const visibleHeight = Math.max(0, geometry.height * (1 - upper - lower))
+  const visibleY = y + scaledHeight * upper
+  const visibleHeight = Math.max(0, scaledHeight * (1 - upper - lower))
   const expressionRotation = id === 'left' ? -expression.tilt : expression.tilt
   const rotation = geometry.rotation + expressionRotation
   const clipId = `eye-clip-${id}`
@@ -49,7 +50,7 @@ function renderEye(
 
   return {
     clipPath: `<clipPath id="${clipId}"><rect x="${number(x)}" y="${number(visibleY)}" width="${number(geometry.width)}" height="${number(visibleHeight)}" /></clipPath>`,
-    shape: `<rect data-eye="${id}" x="${number(x)}" y="${number(y)}" width="${number(geometry.width)}" height="${number(geometry.height)}" rx="${number(radius)}" ry="${number(radius)}" fill="${escapeAttribute(model.colors.eye)}" stroke="${escapeAttribute(stroke)}" stroke-width="1" clip-path="url(#${clipId})" transform="rotate(${number(rotation)} ${number(centerX)} ${number(centerY)})" />`,
+    shape: `<rect data-eye="${id}" x="${number(x)}" y="${number(y)}" width="${number(geometry.width)}" height="${number(scaledHeight)}" rx="${number(radius)}" ry="${number(radius)}" fill="${escapeAttribute(model.colors.eye)}" stroke="${escapeAttribute(stroke)}" stroke-width="1" clip-path="url(#${clipId})" transform="rotate(${number(rotation)} ${number(centerX)} ${number(centerY)})" />`,
   }
 }
 

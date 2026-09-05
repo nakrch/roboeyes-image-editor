@@ -14,6 +14,7 @@ describe('expression model', () => {
       upperLid: 0.2,
       lowerLid: 0.1,
       tilt: 5,
+      heightScale: 1,
     })
   })
 
@@ -22,6 +23,18 @@ describe('expression model', () => {
       upperLid: 0.6,
       lowerLid: 0.1,
       tilt: -8,
+      heightScale: 1,
     })
+  })
+
+  it('supports per-eye height scale overrides', () => {
+    const scaled: ExpressionModel = {
+      ...expression,
+      heightScale: 1.1,
+      leftEye: { ...expression.leftEye, heightScale: 1.3 },
+    }
+
+    expect(resolveEyeExpression(scaled, 'right').heightScale).toBe(1.1)
+    expect(resolveEyeExpression(scaled, 'left').heightScale).toBe(1.3)
   })
 })
