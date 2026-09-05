@@ -6,14 +6,17 @@ import {
   setLinkedEyeDimensionSafely,
 } from '../editor/eyeDimensions'
 import {
+  anchoredPairSpacing,
+  anchoredPairSpacingMax,
+  setAnchoredPairSpacingSafely,
+} from '../editor/geometrySafety'
+import {
   movePair,
   pairCenterX,
   pairCenterY,
   pairRotation,
   pairRotationLimits,
-  pairSpacing,
   rotatePairSafely,
-  setHorizontalLayout,
   updateEyeGeometry,
   type EyeSide,
   type GeometryKey,
@@ -37,6 +40,8 @@ export function EyeControls({
   const right = model.rightEye.geometry
   const linkedRotationLimits = pairRotationLimits(model)
   const linkedDimensionLimits = linkedEyeDimensionLimits(model)
+  const spacing = anchoredPairSpacing(model)
+  const spacingMax = anchoredPairSpacingMax(model)
 
   const updateLinkedGeometry = (key: GeometryKey, value: number) => {
     onChange((current) => {
@@ -140,19 +145,11 @@ export function EyeControls({
 
         <NumericControl
           label="Eye spacing"
-          value={pairSpacing(model)}
+          value={spacing}
           min={0}
-          max={160}
-          onChange={(value) =>
-            onChange((current) =>
-              setHorizontalLayout(
-                current,
-                current.leftEye.geometry.width,
-                current.rightEye.geometry.width,
-                value,
-              ),
-            )
-          }
+          max={spacingMax}
+          step="any"
+          onChange={(value) => onChange((current) => setAnchoredPairSpacingSafely(current, value))}
         />
       </div>
     </details>

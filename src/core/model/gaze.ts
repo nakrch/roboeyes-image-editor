@@ -110,6 +110,13 @@ export function gazeLimits(model: FaceModel): GazeLimits {
   }
 }
 
+/** Whether the model's current gaze keeps both rendered eyes fully inside the canvas. */
+export function isGazeCanvasSafe(model: FaceModel): boolean {
+  const limits = gazeLimits(model)
+  return model.gaze.x >= limits.x.min && model.gaze.x <= limits.x.max &&
+    model.gaze.y >= limits.y.min && model.gaze.y <= limits.y.max
+}
+
 function clamp(value: number, range: NumericRange): number {
   return Math.min(range.max, Math.max(range.min, value))
 }
