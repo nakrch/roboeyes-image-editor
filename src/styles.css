@@ -222,11 +222,17 @@ select { border-radius: 8px; padding: 5px 8px; }
   .editor-workspace { grid-template-columns: 1fr; gap: 12px; }
   .editor-preview-column {
     position: sticky;
-    top: 8px;
-    z-index: 10;
+    top: 0;
+    z-index: 50;
+    isolation: isolate;
+    min-width: 0;
+    padding-top: 8px;
+    background: #0b1020;
   }
   .preview-panel {
+    overflow: hidden;
     padding: 12px;
+    background: #0f172a;
     box-shadow: 0 12px 30px rgb(0 0 0 / 0.45);
   }
   .preview-panel .panel-heading { margin-bottom: 10px; }
