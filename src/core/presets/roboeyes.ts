@@ -14,5 +14,6 @@ export const defaultRoboEyesPreset: Readonly<RoboEyesParameters> = {
   lowerLid: 0,
   expressionTilt: 0,
   eyeColor: '#ffffff',
+  eyeStrokeColor: '#ffffff',
   backgroundColor: '#000000',
 }

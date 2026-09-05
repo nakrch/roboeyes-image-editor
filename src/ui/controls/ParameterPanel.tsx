@@ -1,105 +1,147 @@
-import type { Dispatch, SetStateAction } from 'react'
-import type { RoboEyesParameters } from '../../core/adapters/roboeyes'
+import type { FaceModel } from '../../core/model'
+import { resizeCanvasFromCenter } from '../editor/modelEditing'
+import { EyeControls } from './EyeControls'
+import { NumericControl } from './NumericControl'
 
 type ParameterPanelProps = {
-  parameters: RoboEyesParameters
-  onChange: Dispatch<SetStateAction<RoboEyesParameters>>
+  model: FaceModel
+  linkedEyes: boolean
+  canUndo: boolean
+  canRedo: boolean
+  onChange: (updater: (current: FaceModel) => FaceModel) => void
+  onLinkedEyesChange: (value: boolean) => void
+  onUndo: () => void
+  onRedo: () => void
+  onReset: () => void
 }
 
-type NumericKey =
-  | 'canvasWidth'
-  | 'canvasHeight'
-  | 'eyeWidth'
-  | 'eyeHeight'
-  | 'eyeRadius'
-  | 'eyeSpacing'
-  | 'gazeX'
-  | 'gazeY'
-  | 'rotation'
-  | 'upperLid'
-  | 'lowerLid'
-  | 'expressionTilt'
+const resolutionPresets = [
+  { key: '128x64', width: 128, height: 64 },
+  { key: '128x128', width: 128, height: 128 },
+  { key: '240x240', width: 240, height: 240 },
+  { key: '320x240', width: 320, height: 240 },
+  { key: '320x320', width: 320, height: 320 },
+] as const
 
-const numericControls: Array<{
-  key: NumericKey
-  label: string
-  min: number
-  max: number
-  step?: number
-}> = [
-  { key: 'canvasWidth', label: 'Canvas width', min: 16, max: 640 },
-  { key: 'canvasHeight', label: 'Canvas height', min: 16, max: 640 },
-  { key: 'eyeWidth', label: 'Eye width', min: 1, max: 160 },
-  { key: 'eyeHeight', label: 'Eye height', min: 1, max: 160 },
-  { key: 'eyeRadius', label: 'Corner radius', min: 0, max: 80 },
-  { key: 'eyeSpacing', label: 'Eye spacing', min: 0, max: 160 },
-  { key: 'gazeX', label: 'Gaze X', min: -64, max: 64 },
-  { key: 'gazeY', label: 'Gaze Y', min: -64, max: 64 },
-  { key: 'rotation', label: 'Rotation', min: -45, max: 45 },
-  { key: 'upperLid', label: 'Upper lid', min: 0, max: 1, step: 0.05 },
-  { key: 'lowerLid', label: 'Lower lid', min: 0, max: 1, step: 0.05 },
-  { key: 'expressionTilt', label: 'Expression tilt', min: -30, max: 30 },
-]
+export function ParameterPanel({
+  model,
+  linkedEyes,
+  canUndo,
+  canRedo,
+  onChange,
+  onLinkedEyesChange,
+  onUndo,
+  onRedo,
+  onReset,
+}: ParameterPanelProps) {
+  const currentResolution =
+    resolutionPresets.find(
+      (preset) => preset.width === model.canvas.width && preset.height === model.canvas.height,
+    )?.key ?? 'custom'
 
-export function ParameterPanel({ parameters, onChange }: ParameterPanelProps) {
-  const updateNumber = (key: NumericKey, value: number) => {
-    onChange((current) => ({ ...current, [key]: value }))
+  const applyResolution = (key: string) => {
+    const preset = resolutionPresets.find((candidate) => candidate.key === key)
+    if (preset) {
+      onChange((current) => resizeCanvasFromCenter(current, preset.width, preset.height))
+    }
   }
 
   return (
     <aside className="panel parameter-panel" aria-label="Parameter controls">
-      <div className="panel-heading">
-        <p className="eyebrow">Parameters</p>
-        <h2>Controls</h2>
+      <div className="panel-heading control-panel-heading">
+        <div>
+          <p className="eyebrow">Parameters</p>
+          <h2>Controls</h2>
+        </div>
+        <div className="history-actions" aria-label="Editor history">
+          <button type="button" onClick={onUndo} disabled={!canUndo}>Undo</button>
+          <button type="button" onClick={onRedo} disabled={!canRedo}>Redo</button>
+          <button type="button" onClick={onReset}>Reset</button>
+        </div>
       </div>
 
       <div className="control-list">
-        {numericControls.map(({ key, label, min, max, step = 1 }) => (
-          <label className="control-field" key={key}>
-            <span>{label}</span>
-            <div className="control-inputs">
-              <input
-                type="range"
-                min={min}
-                max={max}
-                step={step}
-                value={parameters[key]}
-                onChange={(event) => updateNumber(key, Number(event.target.value))}
-              />
-              <input
-                className="number-input"
-                type="number"
-                min={min}
-                max={max}
-                step={step}
-                value={parameters[key]}
-                onChange={(event) => updateNumber(key, Number(event.target.value))}
-              />
-            </div>
+        <section className="control-group" aria-labelledby="canvas-controls">
+          <div className="control-group-heading">
+            <h3 id="canvas-controls">Canvas</h3>
+            <select
+              aria-label="Preview resolution preset"
+              value={currentResolution}
+              onChange={(event) => applyResolution(event.target.value)}
+            >
+              {resolutionPresets.map((preset) => (
+                <option value={preset.key} key={preset.key}>
+                  {preset.width} × {preset.height}
+                </option>
+              ))}
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          <NumericControl
+            label="Canvas width"
+            value={model.canvas.width}
+            min={16}
+            max={640}
+            onChange={(value) => onChange((current) => ({ ...current, canvas: { ...current.canvas, width: value } }))}
+          />
+          <NumericControl
+            label="Canvas height"
+            value={model.canvas.height}
+            min={16}
+            max={640}
+            onChange={(value) => onChange((current) => ({ ...current, canvas: { ...current.canvas, height: value } }))}
+          />
+        </section>
+
+        <EyeControls
+          model={model}
+          linkedEyes={linkedEyes}
+          onChange={onChange}
+          onLinkedEyesChange={onLinkedEyesChange}
+        />
+
+        <section className="control-group" aria-labelledby="gaze-controls">
+          <h3 id="gaze-controls">Gaze</h3>
+          <NumericControl
+            label="Gaze X"
+            value={model.gaze.x}
+            min={-64}
+            max={64}
+            onChange={(value) => onChange((current) => ({ ...current, gaze: { ...current.gaze, x: value } }))}
+          />
+          <NumericControl
+            label="Gaze Y"
+            value={model.gaze.y}
+            min={-64}
+            max={64}
+            onChange={(value) => onChange((current) => ({ ...current, gaze: { ...current.gaze, y: value } }))}
+          />
+        </section>
+
+        <section className="control-group" aria-labelledby="appearance-controls">
+          <h3 id="appearance-controls">Appearance</h3>
+          <label className="control-field color-control">
+            <span>Eye fill</span>
+            <input type="color" value={model.colors.eye} onChange={(event) => onChange((current) => ({ ...current, colors: { ...current.colors, eye: event.target.value } }))} />
           </label>
-        ))}
+          <label className="control-field color-control">
+            <span>Eye stroke</span>
+            <input type="color" value={model.colors.stroke ?? model.colors.eye} onChange={(event) => onChange((current) => ({ ...current, colors: { ...current.colors, stroke: event.target.value } }))} />
+          </label>
+          <label className="control-field color-control">
+            <span>Background</span>
+            <input type="color" value={model.colors.background} onChange={(event) => onChange((current) => ({ ...current, colors: { ...current.colors, background: event.target.value } }))} />
+          </label>
+        </section>
 
-        <label className="control-field color-control">
-          <span>Eye color</span>
-          <input
-            type="color"
-            value={parameters.eyeColor}
-            onChange={(event) =>
-              onChange((current) => ({ ...current, eyeColor: event.target.value }))
-            }
-          />
-        </label>
-
-        <label className="control-field color-control">
-          <span>Background</span>
-          <input
-            type="color"
-            value={parameters.backgroundColor}
-            onChange={(event) =>
-              onChange((current) => ({ ...current, backgroundColor: event.target.value }))
-            }
-          />
-        </label>
+        <details className="advanced-controls">
+          <summary>Expression parameters</summary>
+          <div className="nested-controls">
+            <NumericControl label="Upper lid" value={model.expression.upperLid} min={0} max={1} step={0.05} onChange={(value) => onChange((current) => ({ ...current, expression: { ...current.expression, upperLid: value } }))} />
+            <NumericControl label="Lower lid" value={model.expression.lowerLid} min={0} max={1} step={0.05} onChange={(value) => onChange((current) => ({ ...current, expression: { ...current.expression, lowerLid: value } }))} />
+            <NumericControl label="Expression tilt" value={model.expression.tilt} min={-30} max={30} onChange={(value) => onChange((current) => ({ ...current, expression: { ...current.expression, tilt: value } }))} />
+          </div>
+        </details>
       </div>
     </aside>
   )

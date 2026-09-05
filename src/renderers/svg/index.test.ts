@@ -24,7 +24,7 @@ const model: FaceModel = {
   },
   gaze: { x: 2, y: -1 },
   expression: { upperLid: 0.25, lowerLid: 0.1, tilt: 3 },
-  colors: { eye: '#ffffff', background: '#000000' },
+  colors: { eye: '#ffffff', stroke: '#00ffff', background: '#000000' },
 }
 
 describe('renderFaceToSvg', () => {
@@ -34,6 +34,7 @@ describe('renderFaceToSvg', () => {
     expect(svg).toContain('width="128" height="64" viewBox="0 0 128 64"')
     expect(svg).toContain('data-eye="left"')
     expect(svg).toContain('data-eye="right"')
+    expect(svg).toContain('stroke="#00ffff" stroke-width="1"')
     expect(svg).toContain('data-background="true"')
   })
 

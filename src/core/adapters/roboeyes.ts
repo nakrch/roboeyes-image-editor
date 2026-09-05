@@ -22,6 +22,7 @@ export type RoboEyesParameters = {
   lowerLid: number
   expressionTilt: number
   eyeColor: string
+  eyeStrokeColor?: string
   backgroundColor: string
   leftEye?: RoboEyesEyeOverrides
   rightEye?: RoboEyesEyeOverrides
@@ -77,6 +78,7 @@ export function roboEyesToFaceModel(parameters: RoboEyesParameters): FaceModel {
     },
     colors: {
       eye: parameters.eyeColor,
+      stroke: parameters.eyeStrokeColor ?? parameters.eyeColor,
       background: parameters.backgroundColor,
     },
   }

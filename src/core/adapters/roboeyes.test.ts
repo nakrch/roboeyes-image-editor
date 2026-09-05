@@ -16,6 +16,7 @@ const baseParameters: RoboEyesParameters = {
   lowerLid: 0.2,
   expressionTilt: -5,
   eyeColor: '#fff',
+  eyeStrokeColor: '#0ff',
   backgroundColor: '#000',
 }
 
@@ -40,7 +41,7 @@ describe('roboEyesToFaceModel', () => {
     })
     expect(model.gaze).toEqual({ x: 4, y: -3 })
     expect(model.expression).toEqual({ upperLid: 0.1, lowerLid: 0.2, tilt: -5 })
-    expect(model.colors).toEqual({ eye: '#fff', background: '#000' })
+    expect(model.colors).toEqual({ eye: '#fff', stroke: '#0ff', background: '#000' })
   })
 
   it('uses an explicit pair center and preserves edge spacing with asymmetric eyes', () => {
@@ -61,5 +62,11 @@ describe('roboEyesToFaceModel', () => {
     const leftRightEdge = model.leftEye.geometry.position.x + model.leftEye.geometry.width / 2
     const rightLeftEdge = model.rightEye.geometry.position.x - model.rightEye.geometry.width / 2
     expect(rightLeftEdge - leftRightEdge).toBe(10)
+  })
+
+  it('falls back to the fill color when no stroke color is provided', () => {
+    const model = roboEyesToFaceModel({ ...baseParameters, eyeStrokeColor: undefined })
+
+    expect(model.colors.stroke).toBe(baseParameters.eyeColor)
   })
 })
