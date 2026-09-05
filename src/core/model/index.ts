@@ -1,6 +1,6 @@
 export { resolveEyeExpression } from './expression'
 export type { ExpressionModel, EyeExpression } from './expression'
-export { clampGaze, gazeLimits } from './gaze'
+export { canFitEyesInCanvas, clampGaze, gazeLimits } from './gaze'
 export type { GazeLimits, NumericRange } from './gaze'
 export type { EyeGeometry, EyeModel, Point } from './eye'
 export type { CanvasModel, ColorModel, FaceModel } from './face'
