@@ -61,12 +61,13 @@ export function ParameterPanel({
       </div>
 
       <div className="control-list">
-        <section className="control-group" aria-labelledby="canvas-controls">
-          <div className="control-group-heading">
-            <h3 id="canvas-controls">Canvas</h3>
+        <details className="control-group collapsible-control-group" open>
+          <summary className="control-group-summary">
+            <span>Canvas</span>
             <select
               aria-label="Preview resolution preset"
               value={currentResolution}
+              onClick={(event) => event.stopPropagation()}
               onChange={(event) => applyResolution(event.target.value)}
             >
               {resolutionPresets.map((preset) => (
@@ -76,22 +77,24 @@ export function ParameterPanel({
               ))}
               <option value="custom">Custom</option>
             </select>
+          </summary>
+          <div className="nested-controls control-group-body">
+            <NumericControl
+              label="Canvas width"
+              value={model.canvas.width}
+              min={16}
+              max={640}
+              onChange={(value) => onChange((current) => ({ ...current, canvas: { ...current.canvas, width: value } }))}
+            />
+            <NumericControl
+              label="Canvas height"
+              value={model.canvas.height}
+              min={16}
+              max={640}
+              onChange={(value) => onChange((current) => ({ ...current, canvas: { ...current.canvas, height: value } }))}
+            />
           </div>
-          <NumericControl
-            label="Canvas width"
-            value={model.canvas.width}
-            min={16}
-            max={640}
-            onChange={(value) => onChange((current) => ({ ...current, canvas: { ...current.canvas, width: value } }))}
-          />
-          <NumericControl
-            label="Canvas height"
-            value={model.canvas.height}
-            min={16}
-            max={640}
-            onChange={(value) => onChange((current) => ({ ...current, canvas: { ...current.canvas, height: value } }))}
-          />
-        </section>
+        </details>
 
         <EyeControls
           model={model}
@@ -100,43 +103,47 @@ export function ParameterPanel({
           onLinkedEyesChange={onLinkedEyesChange}
         />
 
-        <section className="control-group" aria-labelledby="gaze-controls">
-          <h3 id="gaze-controls">Gaze</h3>
-          <NumericControl
-            label="Gaze X"
-            value={model.gaze.x}
-            min={-64}
-            max={64}
-            onChange={(value) => onChange((current) => ({ ...current, gaze: { ...current.gaze, x: value } }))}
-          />
-          <NumericControl
-            label="Gaze Y"
-            value={model.gaze.y}
-            min={-64}
-            max={64}
-            onChange={(value) => onChange((current) => ({ ...current, gaze: { ...current.gaze, y: value } }))}
-          />
-        </section>
+        <details className="control-group collapsible-control-group" open>
+          <summary className="control-group-summary">Gaze</summary>
+          <div className="nested-controls control-group-body">
+            <NumericControl
+              label="Gaze X"
+              value={model.gaze.x}
+              min={-64}
+              max={64}
+              onChange={(value) => onChange((current) => ({ ...current, gaze: { ...current.gaze, x: value } }))}
+            />
+            <NumericControl
+              label="Gaze Y"
+              value={model.gaze.y}
+              min={-64}
+              max={64}
+              onChange={(value) => onChange((current) => ({ ...current, gaze: { ...current.gaze, y: value } }))}
+            />
+          </div>
+        </details>
 
-        <section className="control-group" aria-labelledby="appearance-controls">
-          <h3 id="appearance-controls">Appearance</h3>
-          <label className="control-field color-control">
-            <span>Eye fill</span>
-            <input type="color" value={model.colors.eye} onChange={(event) => onChange((current) => ({ ...current, colors: { ...current.colors, eye: event.target.value } }))} />
-          </label>
-          <label className="control-field color-control">
-            <span>Eye stroke</span>
-            <input type="color" value={model.colors.stroke ?? model.colors.eye} onChange={(event) => onChange((current) => ({ ...current, colors: { ...current.colors, stroke: event.target.value } }))} />
-          </label>
-          <label className="control-field color-control">
-            <span>Background</span>
-            <input type="color" value={model.colors.background} onChange={(event) => onChange((current) => ({ ...current, colors: { ...current.colors, background: event.target.value } }))} />
-          </label>
-        </section>
+        <details className="control-group collapsible-control-group" open>
+          <summary className="control-group-summary">Appearance</summary>
+          <div className="nested-controls control-group-body">
+            <label className="control-field color-control">
+              <span>Eye fill</span>
+              <input type="color" value={model.colors.eye} onChange={(event) => onChange((current) => ({ ...current, colors: { ...current.colors, eye: event.target.value } }))} />
+            </label>
+            <label className="control-field color-control">
+              <span>Eye stroke</span>
+              <input type="color" value={model.colors.stroke ?? model.colors.eye} onChange={(event) => onChange((current) => ({ ...current, colors: { ...current.colors, stroke: event.target.value } }))} />
+            </label>
+            <label className="control-field color-control">
+              <span>Background</span>
+              <input type="color" value={model.colors.background} onChange={(event) => onChange((current) => ({ ...current, colors: { ...current.colors, background: event.target.value } }))} />
+            </label>
+          </div>
+        </details>
 
-        <details className="advanced-controls">
+        <details className="advanced-controls collapsible-control-group">
           <summary>Expression parameters</summary>
-          <div className="nested-controls">
+          <div className="nested-controls control-group-body">
             <NumericControl label="Upper lid" value={model.expression.upperLid} min={0} max={1} step={0.05} onChange={(value) => onChange((current) => ({ ...current, expression: { ...current.expression, upperLid: value } }))} />
             <NumericControl label="Lower lid" value={model.expression.lowerLid} min={0} max={1} step={0.05} onChange={(value) => onChange((current) => ({ ...current, expression: { ...current.expression, lowerLid: value } }))} />
             <NumericControl label="Expression tilt" value={model.expression.tilt} min={-30} max={30} onChange={(value) => onChange((current) => ({ ...current, expression: { ...current.expression, tilt: value } }))} />
