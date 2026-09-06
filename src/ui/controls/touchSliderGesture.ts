@@ -1,6 +1,6 @@
 export const TOUCH_DRAG_THRESHOLD_PX = 8
-// Touch fine drag intentionally moves at 85% of the normal relative rate.
-export const TOUCH_FINE_DRAG_SCALE = 0.85
+// Touch fine drag intentionally moves at 95% of the normal relative rate.
+export const TOUCH_FINE_DRAG_SCALE = 0.95
 
 export type TouchSliderIntent = 'pending' | 'horizontal' | 'vertical'
 
