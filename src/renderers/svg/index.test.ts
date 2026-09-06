@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { FaceModel } from '../../core/model'
+import { expressionPresets, roboEyesPreset } from '../../core/presets'
 import { renderFaceToSvg } from './index'
 
 const model: FaceModel = {
@@ -111,5 +112,46 @@ describe('renderFaceToSvg', () => {
     expect(leftPath).toContain('M 24 37.6')
     expect(leftPath).toContain('L 56 23.6')
     expect(leftPath).toContain('L 56 37.6')
+  })
+
+  it('renders derivative-inspired static presets deterministically at 128x64', () => {
+    const expectedPaths: Record<string, { left: string; right: string }> = {
+      Sad: {
+        left: 'M 22 24.3824 L 58 17.096 L 58 46.5728 Q 40 44.5856 22 46.5728 Z',
+        right: 'M 70 17.096 L 106 24.3824 L 106 46.5728 Q 88 44.5856 70 46.5728 Z',
+      },
+      Suspicious: {
+        left: 'M 22 26.9456 L 58 24.6992 L 58 44.9168 Q 40 44.9168 22 44.9168 Z',
+        right: 'M 70 19.76 L 106 16.16 L 106 48.56 Q 88 48.56 70 48.56 Z',
+      },
+      Serious: {
+        left: 'M 22 21.632 L 58 21.632 L 58 45.608 Q 40 45.608 22 45.608 Z',
+        right: 'M 70 21.632 L 106 21.632 L 106 45.608 Q 88 45.608 70 45.608 Z',
+      },
+      Irritated: {
+        left: 'M 22 20.2352 L 58 28.2848 L 58 45.0032 Q 40 45.0032 22 45.0032 Z',
+        right: 'M 70 28.2848 L 106 20.2352 L 106 45.0032 Q 88 45.0032 70 45.0032 Z',
+      },
+    }
+
+    const outputs = Object.entries(expectedPaths).map(([name, expected]) => {
+      const preset = expressionPresets.find((item) => item.name === name)!
+      const face: FaceModel = {
+        ...structuredClone(roboEyesPreset.model),
+        expression: structuredClone(preset.expression),
+      }
+      const first = renderFaceToSvg(face)
+      const second = renderFaceToSvg(face)
+      const leftPath = first.match(/data-eye-aperture="left" d="([^"]+)"/)?.[1]
+      const rightPath = first.match(/data-eye-aperture="right" d="([^"]+)"/)?.[1]
+
+      expect(first).toBe(second)
+      expect(first).toContain('width="128" height="64" viewBox="0 0 128 64"')
+      expect(leftPath).toBe(expected.left)
+      expect(rightPath).toBe(expected.right)
+      return first
+    })
+
+    expect(new Set(outputs).size).toBe(outputs.length)
   })
 })
