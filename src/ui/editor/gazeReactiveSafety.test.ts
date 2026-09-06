@@ -37,9 +37,9 @@ describe('gaze-reactive expression safety', () => {
   it('clamps unsafe expansion changes instead of pushing the visible eye outside the canvas', () => {
     const tight: FaceModel = {
       ...model,
-      canvas: { width: 128, height: 44 },
-      leftEye: { geometry: { ...model.leftEye.geometry, position: { x: 40, y: 22 }, height: 30 } },
-      rightEye: { geometry: { ...model.rightEye.geometry, position: { x: 88, y: 22 }, height: 30 } },
+      canvas: { width: 128, height: 36 },
+      leftEye: { geometry: { ...model.leftEye.geometry, position: { x: 40, y: 18 }, height: 30 } },
+      rightEye: { geometry: { ...model.rightEye.geometry, position: { x: 88, y: 18 }, height: 30 } },
       gaze: { x: -24, y: 0 },
       expression: { ...model.expression, gazeHeightExpansion: 0 },
     }
