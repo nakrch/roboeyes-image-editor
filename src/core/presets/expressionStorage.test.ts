@@ -3,8 +3,11 @@ import { minimalPreset } from './minimal'
 import {
   CUSTOM_EXPRESSION_PRESET_STORAGE_KEY,
   applyExpressionPresetToModel,
+  createUserExpressionPreset,
   loadCustomExpressionPresets,
+  nextCustomExpressionName,
   parseExpressionPreset,
+  removeUserExpressionPreset,
   saveCustomExpressionPresets,
   serializeExpressionPreset,
   type UserExpressionPreset,
@@ -71,5 +74,19 @@ describe('expression preset storage', () => {
     expect(next.gaze).toEqual(before.gaze)
     expect(next.colors).toEqual(before.colors)
     expect(next).not.toBe(model)
+  })
+
+  it('assigns sequential default names when the user leaves the name blank', () => {
+    const existing: UserExpressionPreset[] = [
+      { ...asymmetricPreset, id: 'expression-custom:1', name: 'Custom expression 1' },
+      { ...asymmetricPreset, id: 'expression-custom:3', name: 'Custom expression 3' },
+    ]
+    expect(nextCustomExpressionName(existing)).toBe('Custom expression 4')
+    expect(createUserExpressionPreset('   ', asymmetricPreset.expression, existing).name).toBe('Custom expression 4')
+  })
+
+  it('removes only the requested custom expression preset', () => {
+    const other = { ...asymmetricPreset, id: 'expression-custom:other', name: 'Other' }
+    expect(removeUserExpressionPreset([asymmetricPreset, other], asymmetricPreset.id)).toEqual([other])
   })
 })
