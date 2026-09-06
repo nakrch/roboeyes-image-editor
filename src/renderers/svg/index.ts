@@ -1,5 +1,6 @@
 import {
   resolveEyeExpression,
+  resolveEyeLidAperture,
   resolveGazeReactiveHeightScale,
   type EyeGeometry,
   type FaceModel,
@@ -13,8 +14,6 @@ type RenderedEye = {
   clipPath: string
   shape: string
 }
-
-const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 
 function number(value: number): string {
   if (!Number.isFinite(value)) return '0'
@@ -37,6 +36,7 @@ function renderEye(
   const centerX = geometry.position.x + model.gaze.x
   const centerY = geometry.position.y + model.gaze.y
   const expression = resolveEyeExpression(model.expression, id)
+  const aperture = resolveEyeLidAperture(model.expression, id)
   const effectiveHeightScale = resolveGazeReactiveHeightScale(
     model.expression,
     id,
@@ -50,17 +50,10 @@ function renderEye(
     0,
     Math.min(geometry.cornerRadius, geometry.width / 2, scaledHeight / 2),
   )
-  const inner = clamp01(expression.upperLidInner)
-  const outer = clamp01(expression.upperLidOuter)
-  const upperLeft = id === 'left' ? outer : inner
-  const upperRight = id === 'left' ? inner : outer
-  const lower = clamp01(expression.lowerLid)
-  const curvature = clamp01(expression.lowerLidCurvature)
-  const upperLeftY = y + scaledHeight * upperLeft
-  const upperRightY = y + scaledHeight * upperRight
-  const lowerY = y + scaledHeight * (1 - lower)
-  const upperMidY = (upperLeftY + upperRightY) / 2
-  const lowerMidY = Math.max(upperMidY, lowerY - scaledHeight * 0.5 * curvature)
+  const upperLeftY = y + scaledHeight * aperture.upperLeft
+  const upperRightY = y + scaledHeight * aperture.upperRight
+  const lowerY = y + scaledHeight * aperture.lower
+  const lowerMidY = y + scaledHeight * aperture.lowerMid
   const expressionRotation = id === 'left' ? -expression.tilt : expression.tilt
   const rotation = geometry.rotation + expressionRotation
   const clipId = `eye-clip-${id}`
