@@ -12,6 +12,7 @@ export type LidKey = 'upperLid' | 'lowerLid'
 export type ValueRange = { min: number; max: number }
 
 const REFINE_STEPS = 18
+const EXPRESSION_SCAN_STEPS = 240
 const SPACING_MIN = 0
 const SPACING_MAX = 160
 const TILT_MIN = -30
@@ -185,16 +186,13 @@ function isExpressionCandidateSafe(model: FaceModel): boolean {
   return isGazeCanvasSafe(model) && !visibleEyesOverlap(model)
 }
 
-function expressionBoundary(
-  current: number,
-  endpoint: number,
+function refineExpressionBoundary(
+  safeValue: number,
+  unsafeValue: number,
   apply: (value: number) => FaceModel,
 ): number {
-  if (isExpressionCandidateSafe(apply(endpoint))) return endpoint
-  if (!isExpressionCandidateSafe(apply(current))) return current
-
-  let safe = current
-  let unsafe = endpoint
+  let safe = safeValue
+  let unsafe = unsafeValue
   for (let index = 0; index < REFINE_STEPS; index += 1) {
     const midpoint = (safe + unsafe) / 2
     if (isExpressionCandidateSafe(apply(midpoint))) safe = midpoint
@@ -203,14 +201,58 @@ function expressionBoundary(
   return safe
 }
 
+/** Scan outward from a known-safe anchor and stop at the first unsafe region. */
+function scanExpressionBoundary(
+  anchor: number,
+  endpoint: number,
+  apply: (value: number) => FaceModel,
+): number {
+  if (anchor === endpoint) return anchor
+  let previous = anchor
+
+  for (let index = 1; index <= EXPRESSION_SCAN_STEPS; index += 1) {
+    const candidate = anchor + (endpoint - anchor) * (index / EXPRESSION_SCAN_STEPS)
+    if (!isExpressionCandidateSafe(apply(candidate))) {
+      return refineExpressionBoundary(previous, candidate, apply)
+    }
+    previous = candidate
+  }
+
+  return endpoint
+}
+
+/** Find the nearest safe projection when switching from per-eye overrides to shared geometry. */
+function findExpressionAnchor(
+  current: number,
+  domain: ValueRange,
+  apply: (value: number) => FaceModel,
+): number | undefined {
+  if (isExpressionCandidateSafe(apply(current))) return current
+
+  let best: number | undefined
+  let bestDistance = Number.POSITIVE_INFINITY
+  for (let index = 0; index <= EXPRESSION_SCAN_STEPS; index += 1) {
+    const candidate = domain.min + (domain.max - domain.min) * (index / EXPRESSION_SCAN_STEPS)
+    if (!isExpressionCandidateSafe(apply(candidate))) continue
+    const distance = Math.abs(candidate - current)
+    if (distance < bestDistance) {
+      best = candidate
+      bestDistance = distance
+    }
+  }
+  return best
+}
+
 function safeExpressionRange(
   current: number,
   domain: ValueRange,
   apply: (value: number) => FaceModel,
 ): ValueRange {
+  const anchor = findExpressionAnchor(current, domain, apply)
+  if (anchor === undefined) return { min: current, max: current }
   return {
-    min: expressionBoundary(current, domain.min, apply),
-    max: expressionBoundary(current, domain.max, apply),
+    min: scanExpressionBoundary(anchor, domain.min, apply),
+    max: scanExpressionBoundary(anchor, domain.max, apply),
   }
 }
 
@@ -245,7 +287,8 @@ export function setSharedExpressionGeometrySafely(
 ): FaceModel {
   const range = sharedExpressionGeometryRange(model, key)
   const safe = Math.min(range.max, Math.max(range.min, value))
-  return applySharedExpressionValue(model, key, safe)
+  const next = applySharedExpressionValue(model, key, safe)
+  return isExpressionCandidateSafe(next) ? next : model
 }
 
 export function setSideExpressionGeometrySafely(
@@ -256,7 +299,8 @@ export function setSideExpressionGeometrySafely(
 ): FaceModel {
   const range = sideExpressionGeometryRange(model, side, key)
   const safe = Math.min(range.max, Math.max(range.min, value))
-  return applySideExpressionValue(model, side, key, safe)
+  const next = applySideExpressionValue(model, side, key, safe)
+  return isExpressionCandidateSafe(next) ? next : model
 }
 
 function applySharedLidValue(model: FaceModel, key: LidKey, value: number): FaceModel {
