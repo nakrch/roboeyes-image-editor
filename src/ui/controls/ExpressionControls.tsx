@@ -4,18 +4,18 @@ import {
   isExpressionGeometryKey,
   isLidKey,
   setSharedExpressionGeometrySafely,
-  setSharedLidSafely,
   sharedExpressionGeometryRange,
   translatePairToKeepCurrentGaze,
 } from '../editor/geometrySafety'
 import {
   independentExpressionGeometryRange,
   setIndependentExpressionGeometrySafely,
-  setIndependentLidSafely,
 } from '../editor/independentExpressionSafety'
 import {
   isDirectionalLidKey,
+  setIndependentComposedLidSafely,
   setIndependentDirectionalLidSafely,
+  setSharedComposedLidSafely,
   setSharedDirectionalLidSafely,
 } from '../editor/directionalLidSafety'
 import {
@@ -82,7 +82,7 @@ export function ExpressionControls({ model, linkedEyes, onChange }: Props) {
     }
 
     if (isLidKey(key)) {
-      onChange((current) => setSharedLidSafely(current, key, value))
+      onChange((current) => setSharedComposedLidSafely(current, key, value))
       return
     }
 
@@ -114,7 +114,7 @@ export function ExpressionControls({ model, linkedEyes, onChange }: Props) {
     }
 
     if (isLidKey(key)) {
-      onChange((current) => setIndependentLidSafely(current, side, key, value))
+      onChange((current) => setIndependentComposedLidSafely(current, side, key, value))
       return
     }
 
