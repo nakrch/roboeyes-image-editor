@@ -1,0 +1,11 @@
+.preview-history-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.preview-history-actions button {
+  font-size: 0.75rem;
+}
