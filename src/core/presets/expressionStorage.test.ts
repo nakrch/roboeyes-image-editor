@@ -10,6 +10,7 @@ import {
   removeUserExpressionPreset,
   saveCustomExpressionPresets,
   serializeExpressionPreset,
+  uniqueExpressionPresetName,
   type UserExpressionPreset,
 } from './expressionStorage'
 
@@ -76,13 +77,26 @@ describe('expression preset storage', () => {
     expect(next).not.toBe(model)
   })
 
-  it('assigns sequential default names when the user leaves the name blank', () => {
+  it('assigns the first available sequential default name when the user leaves the name blank', () => {
     const existing: UserExpressionPreset[] = [
       { ...asymmetricPreset, id: 'expression-custom:1', name: 'Custom expression 1' },
       { ...asymmetricPreset, id: 'expression-custom:3', name: 'Custom expression 3' },
     ]
-    expect(nextCustomExpressionName(existing)).toBe('Custom expression 4')
-    expect(createUserExpressionPreset('   ', asymmetricPreset.expression, existing).name).toBe('Custom expression 4')
+    expect(nextCustomExpressionName(existing)).toBe('Custom expression 2')
+    expect(createUserExpressionPreset('   ', asymmetricPreset.expression, existing).name).toBe('Custom expression 2')
+  })
+
+  it('keeps a requested name when it is unused and appends sequential suffixes when duplicated', () => {
+    const existing = [
+      { name: 'Sleepy' },
+      { name: 'Sleepy 1' },
+      { name: 'Sleepy 3' },
+      { name: 'Happy' },
+    ]
+
+    expect(uniqueExpressionPresetName('Fresh', existing)).toBe('Fresh')
+    expect(uniqueExpressionPresetName('Sleepy', existing)).toBe('Sleepy 2')
+    expect(uniqueExpressionPresetName('Happy', existing)).toBe('Happy 1')
   })
 
   it('removes only the requested custom expression preset', () => {
