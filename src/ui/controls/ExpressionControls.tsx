@@ -5,13 +5,13 @@ import {
   isLidKey,
   setSharedExpressionGeometrySafely,
   setSharedLidSafely,
-  setSideLidSafely,
   sharedExpressionGeometryRange,
   translatePairToKeepCurrentGaze,
 } from '../editor/geometrySafety'
 import {
   independentExpressionGeometryRange,
   setIndependentExpressionGeometrySafely,
+  setIndependentLidSafely,
 } from '../editor/independentExpressionSafety'
 import { NumericControl } from './NumericControl'
 
@@ -74,7 +74,7 @@ export function ExpressionControls({ model, linkedEyes, onChange }: Props) {
     }
 
     if (isLidKey(key)) {
-      onChange((current) => setSideLidSafely(current, side, key, value))
+      onChange((current) => setIndependentLidSafely(current, side, key, value))
       return
     }
 
