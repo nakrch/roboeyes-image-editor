@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   classifyTouchSliderIntent,
   TOUCH_DRAG_THRESHOLD_PX,
+  TOUCH_FINE_DRAG_SCALE,
   valueFromTouchSliderDrag,
 } from './touchSliderGesture'
 
@@ -26,12 +27,23 @@ describe('touch slider gesture', () => {
     expect(valueFromTouchSliderDrag(50, -20, 100, 0, 100)).toBe(30)
   })
 
-  it('clamps relative drag values to the slider range', () => {
+  it('applies fine drag sensitivity for touch adjustment', () => {
+    const expectedDelta = 20 * TOUCH_FINE_DRAG_SCALE
+    expect(valueFromTouchSliderDrag(50, 20, 100, 0, 100, TOUCH_FINE_DRAG_SCALE)).toBe(50 + expectedDelta)
+    expect(valueFromTouchSliderDrag(50, -20, 100, 0, 100, TOUCH_FINE_DRAG_SCALE)).toBe(50 - expectedDelta)
+  })
+
+  it('clamps fine drag values to the slider range', () => {
+    expect(valueFromTouchSliderDrag(90, 100, 100, 0, 100, TOUCH_FINE_DRAG_SCALE)).toBe(100)
+    expect(valueFromTouchSliderDrag(10, -100, 100, 0, 100, TOUCH_FINE_DRAG_SCALE)).toBe(0)
+  })
+
+  it('keeps full-sensitivity relative drag clamping unchanged', () => {
     expect(valueFromTouchSliderDrag(90, 50, 100, 0, 100)).toBe(100)
     expect(valueFromTouchSliderDrag(10, -50, 100, 0, 100)).toBe(0)
   })
 
   it('keeps the starting value for an invalid track width', () => {
-    expect(valueFromTouchSliderDrag(42, 20, 0, 0, 100)).toBe(42)
+    expect(valueFromTouchSliderDrag(42, 20, 0, 0, 100, TOUCH_FINE_DRAG_SCALE)).toBe(42)
   })
 })
