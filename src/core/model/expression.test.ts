@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  areEyeLidAperturesValid,
   resolveEyeExpression,
+  resolveEyeLidAperture,
   resolveGazeReactiveHeightScale,
   type ExpressionModel,
 } from './expression'
@@ -16,8 +18,8 @@ describe('expression model', () => {
   it('inherits shared expression values when no eye override is set', () => {
     expect(resolveEyeExpression(expression, 'right')).toEqual({
       upperLid: 0.2,
-      upperLidInner: 0.2,
-      upperLidOuter: 0.2,
+      upperLidInner: 0,
+      upperLidOuter: 0,
       lowerLid: 0.1,
       lowerLidCurvature: 0,
       tilt: 5,
@@ -30,8 +32,8 @@ describe('expression model', () => {
   it('merges per-eye overrides with shared values', () => {
     expect(resolveEyeExpression(expression, 'left')).toEqual({
       upperLid: 0.6,
-      upperLidInner: 0.6,
-      upperLidOuter: 0.6,
+      upperLidInner: 0,
+      upperLidOuter: 0,
       lowerLid: 0.1,
       lowerLidCurvature: 0,
       tilt: -8,
@@ -52,7 +54,7 @@ describe('expression model', () => {
     expect(resolveEyeExpression(scaled, 'left').heightScale).toBe(1.3)
   })
 
-  it('resolves directional lid values with shared and asymmetric per-eye overrides', () => {
+  it('resolves directional lid offsets with shared and asymmetric per-eye overrides', () => {
     const directional: ExpressionModel = {
       upperLid: 0.1,
       upperLidInner: 0.25,
@@ -73,6 +75,52 @@ describe('expression model', () => {
       upperLidOuter: 0.55,
       lowerLidCurvature: 0.8,
     })
+  })
+
+  it('composes base upper lid with mirrored directional offsets', () => {
+    const composed: ExpressionModel = {
+      upperLid: 0.2,
+      upperLidInner: 0.3,
+      upperLidOuter: 0.1,
+      lowerLid: 0.1,
+      tilt: 0,
+    }
+
+    expect(resolveEyeLidAperture(composed, 'left')).toMatchObject({
+      upperLeft: 0.3,
+      upperRight: 0.5,
+      lower: 0.9,
+      valid: true,
+    })
+    expect(resolveEyeLidAperture(composed, 'right')).toMatchObject({
+      upperLeft: 0.5,
+      upperRight: 0.3,
+      lower: 0.9,
+      valid: true,
+    })
+  })
+
+  it('keeps legacy simple upper lid behavior when directional offsets are absent', () => {
+    const legacy: ExpressionModel = { upperLid: 0.35, lowerLid: 0.2, tilt: 0 }
+    const aperture = resolveEyeLidAperture(legacy, 'left')
+    expect(aperture.upperLeft).toBeCloseTo(0.35)
+    expect(aperture.upperRight).toBeCloseTo(0.35)
+    expect(aperture.lower).toBeCloseTo(0.8)
+  })
+
+  it('marks crossing upper/lower masks invalid while returning a non-inverted aperture', () => {
+    const crossing: ExpressionModel = {
+      upperLid: 0.2,
+      upperLidOuter: 0.8,
+      lowerLid: 0.25,
+      tilt: 0,
+    }
+
+    const aperture = resolveEyeLidAperture(crossing, 'left')
+    expect(aperture.valid).toBe(false)
+    expect(areEyeLidAperturesValid(crossing)).toBe(false)
+    expect(aperture.upperLeft).toBeLessThanOrEqual(aperture.lower)
+    expect(aperture.upperRight).toBeLessThanOrEqual(aperture.lower)
   })
 
   it('smoothly expands only the eye on the active horizontal gaze side', () => {
