@@ -54,4 +54,26 @@ describe('renderFaceToSvg', () => {
     expect(first).toContain('transform="rotate(-7 42 31)"')
     expect(first).toContain('transform="rotate(7 90 31)"')
   })
+
+  it('renders mirrored directional upper lids and a curved lower aperture', () => {
+    const svg = renderFaceToSvg({
+      ...model,
+      expression: {
+        upperLid: 0,
+        upperLidInner: 0.6,
+        upperLidOuter: 0.2,
+        lowerLid: 0.15,
+        lowerLidCurvature: 0.7,
+        tilt: 0,
+      },
+    })
+
+    const leftPath = svg.match(/data-eye-aperture="left" d="([^"]+)"/)?.[1]
+    const rightPath = svg.match(/data-eye-aperture="right" d="([^"]+)"/)?.[1]
+
+    expect(leftPath).toContain('M 26 22.6 L 58 33.8')
+    expect(rightPath).toContain('M 72 34 L 108 22')
+    expect(leftPath).toContain('Q 42 28.2 26 42.8')
+    expect(rightPath).toContain('Q 90 28 72 43.5')
+  })
 })
