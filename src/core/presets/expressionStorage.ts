@@ -50,6 +50,20 @@ export function isUserExpressionPreset(value: unknown): value is UserExpressionP
   return typeof preset.id === 'string' && typeof preset.name === 'string' && preset.version === 1 && isExpressionModel(preset.expression)
 }
 
+function highestExpressionNameSuffix(base: string, presets: readonly { name: string }[]): number {
+  let highest = 0
+  const prefix = `${base} `
+
+  for (const preset of presets) {
+    if (!preset.name.startsWith(prefix)) continue
+    const suffix = preset.name.slice(prefix.length)
+    if (!/^\d+$/.test(suffix)) continue
+    highest = Math.max(highest, Number(suffix))
+  }
+
+  return highest
+}
+
 export function uniqueExpressionPresetName(
   requestedName: string,
   presets: readonly { name: string }[],
@@ -57,11 +71,11 @@ export function uniqueExpressionPresetName(
   const names = new Set(presets.map((preset) => preset.name))
   const trimmed = requestedName.trim()
   const base = trimmed || 'Custom expression'
+  const baseAlreadyExists = names.has(base)
 
-  if (trimmed && !names.has(base)) return base
+  if (trimmed && !baseAlreadyExists) return base
 
-  let suffix = 1
-  while (names.has(`${base} ${suffix}`)) suffix += 1
+  const suffix = highestExpressionNameSuffix(base, presets) + 1
   return `${base} ${suffix}`
 }
 
