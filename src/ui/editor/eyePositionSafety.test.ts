@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { roboEyesToFaceModel } from '../../core/adapters/roboeyes'
 import { defaultRoboEyesPreset } from '../../core/presets/roboeyes'
-import { isGazeCanvasSafe, visibleEyesOverlap } from '../../core/model'
+import { canFitEyesInCanvas, isGazeCanvasSafe, visibleEyesOverlap } from '../../core/model'
 import { setIndependentEyePositionSafely } from './eyePositionSafety'
 import { resizeCanvasFromCenter } from './modelEditing'
 
 const createModel = () => roboEyesToFaceModel(defaultRoboEyesPreset)
 
 function expectSafe(model: ReturnType<typeof createModel>) {
+  expect(canFitEyesInCanvas(model)).toBe(true)
   expect(isGazeCanvasSafe(model)).toBe(true)
   expect(visibleEyesOverlap(model)).toBe(false)
 }
@@ -93,7 +94,7 @@ describe('independent eye position safety', () => {
     expectSafe(model)
 
     const resized = resizeCanvasFromCenter(model, 100, 64)
-    expect(isGazeCanvasSafe(resized)).toBe(false)
+    expect(canFitEyesInCanvas(resized)).toBe(false)
 
     const recovered = setIndependentEyePositionSafely(resized, 'left', 'x', 19)
 
@@ -107,7 +108,7 @@ describe('independent eye position safety', () => {
     expectSafe(model)
 
     const resized = resizeCanvasFromCenter(model, 128, 50)
-    expect(isGazeCanvasSafe(resized)).toBe(false)
+    expect(canFitEyesInCanvas(resized)).toBe(false)
 
     const recovered = setIndependentEyePositionSafely(resized, 'left', 'y', 19)
 
