@@ -3,8 +3,19 @@ name: PR Preview
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number
+        required: true
+        type: string
+      pr_sha:
+        description: Pull request head SHA
+        required: true
+        type: string
 
 permissions:
+  actions: write
   contents: read
   pages: write
   id-token: write
@@ -15,8 +26,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  request:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Request preview deployment from main
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'pr-preview.yml',
+                ref: 'main',
+                inputs: {
+                  pr_number: String(context.issue.number),
+                  pr_sha: context.payload.pull_request.head.sha,
+                },
+              })
+            } catch (error) {
+              if (error.status === 404) {
+                core.notice('PR Preview workflow is not installed on main yet; skipping self-preview during bootstrap.')
+                return
+              }
+              throw error
+            }
+
   build:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main
@@ -28,7 +66,7 @@ jobs:
       - name: Checkout pull request head
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ inputs.pr_sha }}
           path: preview
 
       - name: Setup Node.js
@@ -50,13 +88,13 @@ jobs:
 
       - name: Build pull request preview
         working-directory: preview
-        run: npm run build -- --base /roboeyes-image-editor/pr-preview/pr-${{ github.event.number }}/
+        run: npm run build -- --base /roboeyes-image-editor/pr-preview/pr-${{ inputs.pr_number }}/
 
       - name: Assemble Pages artifact
         run: |
-          mkdir -p site/pr-preview/pr-${{ github.event.number }}
+          mkdir -p site/pr-preview/pr-${{ inputs.pr_number }}
           cp -a production/dist/. site/
-          cp -a preview/dist/. site/pr-preview/pr-${{ github.event.number }}/
+          cp -a preview/dist/. site/pr-preview/pr-${{ inputs.pr_number }}/
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -69,10 +107,10 @@ jobs:
           path: ./site
 
   deploy:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'workflow_dispatch'
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}pr-preview/pr-${{ github.event.number }}/
+      url: ${{ steps.deployment.outputs.page_url }}pr-preview/pr-${{ inputs.pr_number }}/
     runs-on: ubuntu-latest
     needs: build
     outputs:
@@ -84,10 +122,10 @@ jobs:
 
       - name: Set preview URL
         id: preview-url
-        run: echo "url=${{ steps.deployment.outputs.page_url }}pr-preview/pr-${{ github.event.number }}/" >> "$GITHUB_OUTPUT"
+        run: echo "url=${{ steps.deployment.outputs.page_url }}pr-preview/pr-${{ inputs.pr_number }}/" >> "$GITHUB_OUTPUT"
 
   comment:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     needs: deploy
     steps:
@@ -95,12 +133,13 @@ jobs:
         uses: actions/github-script@v7
         env:
           PREVIEW_URL: ${{ needs.deploy.outputs.preview_url }}
+          PR_NUMBER: ${{ inputs.pr_number }}
         with:
           script: |
             const marker = '<!-- roboeyes-pr-preview -->'
             const body = `${marker}\n✅ **PR Preview**\n\n${process.env.PREVIEW_URL}\n\nThis preview is rebuilt from the latest PR head while the production root remains on \`main\`.`
             const { owner, repo } = context.repo
-            const issue_number = context.issue.number
+            const issue_number = Number(process.env.PR_NUMBER)
             const comments = await github.paginate(github.rest.issues.listComments, {
               owner,
               repo,
