@@ -1,4 +1,5 @@
 import {
+  canFitEyesInCanvas,
   isGazeCanvasSafe,
   resolveEyeExpression,
   visibleEyesOverlap,
@@ -17,7 +18,7 @@ function domain(key: GazeReactiveKey): { min: number; max: number } {
 }
 
 function isCandidateSafe(model: FaceModel): boolean {
-  return isGazeCanvasSafe(model) && !visibleEyesOverlap(model)
+  return canFitEyesInCanvas(model) && isGazeCanvasSafe(model) && !visibleEyesOverlap(model)
 }
 
 function applyShared(
