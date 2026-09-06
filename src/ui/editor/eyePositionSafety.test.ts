@@ -67,11 +67,11 @@ describe('independent eye position safety', () => {
 
   it('accounts for the current eye size when clamping position', () => {
     const model = createModel()
-    model.leftEye.geometry.width = 60
+    model.leftEye.geometry.width = 56
 
     const next = setIndependentEyePositionSafely(model, 'left', 'x', -320)
 
     expectSafe(next)
-    expect(next.leftEye.geometry.position.x).toBeGreaterThanOrEqual(30)
+    expect(next.leftEye.geometry.position.x).toBeGreaterThan(28)
   })
 })
