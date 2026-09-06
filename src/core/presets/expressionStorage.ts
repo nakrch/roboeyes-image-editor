@@ -50,13 +50,26 @@ export function isUserExpressionPreset(value: unknown): value is UserExpressionP
   return typeof preset.id === 'string' && typeof preset.name === 'string' && preset.version === 1 && isExpressionModel(preset.expression)
 }
 
-export function createUserExpressionPreset(name: string, expression: ExpressionModel): UserExpressionPreset {
+export function nextCustomExpressionName(presets: readonly UserExpressionPreset[]): string {
+  let highest = 0
+  for (const preset of presets) {
+    const match = /^Custom expression (\d+)$/.exec(preset.name)
+    if (match) highest = Math.max(highest, Number(match[1]))
+  }
+  return `Custom expression ${highest + 1}`
+}
+
+export function createUserExpressionPreset(name: string, expression: ExpressionModel, existingPresets: readonly UserExpressionPreset[] = []): UserExpressionPreset {
   return {
     id: `expression-custom:${crypto.randomUUID()}`,
-    name: name.trim() || 'Custom expression',
+    name: name.trim() || nextCustomExpressionName(existingPresets),
     version: 1,
     expression: structuredClone(expression),
   }
+}
+
+export function removeUserExpressionPreset(presets: readonly UserExpressionPreset[], id: string): UserExpressionPreset[] {
+  return presets.filter((preset) => preset.id !== id)
 }
 
 export function applyExpressionPresetToModel(model: FaceModel, preset: Pick<UserExpressionPreset, 'expression'>): FaceModel {
