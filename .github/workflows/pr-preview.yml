@@ -46,7 +46,10 @@ jobs:
                 },
               })
             } catch (error) {
-              if (error.status === 404) {
+              const bootstrapMissing =
+                error.status === 404 ||
+                (error.status === 422 && String(error.message).includes("workflow_dispatch"))
+              if (bootstrapMissing) {
                 core.notice('PR Preview workflow is not installed on main yet; skipping self-preview during bootstrap.')
                 return
               }
