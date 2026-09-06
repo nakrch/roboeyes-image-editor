@@ -13,9 +13,9 @@ export type EyeExpression = {
   tilt: number
   /** Vertical eye shape multiplier. Defaults to 1 for backward compatibility. */
   heightScale?: number
-  /** Additional height multiplier applied to the eye on the active horizontal gaze side. */
+  /** Maximum additional height multiplier on the active horizontal gaze side. */
   gazeHeightExpansion?: number
-  /** Horizontal gaze threshold as a fraction of half the canvas width. */
+  /** Horizontal gaze magnitude where the height ramp begins, as a fraction of half the canvas width. */
   gazeHeightThreshold?: number
 }
 
@@ -46,6 +46,11 @@ export function resolveEyeExpression(
   }
 }
 
+function smoothstep01(value: number): number {
+  const clamped = Math.min(1, Math.max(0, value))
+  return clamped * clamped * (3 - 2 * clamped)
+}
+
 export function resolveGazeReactiveHeightScale(
   expression: ExpressionModel,
   side: 'left' | 'right',
@@ -54,10 +59,13 @@ export function resolveGazeReactiveHeightScale(
 ): number {
   const resolved = resolveEyeExpression(expression, side)
   const halfWidth = Math.max(1e-9, Math.abs(canvasWidth) / 2)
-  const normalizedMagnitude = Math.abs(gazeX) / halfWidth
+  const normalizedMagnitude = Math.min(1, Math.abs(gazeX) / halfWidth)
   const threshold = Math.min(1, Math.max(0, resolved.gazeHeightThreshold))
   const pointsToSide = side === 'left' ? gazeX < 0 : gazeX > 0
-  const active = pointsToSide && normalizedMagnitude >= threshold
-  const expansion = active ? Math.max(0, resolved.gazeHeightExpansion) : 0
+  const denominator = Math.max(1e-9, 1 - threshold)
+  const progress = pointsToSide
+    ? smoothstep01((normalizedMagnitude - threshold) / denominator)
+    : 0
+  const expansion = Math.max(0, resolved.gazeHeightExpansion) * progress
   return Math.max(0, resolved.heightScale) * (1 + expansion)
 }
