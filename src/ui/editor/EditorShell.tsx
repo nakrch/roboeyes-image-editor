@@ -11,6 +11,7 @@ import {
   matchExpressionPreset,
   parseExpressionPreset,
   parsePreset,
+  removeUserExpressionPreset,
   saveCustomExpressionPresets,
   saveCustomPresets,
   serializeExpressionPreset,
@@ -64,6 +65,7 @@ export function EditorShell() {
   )
   const [presetError, setPresetError] = useState('')
   const [expressionPresetError, setExpressionPresetError] = useState('')
+  const [expressionPresetStatus, setExpressionPresetStatus] = useState('')
   const presets: FacePreset[] = [...builtInPresets.map(clonePreset), ...customPresets]
   const selectableExpressions: SelectableExpressionPreset[] = [...expressionPresets, ...customExpressionPresets]
 
@@ -150,14 +152,16 @@ export function EditorShell() {
   }
 
   const saveCurrentExpressionPreset = (name: string) => {
-    const preset = createUserExpressionPreset(name, history.present.model.expression)
+    const preset = createUserExpressionPreset(name, history.present.model.expression, customExpressionPresets)
     persistExpressionPresets([...customExpressionPresets, preset])
     setExpressionPresetError('')
+    setExpressionPresetStatus(`Saved “${preset.name}”.`)
   }
 
   const applyExpressionPreset = (preset: SelectableExpressionPreset) => {
     endContinuousEdit()
     setExpressionPresetError('')
+    setExpressionPresetStatus('')
     commit((current) => ({
       ...current,
       model: { ...current.model, expression: structuredClone(preset.expression) },
@@ -174,7 +178,9 @@ export function EditorShell() {
       }
       persistExpressionPresets([...customExpressionPresets, preset])
       applyExpressionPreset(preset)
+      setExpressionPresetStatus(`Imported “${preset.name}”.`)
     } catch {
+      setExpressionPresetStatus('')
       setExpressionPresetError('Could not import expression preset: invalid or unsupported JSON.')
     }
   }
@@ -187,6 +193,12 @@ export function EditorShell() {
     anchor.download = `${preset.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'expression'}.expression.json`
     anchor.click()
     URL.revokeObjectURL(url)
+  }
+
+  const deleteExpressionPreset = (preset: UserExpressionPreset) => {
+    persistExpressionPresets(removeUserExpressionPreset(customExpressionPresets, preset.id))
+    setExpressionPresetError('')
+    setExpressionPresetStatus(`Deleted “${preset.name}”.`)
   }
 
   const { model, transparentBackground } = history.present
@@ -226,10 +238,12 @@ export function EditorShell() {
             <ExpressionPresetPanel
               presets={selectableExpressions}
               activePresetId={activeExpressionId}
+              status={expressionPresetStatus}
               onApply={applyExpressionPreset}
               onSaveCurrent={saveCurrentExpressionPreset}
               onImport={importExpressionPreset}
               onExport={exportExpressionPreset}
+              onDelete={deleteExpressionPreset}
             />
             {expressionPresetError && <p className="preset-error" role="alert">{expressionPresetError}</p>}
             <ParameterPanel model={model} linkedEyes={linkedEyes} onChange={updateModel} onLinkedEyesChange={setLinkedEyes} />
