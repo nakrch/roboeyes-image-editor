@@ -4,12 +4,22 @@ import {
   builtInPresets,
   clonePreset,
   createCustomPreset,
+  createUserExpressionPreset,
+  expressionPresets,
+  loadCustomExpressionPresets,
   loadCustomPresets,
+  matchExpressionPreset,
+  parseExpressionPreset,
   parsePreset,
+  saveCustomExpressionPresets,
   saveCustomPresets,
+  serializeExpressionPreset,
   serializePreset,
+  type ExpressionPreset,
   type FacePreset,
+  type UserExpressionPreset,
 } from '../../core/presets'
+import { ExpressionPresetPanel } from '../controls/ExpressionPresetPanel'
 import { ParameterPanel } from '../controls/ParameterPanel'
 import { PresetPanel } from '../controls/PresetPanel'
 import { ExportPanel } from '../export/ExportPanel'
@@ -22,6 +32,8 @@ type EditorSnapshot = {
   transparentBackground: boolean
 }
 
+type SelectableExpressionPreset = ExpressionPreset | UserExpressionPreset
+
 const HISTORY_LIMIT = 100
 const initialPreset = builtInPresets[0]
 
@@ -30,6 +42,10 @@ function snapshotFromPreset(preset: FacePreset): EditorSnapshot {
     model: clampGaze(structuredClone(preset.model)),
     transparentBackground: preset.preview?.transparentBackground ?? false,
   }
+}
+
+function expressionEqual(a: FaceModel['expression'], b: FaceModel['expression']): boolean {
+  return JSON.stringify(a) === JSON.stringify(b)
 }
 
 export function EditorShell() {
@@ -42,11 +58,14 @@ export function EditorShell() {
   const [linkedEyes, setLinkedEyes] = useState(true)
   const [pixelPerfect, setPixelPerfect] = useState(false)
   const [activePresetId, setActivePresetId] = useState(initialPreset.id)
-  const [customPresets, setCustomPresets] = useState<FacePreset[]>(() =>
-    loadCustomPresets(window.localStorage),
+  const [customPresets, setCustomPresets] = useState<FacePreset[]>(() => loadCustomPresets(window.localStorage))
+  const [customExpressionPresets, setCustomExpressionPresets] = useState<UserExpressionPreset[]>(() =>
+    loadCustomExpressionPresets(window.localStorage),
   )
   const [presetError, setPresetError] = useState('')
+  const [expressionPresetError, setExpressionPresetError] = useState('')
   const presets: FacePreset[] = [...builtInPresets.map(clonePreset), ...customPresets]
+  const selectableExpressions: SelectableExpressionPreset[] = [...expressionPresets, ...customExpressionPresets]
 
   const beginContinuousEdit = () => {
     if (continuousEdit.current.active) return
@@ -60,10 +79,7 @@ export function EditorShell() {
   const commit = (updater: (current: EditorSnapshot) => EditorSnapshot) => {
     const replacePresent = continuousEdit.current.active && continuousEdit.current.committed
     if (continuousEdit.current.active) continuousEdit.current.committed = true
-
-    setHistory((current) =>
-      commitHistory(current, updater(current.present), HISTORY_LIMIT, replacePresent),
-    )
+    setHistory((current) => commitHistory(current, updater(current.present), HISTORY_LIMIT, replacePresent))
   }
 
   const updateModel = (updater: (current: FaceModel) => FaceModel) => {
@@ -101,11 +117,7 @@ export function EditorShell() {
   }
 
   const saveCurrentPreset = (name: string) => {
-    const preset = createCustomPreset(
-      name,
-      history.present.model,
-      history.present.transparentBackground,
-    )
+    const preset = createCustomPreset(name, history.present.model, history.present.transparentBackground)
     persistCustomPresets([...customPresets, preset])
     setActivePresetId(preset.id)
     setPresetError('')
@@ -114,11 +126,7 @@ export function EditorShell() {
   const importPreset = (json: string) => {
     try {
       const imported = parsePreset(json)
-      const preset: FacePreset = {
-        ...clonePreset(imported),
-        id: `custom:${crypto.randomUUID()}`,
-        name: imported.name || 'Imported preset',
-      }
+      const preset: FacePreset = { ...clonePreset(imported), id: `custom:${crypto.randomUUID()}`, name: imported.name || 'Imported preset' }
       persistCustomPresets([...customPresets, preset])
       applyPreset(preset)
     } catch {
@@ -136,7 +144,54 @@ export function EditorShell() {
     URL.revokeObjectURL(url)
   }
 
+  const persistExpressionPresets = (next: UserExpressionPreset[]) => {
+    setCustomExpressionPresets(next)
+    saveCustomExpressionPresets(window.localStorage, next)
+  }
+
+  const saveCurrentExpressionPreset = (name: string) => {
+    const preset = createUserExpressionPreset(name, history.present.model.expression)
+    persistExpressionPresets([...customExpressionPresets, preset])
+    setExpressionPresetError('')
+  }
+
+  const applyExpressionPreset = (preset: SelectableExpressionPreset) => {
+    endContinuousEdit()
+    setExpressionPresetError('')
+    commit((current) => ({
+      ...current,
+      model: { ...current.model, expression: structuredClone(preset.expression) },
+    }))
+  }
+
+  const importExpressionPreset = (json: string) => {
+    try {
+      const imported = parseExpressionPreset(json)
+      const preset: UserExpressionPreset = {
+        ...structuredClone(imported),
+        id: `expression-custom:${crypto.randomUUID()}`,
+        name: imported.name || 'Imported expression',
+      }
+      persistExpressionPresets([...customExpressionPresets, preset])
+      applyExpressionPreset(preset)
+    } catch {
+      setExpressionPresetError('Could not import expression preset: invalid or unsupported JSON.')
+    }
+  }
+
+  const exportExpressionPreset = (preset: UserExpressionPreset) => {
+    const blob = new Blob([serializeExpressionPreset(preset)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `${preset.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'expression'}.expression.json`
+    anchor.click()
+    URL.revokeObjectURL(url)
+  }
+
   const { model, transparentBackground } = history.present
+  const activeCustomExpression = customExpressionPresets.find((preset) => expressionEqual(preset.expression, model.expression))
+  const activeExpressionId = activeCustomExpression?.id ?? matchExpressionPreset(model.expression)
 
   return (
     <main className="editor-shell">
@@ -155,9 +210,7 @@ export function EditorShell() {
               model={model}
               transparentBackground={transparentBackground}
               pixelPerfect={pixelPerfect}
-              onTransparentBackgroundChange={(value) =>
-                commit((current) => ({ ...current, transparentBackground: value }))
-              }
+              onTransparentBackgroundChange={(value) => commit((current) => ({ ...current, transparentBackground: value }))}
               onPixelPerfectChange={setPixelPerfect}
             />
             <div className="preview-history-actions" aria-label="Editor history">
@@ -168,21 +221,18 @@ export function EditorShell() {
           </div>
 
           <div className="editor-sidebar">
-            <PresetPanel
-              presets={presets}
-              activePresetId={activePresetId}
-              onApply={applyPreset}
-              onSaveCurrent={saveCurrentPreset}
-              onImport={importPreset}
-              onExport={exportPreset}
-            />
+            <PresetPanel presets={presets} activePresetId={activePresetId} onApply={applyPreset} onSaveCurrent={saveCurrentPreset} onImport={importPreset} onExport={exportPreset} />
             {presetError && <p className="preset-error" role="alert">{presetError}</p>}
-            <ParameterPanel
-              model={model}
-              linkedEyes={linkedEyes}
-              onChange={updateModel}
-              onLinkedEyesChange={setLinkedEyes}
+            <ExpressionPresetPanel
+              presets={selectableExpressions}
+              activePresetId={activeExpressionId}
+              onApply={applyExpressionPreset}
+              onSaveCurrent={saveCurrentExpressionPreset}
+              onImport={importExpressionPreset}
+              onExport={exportExpressionPreset}
             />
+            {expressionPresetError && <p className="preset-error" role="alert">{expressionPresetError}</p>}
+            <ParameterPanel model={model} linkedEyes={linkedEyes} onChange={updateModel} onLinkedEyesChange={setLinkedEyes} />
             <ExportPanel model={model} transparentBackground={transparentBackground} />
           </div>
         </section>
