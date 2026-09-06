@@ -1,9 +1,9 @@
 export type EyeExpression = {
   /** 0 = fully open, 1 = fully closed from the upper lid. */
   upperLid: number
-  /** Optional directional upper-lid depth at the eye's inner edge. Falls back to upperLid. */
+  /** Optional additional upper-lid mask depth at the eye's inner edge. Defaults to 0. */
   upperLidInner?: number
-  /** Optional directional upper-lid depth at the eye's outer edge. Falls back to upperLid. */
+  /** Optional additional upper-lid mask depth at the eye's outer edge. Defaults to 0. */
   upperLidOuter?: number
   /** 0 = fully open, 1 = fully closed from the lower lid. */
   lowerLid: number
@@ -25,6 +25,21 @@ export type ExpressionModel = EyeExpression & {
   rightEye?: Partial<EyeExpression>
 }
 
+export type EyeLidAperture = {
+  /** Normalized top boundary at the physical left edge, after safe clamping. */
+  upperLeft: number
+  /** Normalized top boundary at the physical right edge, after safe clamping. */
+  upperRight: number
+  /** Normalized straight lower boundary. */
+  lower: number
+  /** Normalized quadratic lower-curve control point. */
+  lowerMid: number
+  /** Whether the requested upper/lower masks do not cross before renderer clamping. */
+  valid: boolean
+}
+
+const clamp01 = (value: number): number => Math.min(1, Math.max(0, value))
+
 export function resolveEyeExpression(
   expression: ExpressionModel,
   side: 'left' | 'right',
@@ -35,8 +50,8 @@ export function resolveEyeExpression(
 
   return {
     upperLid,
-    upperLidInner: override?.upperLidInner ?? expression.upperLidInner ?? upperLid,
-    upperLidOuter: override?.upperLidOuter ?? expression.upperLidOuter ?? upperLid,
+    upperLidInner: override?.upperLidInner ?? expression.upperLidInner ?? 0,
+    upperLidOuter: override?.upperLidOuter ?? expression.upperLidOuter ?? 0,
     lowerLid,
     lowerLidCurvature: override?.lowerLidCurvature ?? expression.lowerLidCurvature ?? 0,
     tilt: override?.tilt ?? expression.tilt,
@@ -44,6 +59,37 @@ export function resolveEyeExpression(
     gazeHeightExpansion: override?.gazeHeightExpansion ?? expression.gazeHeightExpansion ?? 0,
     gazeHeightThreshold: override?.gazeHeightThreshold ?? expression.gazeHeightThreshold ?? 0.15,
   }
+}
+
+/**
+ * Resolve the visible aperture from generic lid parameters.
+ * Directional upper-lid fields are additive mask offsets on top of `upperLid`,
+ * mirroring RoboEyes' base-eye + overlay construction.
+ */
+export function resolveEyeLidAperture(
+  expression: ExpressionModel,
+  side: 'left' | 'right',
+): EyeLidAperture {
+  const resolved = resolveEyeExpression(expression, side)
+  const baseUpper = clamp01(resolved.upperLid)
+  const rawInner = baseUpper + clamp01(resolved.upperLidInner)
+  const rawOuter = baseUpper + clamp01(resolved.upperLidOuter)
+  const lowerDepth = clamp01(resolved.lowerLid)
+  const lower = 1 - lowerDepth
+  const valid = rawInner <= lower + 1e-9 && rawOuter <= lower + 1e-9
+  const inner = Math.min(rawInner, lower)
+  const outer = Math.min(rawOuter, lower)
+  const upperLeft = side === 'left' ? outer : inner
+  const upperRight = side === 'left' ? inner : outer
+  const upperMid = (upperLeft + upperRight) / 2
+  const lowerMid = Math.max(upperMid, lower - 0.5 * clamp01(resolved.lowerLidCurvature))
+
+  return { upperLeft, upperRight, lower, lowerMid, valid }
+}
+
+export function areEyeLidAperturesValid(expression: ExpressionModel): boolean {
+  return resolveEyeLidAperture(expression, 'left').valid &&
+    resolveEyeLidAperture(expression, 'right').valid
 }
 
 function smoothstep01(value: number): number {
