@@ -15,7 +15,7 @@ import {
   setSharedExpressionGeometrySafely,
   setSharedLidSafely,
 } from './geometrySafety'
-import { pairRotationCenter, rotatePairSafely } from './modelEditing'
+import { pairRotationCenter, resizeCanvasFromCenter, rotatePairSafely } from './modelEditing'
 
 const SPACING_SEEDS = [0x13579bdf, 0x2468ace0, 0x51ac1e55, 0x5a9c1e77]
 const OSCILLATION_CYCLES = 24
@@ -69,16 +69,26 @@ function configureBase(config: {
   heightScale: number
   gazeX: number
   gazeY: number
+  canvasWidth?: number
+  canvasHeight?: number
 }): FaceModel {
   let model = createModel()
+  if (config.canvasWidth || config.canvasHeight) {
+    model = resizeCanvasFromCenter(
+      model,
+      config.canvasWidth ?? model.canvas.width,
+      config.canvasHeight ?? model.canvas.height,
+    )
+  }
   model = setSharedLidSafely(model, 'upperLid', config.upperLid)
   model = setSharedLidSafely(model, 'lowerLid', config.lowerLid)
   model = setSharedExpressionGeometrySafely(model, 'heightScale', config.heightScale)
   model = setSharedExpressionGeometrySafely(model, 'tilt', config.tilt)
   model = rotatePairSafely(model, config.rotation)
   model = clampGaze({ ...model, gaze: { x: config.gazeX, y: config.gazeY } })
-  // Resolve any overlap created by setup parameters through the spacing constraint itself.
-  return applySpacing(model, anchoredPairSpacing(model))
+  model = applySpacing(model, anchoredPairSpacing(model))
+  assertSafe(model, `spacing baseline config=${JSON.stringify(config)}`)
+  return model
 }
 
 function mulberry32(seed: number): () => number {
@@ -99,10 +109,11 @@ function randomBetween(random: () => number, min: number, max: number): number {
 describe('Eye spacing stress', () => {
   const cases = [
     { rotation: 0, tilt: 0, upperLid: 0, lowerLid: 0, heightScale: 1, gazeX: 0, gazeY: 0 },
-    { rotation: 28, tilt: 24, upperLid: 0, lowerLid: 0, heightScale: 1.45, gazeX: 18, gazeY: -10 },
-    { rotation: -28, tilt: -24, upperLid: 0.45, lowerLid: 0, heightScale: 1.4, gazeX: -20, gazeY: 12 },
+    // Extreme tilt/scale needs a larger canvas so a non-overlapping spacing interval actually exists.
+    { rotation: 28, tilt: 24, upperLid: 0, lowerLid: 0, heightScale: 1.45, gazeX: 18, gazeY: -10, canvasWidth: 240, canvasHeight: 128 },
+    { rotation: -28, tilt: -24, upperLid: 0.45, lowerLid: 0, heightScale: 1.4, gazeX: -20, gazeY: 12, canvasWidth: 192, canvasHeight: 96 },
     { rotation: 22, tilt: -26, upperLid: 0, lowerLid: 0.5, heightScale: 0.65, gazeX: 20, gazeY: 10 },
-    { rotation: -18, tilt: 27, upperLid: 0.35, lowerLid: 0.35, heightScale: 1.5, gazeX: -12, gazeY: -12 },
+    { rotation: -18, tilt: 27, upperLid: 0.35, lowerLid: 0.35, heightScale: 1.5, gazeX: -12, gazeY: -12, canvasWidth: 192, canvasHeight: 96 },
   ] as const
 
   for (const [index, config] of cases.entries()) {
@@ -112,6 +123,7 @@ describe('Eye spacing stress', () => {
       const axis = pairAxis(model)
       const minimum = anchoredPairSpacingMin(model)
       const maximum = anchoredPairSpacingMax(model)
+      expect(minimum).toBeLessThanOrEqual(maximum)
       const probes = [minimum - 50, minimum, minimum + 1e-4, (minimum + maximum) / 2, maximum, maximum + 50]
 
       for (const requested of probes) {
@@ -134,6 +146,7 @@ describe('Eye spacing stress', () => {
       for (let cycle = 0; cycle < OSCILLATION_CYCLES; cycle += 1) {
         const minimum = anchoredPairSpacingMin(model)
         const maximum = anchoredPairSpacingMax(model)
+        expect(minimum).toBeLessThanOrEqual(maximum)
         model = applySpacing(model, cycle % 2 === 0 ? minimum - 20 : maximum + 20)
         assertSafe(model, `case=${index + 1} cycle=${cycle}`)
       }
@@ -180,8 +193,7 @@ describe('Eye spacing stress', () => {
           history.push(`spacing=${requested}`)
         }
 
-        // Always re-assert spacing after non-spacing geometry edits so this suite tests
-        // the setter's ability to restore a valid pair before the next spacing request.
+        // Re-assert spacing after non-spacing geometry edits before validating this spacing-focused suite.
         model = applySpacing(model, anchoredPairSpacing(model))
         assertSafe(
           model,
