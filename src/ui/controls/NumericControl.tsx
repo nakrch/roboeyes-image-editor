@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { useContinuousEdit } from '../editor/continuousEdit'
 import {
   classifyTouchSliderIntent,
+  TOUCH_FINE_DRAG_SCALE,
   valueFromTouchSliderDrag,
   type TouchSliderIntent,
 } from './touchSliderGesture'
@@ -97,7 +98,14 @@ export function NumericControl({
             }
 
             event.preventDefault()
-            onChange(valueFromTouchSliderDrag(drag.startValue, deltaX, drag.trackWidth, min, max))
+            onChange(valueFromTouchSliderDrag(
+              drag.startValue,
+              deltaX,
+              drag.trackWidth,
+              min,
+              max,
+              TOUCH_FINE_DRAG_SCALE,
+            ))
           }}
           onPointerUp={(event) => {
             if (event.pointerType === 'mouse') {
