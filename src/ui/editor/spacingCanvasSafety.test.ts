@@ -3,7 +3,7 @@ import { canFitEyesInCanvas, isGazeCanvasSafe, visibleEyesOverlap } from '../../
 import { roboEyesToFaceModel } from '../../core/adapters/roboeyes'
 import { defaultRoboEyesPreset } from '../../core/presets/roboeyes'
 import { anchoredPairSpacing } from './geometrySafety'
-import { pairRotationCenter, rotatePair } from './modelEditing'
+import { pairRotationCenter, rotatePairSafely } from './modelEditing'
 import {
   canvasSafeAnchoredPairSpacingMax,
   setCanvasSafeAnchoredPairSpacing,
@@ -21,8 +21,10 @@ function pairAxis(model: ReturnType<typeof createModel>) {
 }
 
 describe('canvas-safe anchored spacing', () => {
-  it('clamps spacing before a rotated pair can leave the canvas', () => {
-    const rotated = rotatePair(createModel(), 28)
+  it('clamps spacing before a safely rotated pair can leave the canvas', () => {
+    const rotated = rotatePairSafely(createModel(), 24)
+    expect(canFitEyesInCanvas(rotated)).toBe(true)
+
     const centerBefore = pairRotationCenter(rotated)
     const axisBefore = pairAxis(rotated)
     const maximum = canvasSafeAnchoredPairSpacingMax(rotated)
@@ -43,12 +45,15 @@ describe('canvas-safe anchored spacing', () => {
     expect(axisAfter.y).toBeCloseTo(axisBefore.y, 7)
   })
 
-  it('rejects an impossible spacing candidate even when gaze is neutral', () => {
-    const rotated = rotatePair(createModel(), 30)
+  it('rejects an impossible spacing request after safe rotation', () => {
+    const rotated = rotatePairSafely(createModel(), 20)
+    expect(canFitEyesInCanvas(rotated)).toBe(true)
+
     const next = setCanvasSafeAnchoredPairSpacing(rotated, 10_000)
 
     expect(canFitEyesInCanvas(next)).toBe(true)
     expect(isGazeCanvasSafe(next)).toBe(true)
+    expect(visibleEyesOverlap(next)).toBe(false)
     expect(anchoredPairSpacing(next)).toBeLessThan(160)
   })
 })
