@@ -1,4 +1,9 @@
-import { isGazeCanvasSafe, visibleEyesOverlap, type FaceModel } from '../../core/model'
+import {
+  canFitEyesInCanvas,
+  isGazeCanvasSafe,
+  visibleEyesOverlap,
+  type FaceModel,
+} from '../../core/model'
 import { updateEyeGeometry, type EyeSide } from './modelEditing'
 
 export type EyePositionAxis = 'x' | 'y'
@@ -24,7 +29,13 @@ function withEyePosition(
 }
 
 function isIndependentPositionSafe(model: FaceModel): boolean {
-  return isGazeCanvasSafe(model) && !visibleEyesOverlap(model)
+  // gazeLimits() uses a neutral {0,0} fallback when no shared gaze translation can
+  // fit both eyes. That fallback is useful for general editor numeric stability, but
+  // Independent Position must treat an impossible fit as unsafe or canvas-resize
+  // states can bypass its boundary constraints.
+  return canFitEyesInCanvas(model) &&
+    isGazeCanvasSafe(model) &&
+    !visibleEyesOverlap(model)
 }
 
 function interpolate(start: number, end: number, t: number): number {
