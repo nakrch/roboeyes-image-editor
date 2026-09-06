@@ -28,8 +28,9 @@ describe('touch slider gesture', () => {
   })
 
   it('applies fine drag sensitivity for touch adjustment', () => {
-    expect(valueFromTouchSliderDrag(50, 20, 100, 0, 100, TOUCH_FINE_DRAG_SCALE)).toBe(55)
-    expect(valueFromTouchSliderDrag(50, -20, 100, 0, 100, TOUCH_FINE_DRAG_SCALE)).toBe(45)
+    const expectedDelta = 20 * TOUCH_FINE_DRAG_SCALE
+    expect(valueFromTouchSliderDrag(50, 20, 100, 0, 100, TOUCH_FINE_DRAG_SCALE)).toBe(50 + expectedDelta)
+    expect(valueFromTouchSliderDrag(50, -20, 100, 0, 100, TOUCH_FINE_DRAG_SCALE)).toBe(50 - expectedDelta)
   })
 
   it('clamps fine drag values to the slider range', () => {
