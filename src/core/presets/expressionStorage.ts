@@ -1,4 +1,4 @@
-import type { ExpressionModel, EyeExpression } from '../model'
+import type { ExpressionModel, EyeExpression, FaceModel } from '../model'
 
 export type UserExpressionPreset = {
   id: string
@@ -56,6 +56,13 @@ export function createUserExpressionPreset(name: string, expression: ExpressionM
     name: name.trim() || 'Custom expression',
     version: 1,
     expression: structuredClone(expression),
+  }
+}
+
+export function applyExpressionPresetToModel(model: FaceModel, preset: Pick<UserExpressionPreset, 'expression'>): FaceModel {
+  return {
+    ...model,
+    expression: structuredClone(preset.expression),
   }
 }
 
