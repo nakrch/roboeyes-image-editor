@@ -1,10 +1,12 @@
 import { canFitEyesInCanvas, visibleEyesOverlap, type FaceModel } from '../../core/model'
 import {
-  pairSpacing,
-  setHorizontalLayout,
   updateEyeGeometry,
   type EyeSide,
 } from './modelEditing'
+import {
+  anchoredPairSpacing,
+  setAnchoredPairSpacing,
+} from './geometrySafety'
 
 export type EyeDimensionKey = 'width' | 'height'
 export type EyeDimensionLimits = { width: number; height: number }
@@ -19,7 +21,22 @@ function applyLinkedDimension(
   value: number,
 ): FaceModel {
   if (key === 'width') {
-    return setHorizontalLayout(model, value, value, pairSpacing(model))
+    const spacing = anchoredPairSpacing(model)
+    const resized = {
+      ...model,
+      leftEye: {
+        ...model.leftEye,
+        geometry: { ...model.leftEye.geometry, width: value },
+      },
+      rightEye: {
+        ...model.rightEye,
+        geometry: { ...model.rightEye.geometry, width: value },
+      },
+    }
+
+    // Reapply the existing anchored spacing along the current pair axis. This keeps
+    // the pair center/axis intact instead of rebuilding a horizontal layout.
+    return setAnchoredPairSpacing(resized, spacing)
   }
 
   return {
