@@ -1,4 +1,5 @@
 import {
+  areEyeLidAperturesValid,
   canFitEyesInCanvas,
   isGazeCanvasSafe,
   resolveEyeExpression,
@@ -8,17 +9,20 @@ import {
 import { translatePairToKeepCurrentGaze } from './geometrySafety'
 
 export type DirectionalLidKey = 'upperLidInner' | 'upperLidOuter' | 'lowerLidCurvature'
+export type BaseLidKey = 'upperLid' | 'lowerLid'
+type ComposedLidKey = DirectionalLidKey | BaseLidKey
 
 const REFINE_STEPS = 24
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 
-function sharedCurrent(model: FaceModel, key: DirectionalLidKey): number {
-  if (key === 'upperLidInner') return model.expression.upperLidInner ?? model.expression.upperLid
-  if (key === 'upperLidOuter') return model.expression.upperLidOuter ?? model.expression.upperLid
-  return model.expression.lowerLidCurvature ?? 0
+function sharedCurrent(model: FaceModel, key: ComposedLidKey): number {
+  if (key === 'upperLidInner') return model.expression.upperLidInner ?? 0
+  if (key === 'upperLidOuter') return model.expression.upperLidOuter ?? 0
+  if (key === 'lowerLidCurvature') return model.expression.lowerLidCurvature ?? 0
+  return model.expression[key]
 }
 
-function applyShared(model: FaceModel, key: DirectionalLidKey, value: number): FaceModel {
+function applyShared(model: FaceModel, key: ComposedLidKey, value: number): FaceModel {
   return {
     ...model,
     expression: {
@@ -33,7 +37,7 @@ function applyShared(model: FaceModel, key: DirectionalLidKey, value: number): F
 function applySide(
   model: FaceModel,
   side: 'left' | 'right',
-  key: DirectionalLidKey,
+  key: ComposedLidKey,
   value: number,
 ): FaceModel {
   const property = side === 'left' ? 'leftEye' : 'rightEye'
@@ -51,7 +55,10 @@ function normalizeCandidate(model: FaceModel): FaceModel {
 }
 
 function isCandidateSafe(model: FaceModel): boolean {
-  return canFitEyesInCanvas(model) && isGazeCanvasSafe(model) && !visibleEyesOverlap(model)
+  return areEyeLidAperturesValid(model.expression) &&
+    canFitEyesInCanvas(model) &&
+    isGazeCanvasSafe(model) &&
+    !visibleEyesOverlap(model)
 }
 
 function nearestSafe(
@@ -97,6 +104,26 @@ export function setIndependentDirectionalLidSafely(
   model: FaceModel,
   side: 'left' | 'right',
   key: DirectionalLidKey,
+  value: number,
+): FaceModel {
+  const current = resolveEyeExpression(model.expression, side)[key]
+  return nearestSafe(model, current, value, (candidate) => applySide(model, side, key, candidate))
+}
+
+export function setSharedComposedLidSafely(
+  model: FaceModel,
+  key: BaseLidKey,
+  value: number,
+): FaceModel {
+  return nearestSafe(model, sharedCurrent(model, key), value, (candidate) =>
+    applyShared(model, key, candidate),
+  )
+}
+
+export function setIndependentComposedLidSafely(
+  model: FaceModel,
+  side: 'left' | 'right',
+  key: BaseLidKey,
   value: number,
 ): FaceModel {
   const current = resolveEyeExpression(model.expression, side)[key]

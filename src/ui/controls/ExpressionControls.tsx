@@ -4,18 +4,18 @@ import {
   isExpressionGeometryKey,
   isLidKey,
   setSharedExpressionGeometrySafely,
-  setSharedLidSafely,
   sharedExpressionGeometryRange,
   translatePairToKeepCurrentGaze,
 } from '../editor/geometrySafety'
 import {
   independentExpressionGeometryRange,
   setIndependentExpressionGeometrySafely,
-  setIndependentLidSafely,
 } from '../editor/independentExpressionSafety'
 import {
   isDirectionalLidKey,
+  setIndependentComposedLidSafely,
   setIndependentDirectionalLidSafely,
+  setSharedComposedLidSafely,
   setSharedDirectionalLidSafely,
 } from '../editor/directionalLidSafety'
 import {
@@ -33,8 +33,8 @@ type Props = {
 
 const fields: Array<{ key: keyof EyeExpression; label: string; min: number; max: number; step?: number | 'any' }> = [
   { key: 'upperLid', label: 'Upper lid', min: 0, max: 1, step: 0.05 },
-  { key: 'upperLidInner', label: 'Upper lid inner', min: 0, max: 1, step: 0.05 },
-  { key: 'upperLidOuter', label: 'Upper lid outer', min: 0, max: 1, step: 0.05 },
+  { key: 'upperLidInner', label: 'Upper lid inner offset', min: 0, max: 1, step: 0.05 },
+  { key: 'upperLidOuter', label: 'Upper lid outer offset', min: 0, max: 1, step: 0.05 },
   { key: 'lowerLid', label: 'Lower lid', min: 0, max: 1, step: 0.05 },
   { key: 'lowerLidCurvature', label: 'Lower lid curvature', min: 0, max: 1, step: 0.05 },
   { key: 'tilt', label: 'Expression tilt', min: -30, max: 30, step: 'any' },
@@ -45,8 +45,8 @@ const fields: Array<{ key: keyof EyeExpression; label: string; min: number; max:
 
 function sharedValue(expression: FaceModel['expression'], key: keyof EyeExpression): number {
   if (key === 'heightScale') return expression.heightScale ?? 1
-  if (key === 'upperLidInner') return expression.upperLidInner ?? expression.upperLid
-  if (key === 'upperLidOuter') return expression.upperLidOuter ?? expression.upperLid
+  if (key === 'upperLidInner') return expression.upperLidInner ?? 0
+  if (key === 'upperLidOuter') return expression.upperLidOuter ?? 0
   if (key === 'lowerLidCurvature') return expression.lowerLidCurvature ?? 0
   if (key === 'gazeHeightExpansion') return expression.gazeHeightExpansion ?? 0
   if (key === 'gazeHeightThreshold') return expression.gazeHeightThreshold ?? 0.15
@@ -82,7 +82,7 @@ export function ExpressionControls({ model, linkedEyes, onChange }: Props) {
     }
 
     if (isLidKey(key)) {
-      onChange((current) => setSharedLidSafely(current, key, value))
+      onChange((current) => setSharedComposedLidSafely(current, key, value))
       return
     }
 
@@ -114,7 +114,7 @@ export function ExpressionControls({ model, linkedEyes, onChange }: Props) {
     }
 
     if (isLidKey(key)) {
-      onChange((current) => setIndependentLidSafely(current, side, key, value))
+      onChange((current) => setIndependentComposedLidSafely(current, side, key, value))
       return
     }
 
