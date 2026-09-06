@@ -44,26 +44,34 @@ function visibleEyeRect(
 ): VisibleEyeRect {
   const expression = resolveEyeExpression(model.expression, side)
   const scaledHeight = Math.max(0, geometry.height * expression.heightScale)
-  const upper = clamp01(expression.upperLid)
+  const inner = clamp01(expression.upperLidInner)
+  const outer = clamp01(expression.upperLidOuter)
+  const upperLeft = side === 'left' ? outer : inner
+  const upperRight = side === 'left' ? inner : outer
   const lower = clamp01(expression.lowerLid)
-  const visibleHeight = Math.max(0, scaledHeight * (1 - upper - lower))
-  const visibleCenterOffsetY = scaledHeight * (upper - lower) / 2
+  const curvature = clamp01(expression.lowerLidCurvature)
+  const upperLeftY = -scaledHeight / 2 + scaledHeight * upperLeft
+  const upperRightY = -scaledHeight / 2 + scaledHeight * upperRight
+  const lowerY = -scaledHeight / 2 + scaledHeight * (1 - lower)
+  const upperMidY = (upperLeftY + upperRightY) / 2
+  const lowerMidY = Math.max(upperMidY, lowerY - scaledHeight * 0.5 * curvature)
+  const localTop = Math.min(upperLeftY, upperRightY, upperMidY)
+  const localBottom = Math.max(lowerY, lowerMidY)
+  const visibleHeight = Math.max(0, localBottom - localTop)
+  const visibleCenterOffsetY = (localTop + localBottom) / 2
   const effectiveRotation = geometry.rotation + (side === 'left' ? -expression.tilt : expression.tilt)
   const radians = (effectiveRotation * Math.PI) / 180
   const cos = Math.cos(radians)
   const sin = Math.sin(radians)
 
-  // The renderer clips each eye to the lid-defined visible aperture before rotation.
-  // Rotate that aperture's shifted center around the eye pivot so constraints follow
-  // the portion that is actually visible instead of the hidden full-eye rectangle.
+  // Use a conservative oriented bounding rectangle around the clipped aperture.
+  // Directional lids and curved lower masks can only reduce the eye from the full width,
+  // while localTop/localBottom capture their maximum visible vertical extent.
   const center = {
     x: geometry.position.x - visibleCenterOffsetY * sin,
     y: geometry.position.y + visibleCenterOffsetY * cos,
   }
-
-  // Preserve the existing 1px-stroke safety margin for any non-empty aperture.
-  // A fully closed eye renders no visible area, so collapse it to its aperture center.
-  const hasVisibleArea = visibleHeight > 0
+  const hasVisibleArea = visibleHeight > 0 && scaledHeight > 0 && geometry.width > 0
 
   return {
     center,
@@ -110,7 +118,7 @@ export function visibleEyesOverlap(model: FaceModel): boolean {
   }
   const axes = [left.axisX, left.axisY, right.axisX, right.axisY]
 
-  // Separating-axis theorem for the two oriented visible-eye rectangles.
+  // Separating-axis theorem for the two conservative oriented aperture bounds.
   // Edge contact is allowed; only positive-area intersection counts as overlap.
   for (const axis of axes) {
     const centerDistance = Math.abs(centerDelta.x * axis.x + centerDelta.y * axis.y)
