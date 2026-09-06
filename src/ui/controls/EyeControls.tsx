@@ -5,6 +5,7 @@ import {
   setIndependentEyeDimensionSafely,
   setLinkedEyeDimensionSafely,
 } from '../editor/eyeDimensions'
+import { setIndependentEyePositionSafely } from '../editor/eyePositionSafety'
 import {
   anchoredPairSpacing,
   anchoredPairSpacingMin,
@@ -78,12 +79,7 @@ export function EyeControls({
   }
 
   const updateEyePosition = (side: EyeSide, axis: 'x' | 'y', value: number) => {
-    onChange((current) =>
-      updateEyeGeometry(current, side, (geometry) => ({
-        ...geometry,
-        position: { ...geometry.position, [axis]: value },
-      })),
-    )
+    onChange((current) => setIndependentEyePositionSafely(current, side, axis, value))
   }
 
   return (
