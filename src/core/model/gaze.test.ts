@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { FaceModel } from './face'
-import { clampGaze, gazeLimits, minimumCanvasSize, visibleEyesOverlap } from './gaze'
+import { clampGaze, gazeLimits, isGazeCanvasSafe, minimumCanvasSize, visibleEyesOverlap } from './gaze'
 
 function model(overrides: Partial<FaceModel> = {}): FaceModel {
   const base: FaceModel = {
@@ -144,6 +144,18 @@ describe('gaze constraints', () => {
 
     expect(gazeLimits(impossible).x).toEqual({ min: 0, max: 0 })
     expect(clampGaze(impossible).gaze.x).toBe(0)
+  })
+
+  it('does not treat the neutral fallback as canvas-safe when the eyes cannot fit', () => {
+    const base = model()
+    const impossible = model({
+      leftEye: { geometry: { ...base.leftEye.geometry, width: 160 } },
+      rightEye: { geometry: { ...base.rightEye.geometry, width: 160 } },
+      gaze: { x: 0, y: 0 },
+    })
+
+    expect(gazeLimits(impossible).x).toEqual({ min: 0, max: 0 })
+    expect(isGazeCanvasSafe(impossible)).toBe(false)
   })
 
   it('clamps existing gaze to the current safe range', () => {
