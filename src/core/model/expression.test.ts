@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { resolveEyeExpression, type ExpressionModel } from './expression'
+import {
+  resolveEyeExpression,
+  resolveGazeReactiveHeightScale,
+  type ExpressionModel,
+} from './expression'
 
 describe('expression model', () => {
   const expression: ExpressionModel = {
@@ -18,6 +22,8 @@ describe('expression model', () => {
       lowerLidCurvature: 0,
       tilt: 5,
       heightScale: 1,
+      gazeHeightExpansion: 0,
+      gazeHeightThreshold: 0.15,
     })
   })
 
@@ -30,6 +36,8 @@ describe('expression model', () => {
       lowerLidCurvature: 0,
       tilt: -8,
       heightScale: 1,
+      gazeHeightExpansion: 0,
+      gazeHeightThreshold: 0.15,
     })
   })
 
@@ -65,5 +73,36 @@ describe('expression model', () => {
       upperLidOuter: 0.55,
       lowerLidCurvature: 0.8,
     })
+  })
+
+  it('expands only the eye on the active horizontal gaze side', () => {
+    const curious: ExpressionModel = {
+      upperLid: 0,
+      lowerLid: 0,
+      tilt: 0,
+      gazeHeightExpansion: 0.4,
+      gazeHeightThreshold: 0.1,
+    }
+
+    expect(resolveGazeReactiveHeightScale(curious, 'left', 0, 128)).toBe(1)
+    expect(resolveGazeReactiveHeightScale(curious, 'right', 0, 128)).toBe(1)
+    expect(resolveGazeReactiveHeightScale(curious, 'left', -8, 128)).toBe(1.4)
+    expect(resolveGazeReactiveHeightScale(curious, 'right', -8, 128)).toBe(1)
+    expect(resolveGazeReactiveHeightScale(curious, 'left', 8, 128)).toBe(1)
+    expect(resolveGazeReactiveHeightScale(curious, 'right', 8, 128)).toBe(1.4)
+  })
+
+  it('supports asymmetric gaze-reactive strength overrides', () => {
+    const asymmetric: ExpressionModel = {
+      upperLid: 0,
+      lowerLid: 0,
+      tilt: 0,
+      gazeHeightExpansion: 0.2,
+      gazeHeightThreshold: 0.1,
+      leftEye: { gazeHeightExpansion: 0.5 },
+    }
+
+    expect(resolveGazeReactiveHeightScale(asymmetric, 'left', -8, 128)).toBe(1.5)
+    expect(resolveGazeReactiveHeightScale(asymmetric, 'right', 8, 128)).toBe(1.2)
   })
 })
