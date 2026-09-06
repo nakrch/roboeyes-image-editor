@@ -1,0 +1,119 @@
+name: PR Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  pull-requests: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: production
+
+      - name: Checkout pull request head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: preview
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install production dependencies
+        working-directory: production
+        run: npm install
+
+      - name: Build production site
+        working-directory: production
+        env:
+          VITE_BASE_PATH: /roboeyes-image-editor/
+        run: npm run build
+
+      - name: Install preview dependencies
+        working-directory: preview
+        run: npm install
+
+      - name: Build pull request preview
+        working-directory: preview
+        env:
+          VITE_BASE_PATH: /roboeyes-image-editor/pr-preview/pr-${{ github.event.number }}/
+        run: npm run build
+
+      - name: Assemble Pages artifact
+        run: |
+          mkdir -p site/pr-preview/pr-${{ github.event.number }}
+          cp -a production/dist/. site/
+          cp -a preview/dist/. site/pr-preview/pr-${{ github.event.number }}/
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./site
+
+  deploy:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}pr-preview/pr-${{ github.event.number }}/
+    runs-on: ubuntu-latest
+    needs: build
+    outputs:
+      preview_url: ${{ steps.preview-url.outputs.url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Set preview URL
+        id: preview-url
+        run: echo "url=${{ steps.deployment.outputs.page_url }}pr-preview/pr-${{ github.event.number }}/" >> "$GITHUB_OUTPUT"
+
+  comment:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - name: Post preview URL to pull request
+        uses: actions/github-script@v7
+        env:
+          PREVIEW_URL: ${{ needs.deploy.outputs.preview_url }}
+        with:
+          script: |
+            const marker = '<!-- roboeyes-pr-preview -->'
+            const body = `${marker}\n✅ **PR Preview**\n\n${process.env.PREVIEW_URL}\n\nThis preview is rebuilt from the latest PR head while the production root remains on \`main\`.`
+            const { owner, repo } = context.repo
+            const issue_number = context.issue.number
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            })
+            const existing = comments.find((comment) => comment.user.type === 'Bot' && comment.body?.includes(marker))
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body })
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body })
+            }
