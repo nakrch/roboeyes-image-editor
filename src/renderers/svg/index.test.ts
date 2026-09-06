@@ -76,4 +76,40 @@ describe('renderFaceToSvg', () => {
     expect(leftPath).toContain('Q 42 31 26 40.8')
     expect(rightPath).toContain('Q 90 31 72 41.5')
   })
+
+  it('keeps upper lid active after directional offsets are set', () => {
+    const svg = renderFaceToSvg({
+      ...model,
+      gaze: { x: 0, y: 0 },
+      expression: {
+        upperLid: 0.2,
+        upperLidInner: 0.3,
+        upperLidOuter: 0.1,
+        lowerLid: 0,
+        tilt: 0,
+      },
+    })
+
+    const leftPath = svg.match(/data-eye-aperture="left" d="([^"]+)"/)?.[1]
+    expect(leftPath).toContain('M 24 26.4 L 56 32')
+  })
+
+  it('clamps invalid upper/lower combinations to a non-inverting edge', () => {
+    const svg = renderFaceToSvg({
+      ...model,
+      gaze: { x: 0, y: 0 },
+      expression: {
+        upperLid: 0.2,
+        upperLidOuter: 0.9,
+        lowerLid: 0.3,
+        lowerLidCurvature: 0.4,
+        tilt: 0,
+      },
+    })
+
+    const leftPath = svg.match(/data-eye-aperture="left" d="([^"]+)"/)?.[1]
+    expect(leftPath).toContain('M 24 37.6')
+    expect(leftPath).toContain('L 56 23.6')
+    expect(leftPath).toContain('L 56 37.6')
+  })
 })
