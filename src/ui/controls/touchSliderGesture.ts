@@ -1,4 +1,5 @@
 export const TOUCH_DRAG_THRESHOLD_PX = 8
+export const TOUCH_FINE_DRAG_SCALE = 0.25
 
 export type TouchSliderIntent = 'pending' | 'horizontal' | 'vertical'
 
@@ -20,8 +21,10 @@ export function valueFromTouchSliderDrag(
   trackWidth: number,
   min: number,
   max: number,
+  sensitivity = 1,
 ): number {
   if (!Number.isFinite(trackWidth) || trackWidth <= 0 || max <= min) return startValue
-  const next = startValue + (deltaX / trackWidth) * (max - min)
+  const safeSensitivity = Number.isFinite(sensitivity) && sensitivity >= 0 ? sensitivity : 1
+  const next = startValue + (deltaX / trackWidth) * (max - min) * safeSensitivity
   return Math.min(max, Math.max(min, next))
 }
