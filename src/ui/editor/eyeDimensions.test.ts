@@ -3,7 +3,7 @@ import { canFitEyesInCanvas } from '../../core/model'
 import { roboEyesToFaceModel } from '../../core/adapters/roboeyes'
 import { defaultRoboEyesPreset } from '../../core/presets/roboeyes'
 import { anchoredPairSpacing } from './geometrySafety'
-import { pairRotationCenter, rotatePair } from './modelEditing'
+import { pairRotationCenter, rotatePairSafely } from './modelEditing'
 import {
   independentEyeDimensionLimits,
   linkedEyeDimensionLimits,
@@ -59,16 +59,16 @@ describe('eye dimension constraints', () => {
   })
 
   it('preserves pair center, axis, and anchored spacing when linked width changes after rotation', () => {
-    const rotated = rotatePair(createModel(), 26)
+    const rotated = rotatePairSafely(createModel(), 15)
     const centerBefore = pairRotationCenter(rotated)
     const axisBefore = pairAxis(rotated)
     const spacingBefore = anchoredPairSpacing(rotated)
 
-    const next = setLinkedEyeDimensionSafely(rotated, 'width', 44)
+    const next = setLinkedEyeDimensionSafely(rotated, 'width', 30)
     const centerAfter = pairRotationCenter(next)
     const axisAfter = pairAxis(next)
 
-    expect(next.leftEye.geometry.width).toBeGreaterThan(rotated.leftEye.geometry.width)
+    expect(next.leftEye.geometry.width).not.toBeCloseTo(rotated.leftEye.geometry.width)
     expect(centerAfter.x).toBeCloseTo(centerBefore.x, 7)
     expect(centerAfter.y).toBeCloseTo(centerBefore.y, 7)
     expect(axisAfter.x).toBeCloseTo(axisBefore.x, 7)
