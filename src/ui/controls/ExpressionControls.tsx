@@ -13,6 +13,11 @@ import {
   setIndependentExpressionGeometrySafely,
   setIndependentLidSafely,
 } from '../editor/independentExpressionSafety'
+import {
+  isDirectionalLidKey,
+  setIndependentDirectionalLidSafely,
+  setSharedDirectionalLidSafely,
+} from '../editor/directionalLidSafety'
 import { NumericControl } from './NumericControl'
 
 type Props = {
@@ -23,13 +28,19 @@ type Props = {
 
 const fields: Array<{ key: keyof EyeExpression; label: string; min: number; max: number; step?: number | 'any' }> = [
   { key: 'upperLid', label: 'Upper lid', min: 0, max: 1, step: 0.05 },
+  { key: 'upperLidInner', label: 'Upper lid inner', min: 0, max: 1, step: 0.05 },
+  { key: 'upperLidOuter', label: 'Upper lid outer', min: 0, max: 1, step: 0.05 },
   { key: 'lowerLid', label: 'Lower lid', min: 0, max: 1, step: 0.05 },
+  { key: 'lowerLidCurvature', label: 'Lower lid curvature', min: 0, max: 1, step: 0.05 },
   { key: 'tilt', label: 'Expression tilt', min: -30, max: 30, step: 'any' },
   { key: 'heightScale', label: 'Eye height scale', min: 0.5, max: 1.5, step: 'any' },
 ]
 
 function sharedValue(expression: FaceModel['expression'], key: keyof EyeExpression): number {
   if (key === 'heightScale') return expression.heightScale ?? 1
+  if (key === 'upperLidInner') return expression.upperLidInner ?? expression.upperLid
+  if (key === 'upperLidOuter') return expression.upperLidOuter ?? expression.upperLid
+  if (key === 'lowerLidCurvature') return expression.lowerLidCurvature ?? 0
   return expression[key] as number
 }
 
@@ -48,6 +59,11 @@ export function ExpressionControls({ model, linkedEyes, onChange }: Props) {
   const updateShared = (key: keyof EyeExpression, value: number) => {
     if (isExpressionGeometryKey(key)) {
       onChange((current) => setSharedExpressionGeometrySafely(current, key, value))
+      return
+    }
+
+    if (isDirectionalLidKey(key)) {
+      onChange((current) => setSharedDirectionalLidSafely(current, key, value))
       return
     }
 
@@ -70,6 +86,11 @@ export function ExpressionControls({ model, linkedEyes, onChange }: Props) {
   const updateSide = (side: 'left' | 'right', key: keyof EyeExpression, value: number) => {
     if (isExpressionGeometryKey(key)) {
       onChange((current) => setIndependentExpressionGeometrySafely(current, side, key, value))
+      return
+    }
+
+    if (isDirectionalLidKey(key)) {
+      onChange((current) => setIndependentDirectionalLidSafely(current, side, key, value))
       return
     }
 

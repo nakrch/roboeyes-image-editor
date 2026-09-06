@@ -39,17 +39,31 @@ function renderEye(
     0,
     Math.min(geometry.cornerRadius, geometry.width / 2, scaledHeight / 2),
   )
-  const upper = clamp01(expression.upperLid)
+  const inner = clamp01(expression.upperLidInner)
+  const outer = clamp01(expression.upperLidOuter)
+  const upperLeft = id === 'left' ? outer : inner
+  const upperRight = id === 'left' ? inner : outer
   const lower = clamp01(expression.lowerLid)
-  const visibleY = y + scaledHeight * upper
-  const visibleHeight = Math.max(0, scaledHeight * (1 - upper - lower))
+  const curvature = clamp01(expression.lowerLidCurvature)
+  const upperLeftY = y + scaledHeight * upperLeft
+  const upperRightY = y + scaledHeight * upperRight
+  const lowerY = y + scaledHeight * (1 - lower)
+  const upperMidY = (upperLeftY + upperRightY) / 2
+  const lowerMidY = Math.max(upperMidY, lowerY - scaledHeight * 0.5 * curvature)
   const expressionRotation = id === 'left' ? -expression.tilt : expression.tilt
   const rotation = geometry.rotation + expressionRotation
   const clipId = `eye-clip-${id}`
   const stroke = model.colors.stroke ?? model.colors.eye
+  const aperturePath = [
+    `M ${number(x)} ${number(upperLeftY)}`,
+    `L ${number(x + geometry.width)} ${number(upperRightY)}`,
+    `L ${number(x + geometry.width)} ${number(lowerY)}`,
+    `Q ${number(centerX)} ${number(lowerMidY)} ${number(x)} ${number(lowerY)}`,
+    'Z',
+  ].join(' ')
 
   return {
-    clipPath: `<clipPath id="${clipId}"><rect x="${number(x)}" y="${number(visibleY)}" width="${number(geometry.width)}" height="${number(visibleHeight)}" /></clipPath>`,
+    clipPath: `<clipPath id="${clipId}"><path data-eye-aperture="${id}" d="${aperturePath}" /></clipPath>`,
     shape: `<rect data-eye="${id}" x="${number(x)}" y="${number(y)}" width="${number(geometry.width)}" height="${number(scaledHeight)}" rx="${number(radius)}" ry="${number(radius)}" fill="${escapeAttribute(model.colors.eye)}" stroke="${escapeAttribute(stroke)}" stroke-width="1" clip-path="url(#${clipId})" transform="rotate(${number(rotation)} ${number(centerX)} ${number(centerY)})" />`,
   }
 }
