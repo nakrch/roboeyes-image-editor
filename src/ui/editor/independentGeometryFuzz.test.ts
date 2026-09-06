@@ -12,8 +12,10 @@ import { defaultRoboEyesPreset } from '../../core/presets/roboeyes'
 import { setIndependentEyeDimensionSafely } from './eyeDimensions'
 import { setIndependentEyePositionSafely } from './eyePositionSafety'
 import { setIndependentEyeRotationSafely } from './eyeRotationSafety'
-import { setSideLidSafely } from './geometrySafety'
-import { setIndependentExpressionGeometrySafely } from './independentExpressionSafety'
+import {
+  setIndependentExpressionGeometrySafely,
+  setIndependentLidSafely,
+} from './independentExpressionSafety'
 import { resizeCanvasFromCenter, type EyeSide } from './modelEditing'
 
 const SEEDS = [0x1de9e7e, 0x51de1e55, 0x7a11babe, 0xc001d00d, 0xf00dcafe, 0x66aa9911]
@@ -156,7 +158,7 @@ function applyOperation(
       const key = random() < 0.5 ? 'upperLid' : 'lowerLid'
       const value = randomBetween(random, 0, 0.9)
       return {
-        model: setSideLidSafely(model, side, key, value),
+        model: setIndependentLidSafely(model, side, key, value),
         label: `${side}.${key}=${value}`,
       }
     }
