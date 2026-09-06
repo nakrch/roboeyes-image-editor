@@ -182,6 +182,12 @@ export function gazeLimits(model: FaceModel): GazeLimits {
 
 /** Whether the model's current gaze keeps both rendered eyes fully inside the canvas. */
 export function isGazeCanvasSafe(model: FaceModel): boolean {
+  // gazeLimits() deliberately collapses impossible ranges to neutral {0, 0} so UI
+  // controls and clampGaze remain numerically stable. Do not mistake that fallback
+  // for a real safe range: if no shared gaze translation can fit both eyes, the
+  // current model is unsafe even when gaze already happens to be zero.
+  if (!canFitEyesInCanvas(model)) return false
+
   const limits = gazeLimits(model)
   return model.gaze.x >= limits.x.min && model.gaze.x <= limits.x.max &&
     model.gaze.y >= limits.y.min && model.gaze.y <= limits.y.max
