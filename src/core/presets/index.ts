@@ -4,6 +4,7 @@ export { expressionPresets, matchExpressionPreset } from './expressions'
 export type { ExpressionPreset } from './expressions'
 export {
   CUSTOM_EXPRESSION_PRESET_STORAGE_KEY,
+  applyExpressionPresetToModel,
   createUserExpressionPreset,
   isExpressionModel,
   isUserExpressionPreset,
