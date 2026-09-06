@@ -107,25 +107,7 @@ src/export/            image/embedded export
 
 UI の細部より、domain と renderer の再現性を先に保証します。
 
-## 7. Issue-first workflow
-
-バグ、改善、挙動変更、新機能は **Issue-first** で管理します。
-
-原則フロー:
-
-1. バグ・改善案・仕様変更を見つける
-2. 実装を始める前に GitHub Issue を作成、または既存 Issue を特定する
-3. Issue に必要に応じて再現手順、現状、期待動作、acceptance criteria を記録する
-4. その Issue を解決するための実装 PR を作る
-5. PR 本文から `Fixes #123` / `Closes #123` 等で Issue を紐付ける
-6. test/build/CI を通して merge する
-7. merge により対象 Issue を close する
-
-原則として「先に PR を作り、後から Issue を作る」運用は避けます。
-
-例外として、明白な typo 修正や挙動・設計に影響しないごく小さなドキュメント修正は Issue なしでも構いません。
-
-## 8. Pull request / commit scope
+## 7. Pull request / commit scope
 
 変更は可能な限り Issue 単位に分割します。
 
@@ -139,13 +121,13 @@ UI の細部より、domain と renderer の再現性を先に保証します。
 
 - model + animation + export + UI redesign を一度に変更
 
-## 9. External projects and licensing
+## 8. External projects and licensing
 
 RoboEyes や類似プロジェクトの思想・API・実装を参考にする場合は、採用前にライセンスと attribution 要件を確認します。
 
 特定実装のソースコードをコピーする場合は、互換性・再配布条件・NOTICE 等を確認してから行います。設計思想を参考にして独自実装する場合も、README / docs に必要な出典を残します。
 
-## 10. Definition of done
+## 9. Definition of done
 
 各 Issue は、少なくとも以下を満たして完了とします。
 
