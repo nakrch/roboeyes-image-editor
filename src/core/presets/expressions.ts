@@ -31,8 +31,8 @@ export const expressionPresets: readonly ExpressionPreset[] = [
 ]
 
 const normalizedHeightScale = (expression: ExpressionModel) => expression.heightScale ?? 1
-const normalizedUpperInner = (expression: ExpressionModel) => expression.upperLidInner ?? expression.upperLid
-const normalizedUpperOuter = (expression: ExpressionModel) => expression.upperLidOuter ?? expression.upperLid
+const normalizedUpperInner = (expression: ExpressionModel) => expression.upperLidInner ?? 0
+const normalizedUpperOuter = (expression: ExpressionModel) => expression.upperLidOuter ?? 0
 const normalizedLowerCurvature = (expression: ExpressionModel) => expression.lowerLidCurvature ?? 0
 const normalizedGazeExpansion = (expression: ExpressionModel) => expression.gazeHeightExpansion ?? 0
 const normalizedGazeThreshold = (expression: ExpressionModel) => expression.gazeHeightThreshold ?? 0.15
