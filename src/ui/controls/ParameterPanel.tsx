@@ -7,13 +7,8 @@ import { NumericControl } from './NumericControl'
 type ParameterPanelProps = {
   model: FaceModel
   linkedEyes: boolean
-  canUndo: boolean
-  canRedo: boolean
   onChange: (updater: (current: FaceModel) => FaceModel) => void
   onLinkedEyesChange: (value: boolean) => void
-  onUndo: () => void
-  onRedo: () => void
-  onReset: () => void
 }
 
 const resolutionPresets = [
@@ -30,13 +25,8 @@ const CANVAS_MAX = 640
 export function ParameterPanel({
   model,
   linkedEyes,
-  canUndo,
-  canRedo,
   onChange,
   onLinkedEyesChange,
-  onUndo,
-  onRedo,
-  onReset,
 }: ParameterPanelProps) {
   const currentResolution =
     resolutionPresets.find(
@@ -67,11 +57,6 @@ export function ParameterPanel({
         <div>
           <p className="eyebrow">Parameters</p>
           <h2>Controls</h2>
-        </div>
-        <div className="history-actions" aria-label="Editor history">
-          <button type="button" onClick={onUndo} disabled={!canUndo}>Undo</button>
-          <button type="button" onClick={onRedo} disabled={!canRedo}>Redo</button>
-          <button type="button" onClick={onReset}>Reset</button>
         </div>
       </div>
 

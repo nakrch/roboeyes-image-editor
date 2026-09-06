@@ -1,0 +1,37 @@
+.editor-preview-column {
+  position: sticky;
+  top: 16px;
+  align-self: start;
+}
+
+.preview-history-actions {
+  display: flex;
+  justify-content: flex-start;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.preview-history-actions button {
+  min-width: 64px;
+  font-size: 0.78rem;
+}
+
+@media (max-width: 820px) {
+  .editor-preview-column {
+    top: 0;
+    padding-bottom: 8px;
+  }
+
+  .preview-history-actions {
+    margin-top: 6px;
+    padding: 0 4px;
+    background: #0b1020;
+  }
+}
+
+@media (max-width: 440px) {
+  .preview-history-actions button {
+    min-width: 0;
+    flex: 0 1 78px;
+  }
+}

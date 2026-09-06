@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { clampGaze, type FaceModel } from '../../core/model'
 import {
   builtInPresets,
@@ -14,16 +14,12 @@ import { ParameterPanel } from '../controls/ParameterPanel'
 import { PresetPanel } from '../controls/PresetPanel'
 import { ExportPanel } from '../export/ExportPanel'
 import { PreviewArea } from '../preview/PreviewArea'
+import { ContinuousEditProvider } from './continuousEdit'
+import { commitHistory, redoHistory, undoHistory, type HistoryState } from './history'
 
 type EditorSnapshot = {
   model: FaceModel
   transparentBackground: boolean
-}
-
-type HistoryState = {
-  past: EditorSnapshot[]
-  present: EditorSnapshot
-  future: EditorSnapshot[]
 }
 
 const HISTORY_LIMIT = 100
@@ -37,11 +33,12 @@ function snapshotFromPreset(preset: FacePreset): EditorSnapshot {
 }
 
 export function EditorShell() {
-  const [history, setHistory] = useState<HistoryState>(() => ({
+  const [history, setHistory] = useState<HistoryState<EditorSnapshot>>(() => ({
     past: [],
     present: snapshotFromPreset(initialPreset),
     future: [],
   }))
+  const continuousEdit = useRef({ active: false, committed: false })
   const [linkedEyes, setLinkedEyes] = useState(true)
   const [pixelPerfect, setPixelPerfect] = useState(false)
   const [activePresetId, setActivePresetId] = useState(initialPreset.id)
@@ -51,17 +48,22 @@ export function EditorShell() {
   const [presetError, setPresetError] = useState('')
   const presets: FacePreset[] = [...builtInPresets.map(clonePreset), ...customPresets]
 
-  const commit = (updater: (current: EditorSnapshot) => EditorSnapshot) => {
-    setHistory((current) => {
-      const next = updater(current.present)
-      if (next === current.present) return current
+  const beginContinuousEdit = () => {
+    if (continuousEdit.current.active) return
+    continuousEdit.current = { active: true, committed: false }
+  }
 
-      return {
-        past: [...current.past, current.present].slice(-HISTORY_LIMIT),
-        present: next,
-        future: [],
-      }
-    })
+  const endContinuousEdit = () => {
+    continuousEdit.current = { active: false, committed: false }
+  }
+
+  const commit = (updater: (current: EditorSnapshot) => EditorSnapshot) => {
+    const replacePresent = continuousEdit.current.active && continuousEdit.current.committed
+    if (continuousEdit.current.active) continuousEdit.current.committed = true
+
+    setHistory((current) =>
+      commitHistory(current, updater(current.present), HISTORY_LIMIT, replacePresent),
+    )
   }
 
   const updateModel = (updater: (current: FaceModel) => FaceModel) => {
@@ -69,30 +71,17 @@ export function EditorShell() {
   }
 
   const undo = () => {
-    setHistory((current) => {
-      const previous = current.past.at(-1)
-      if (!previous) return current
-      return {
-        past: current.past.slice(0, -1),
-        present: previous,
-        future: [current.present, ...current.future],
-      }
-    })
+    endContinuousEdit()
+    setHistory(undoHistory)
   }
 
   const redo = () => {
-    setHistory((current) => {
-      const next = current.future[0]
-      if (!next) return current
-      return {
-        past: [...current.past, current.present].slice(-HISTORY_LIMIT),
-        present: next,
-        future: current.future.slice(1),
-      }
-    })
+    endContinuousEdit()
+    setHistory((current) => redoHistory(current, HISTORY_LIMIT))
   }
 
   const applyPreset = (preset: FacePreset) => {
+    endContinuousEdit()
     setActivePresetId(preset.id)
     setLinkedEyes(true)
     setPresetError('')
@@ -100,6 +89,7 @@ export function EditorShell() {
   }
 
   const reset = () => {
+    endContinuousEdit()
     const preset = presets.find((item) => item.id === activePresetId) ?? initialPreset
     setLinkedEyes(true)
     commit(() => snapshotFromPreset(preset))
@@ -158,43 +148,45 @@ export function EditorShell() {
         <span className="phase-badge">Realtime SVG Editor</span>
       </header>
 
-      <section className="editor-workspace" aria-label="Editor workspace">
-        <div className="editor-preview-column">
-          <PreviewArea
-            model={model}
-            transparentBackground={transparentBackground}
-            pixelPerfect={pixelPerfect}
-            onTransparentBackgroundChange={(value) =>
-              commit((current) => ({ ...current, transparentBackground: value }))
-            }
-            onPixelPerfectChange={setPixelPerfect}
-          />
-        </div>
+      <ContinuousEditProvider value={{ begin: beginContinuousEdit, end: endContinuousEdit }}>
+        <section className="editor-workspace" aria-label="Editor workspace">
+          <div className="editor-preview-column">
+            <PreviewArea
+              model={model}
+              transparentBackground={transparentBackground}
+              pixelPerfect={pixelPerfect}
+              onTransparentBackgroundChange={(value) =>
+                commit((current) => ({ ...current, transparentBackground: value }))
+              }
+              onPixelPerfectChange={setPixelPerfect}
+            />
+            <div className="preview-history-actions" aria-label="Editor history">
+              <button type="button" onClick={undo} disabled={history.past.length === 0}>Undo</button>
+              <button type="button" onClick={redo} disabled={history.future.length === 0}>Redo</button>
+              <button type="button" onClick={reset}>Reset</button>
+            </div>
+          </div>
 
-        <div className="editor-sidebar">
-          <PresetPanel
-            presets={presets}
-            activePresetId={activePresetId}
-            onApply={applyPreset}
-            onSaveCurrent={saveCurrentPreset}
-            onImport={importPreset}
-            onExport={exportPreset}
-          />
-          {presetError && <p className="preset-error" role="alert">{presetError}</p>}
-          <ParameterPanel
-            model={model}
-            linkedEyes={linkedEyes}
-            canUndo={history.past.length > 0}
-            canRedo={history.future.length > 0}
-            onChange={updateModel}
-            onLinkedEyesChange={setLinkedEyes}
-            onUndo={undo}
-            onRedo={redo}
-            onReset={reset}
-          />
-          <ExportPanel model={model} transparentBackground={transparentBackground} />
-        </div>
-      </section>
+          <div className="editor-sidebar">
+            <PresetPanel
+              presets={presets}
+              activePresetId={activePresetId}
+              onApply={applyPreset}
+              onSaveCurrent={saveCurrentPreset}
+              onImport={importPreset}
+              onExport={exportPreset}
+            />
+            {presetError && <p className="preset-error" role="alert">{presetError}</p>}
+            <ParameterPanel
+              model={model}
+              linkedEyes={linkedEyes}
+              onChange={updateModel}
+              onLinkedEyesChange={setLinkedEyes}
+            />
+            <ExportPanel model={model} transparentBackground={transparentBackground} />
+          </div>
+        </section>
+      </ContinuousEditProvider>
     </main>
   )
 }
