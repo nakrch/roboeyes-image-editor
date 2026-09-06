@@ -18,6 +18,8 @@ import {
 } from './independentExpressionSafety'
 import { resizeCanvasFromCenter, type EyeSide } from './modelEditing'
 
+// Keep this deterministic: failures must be reproducible from the seed and history.
+// 6 seeds × 80 accepted edit attempts = 480 mixed Independent-mode operations.
 const SEEDS = [0x1de9e7e, 0x51de1e55, 0x7a11babe, 0xc001d00d, 0xf00dcafe, 0x66aa9911]
 const STEPS_PER_SEED = 80
 const CANVAS_MIN = 16
