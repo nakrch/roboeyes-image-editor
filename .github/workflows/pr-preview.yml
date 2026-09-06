@@ -42,8 +42,6 @@ jobs:
 
       - name: Build production site
         working-directory: production
-        env:
-          VITE_BASE_PATH: /roboeyes-image-editor/
         run: npm run build
 
       - name: Install preview dependencies
@@ -52,9 +50,7 @@ jobs:
 
       - name: Build pull request preview
         working-directory: preview
-        env:
-          VITE_BASE_PATH: /roboeyes-image-editor/pr-preview/pr-${{ github.event.number }}/
-        run: npm run build
+        run: npm run build -- --base /roboeyes-image-editor/pr-preview/pr-${{ github.event.number }}/
 
       - name: Assemble Pages artifact
         run: |
