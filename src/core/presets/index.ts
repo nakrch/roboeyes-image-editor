@@ -9,7 +9,9 @@ export {
   isExpressionModel,
   isUserExpressionPreset,
   loadCustomExpressionPresets,
+  nextCustomExpressionName,
   parseExpressionPreset,
+  removeUserExpressionPreset,
   saveCustomExpressionPresets,
   serializeExpressionPreset,
 } from './expressionStorage'
