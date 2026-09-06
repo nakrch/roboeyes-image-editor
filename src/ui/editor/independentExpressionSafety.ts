@@ -5,7 +5,12 @@ import {
   visibleEyesOverlap,
   type FaceModel,
 } from '../../core/model'
-import type { ExpressionGeometryKey, ValueRange } from './geometrySafety'
+import {
+  setSideLidSafely,
+  type ExpressionGeometryKey,
+  type LidKey,
+  type ValueRange,
+} from './geometrySafety'
 
 const REFINE_STEPS = 24
 const SCAN_STEPS = 320
@@ -118,4 +123,36 @@ export function setIndependentExpressionGeometrySafely(
   const safe = Math.min(range.max, Math.max(range.min, value))
   const next = applySideValue(model, side, key, safe)
   return isCandidateSafe(next) ? next : model
+}
+
+export function setIndependentLidSafely(
+  model: FaceModel,
+  side: 'left' | 'right',
+  key: LidKey,
+  value: number,
+): FaceModel {
+  const resolved = resolveEyeExpression(model.expression, side)
+  const current = resolved[key]
+  const target = Math.min(1, Math.max(0, value))
+  const apply = (candidate: number) => setSideLidSafely(model, side, key, candidate)
+
+  const requested = apply(target)
+  if (isCandidateSafe(requested)) return requested
+  if (!isCandidateSafe(model)) return model
+
+  let safeValue = current
+  let unsafeValue = target
+  let safeModel = model
+  for (let index = 0; index < REFINE_STEPS; index += 1) {
+    const midpoint = (safeValue + unsafeValue) / 2
+    const candidate = apply(midpoint)
+    if (isCandidateSafe(candidate)) {
+      safeValue = midpoint
+      safeModel = candidate
+    } else {
+      unsafeValue = midpoint
+    }
+  }
+
+  return safeModel
 }
