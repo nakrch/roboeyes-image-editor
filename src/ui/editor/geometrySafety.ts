@@ -181,14 +181,36 @@ function expressionDomain(key: ExpressionGeometryKey): ValueRange {
     : { min: HEIGHT_SCALE_MIN, max: HEIGHT_SCALE_MAX }
 }
 
+function isExpressionCandidateSafe(model: FaceModel): boolean {
+  return isGazeCanvasSafe(model) && !visibleEyesOverlap(model)
+}
+
+function expressionBoundary(
+  current: number,
+  endpoint: number,
+  apply: (value: number) => FaceModel,
+): number {
+  if (isExpressionCandidateSafe(apply(endpoint))) return endpoint
+  if (!isExpressionCandidateSafe(apply(current))) return current
+
+  let safe = current
+  let unsafe = endpoint
+  for (let index = 0; index < REFINE_STEPS; index += 1) {
+    const midpoint = (safe + unsafe) / 2
+    if (isExpressionCandidateSafe(apply(midpoint))) safe = midpoint
+    else unsafe = midpoint
+  }
+  return safe
+}
+
 function safeExpressionRange(
   current: number,
   domain: ValueRange,
   apply: (value: number) => FaceModel,
 ): ValueRange {
   return {
-    min: safeLowerBound(current, domain.min, apply),
-    max: safeUpperBound(current, domain.max, apply),
+    min: expressionBoundary(current, domain.min, apply),
+    max: expressionBoundary(current, domain.max, apply),
   }
 }
 
