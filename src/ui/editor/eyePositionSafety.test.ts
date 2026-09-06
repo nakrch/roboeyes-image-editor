@@ -3,6 +3,7 @@ import { roboEyesToFaceModel } from '../../core/adapters/roboeyes'
 import { defaultRoboEyesPreset } from '../../core/presets/roboeyes'
 import { isGazeCanvasSafe, visibleEyesOverlap } from '../../core/model'
 import { setIndependentEyePositionSafely } from './eyePositionSafety'
+import { resizeCanvasFromCenter } from './modelEditing'
 
 const createModel = () => roboEyesToFaceModel(defaultRoboEyesPreset)
 
@@ -73,5 +74,44 @@ describe('independent eye position safety', () => {
 
     expectSafe(next)
     expect(next.leftEye.geometry.position.x).toBeGreaterThan(28)
+  })
+
+  it('keeps overlap and canvas constraints after increasing canvas width and height', () => {
+    const resized = resizeCanvasFromCenter(createModel(), 320, 240)
+    const leftAcrossPair = setIndependentEyePositionSafely(resized, 'left', 'x', 640)
+    const rightOutsideBottom = setIndependentEyePositionSafely(resized, 'right', 'y', 640)
+
+    expectSafe(leftAcrossPair)
+    expectSafe(rightOutsideBottom)
+    expect(leftAcrossPair.leftEye.geometry.position.x).toBeLessThan(leftAcrossPair.rightEye.geometry.position.x)
+    expect(rightOutsideBottom.rightEye.geometry.position.y).toBeLessThan(240)
+  })
+
+  it('can recover horizontal position when a canvas resize leaves the current model outside', () => {
+    const model = createModel()
+    model.leftEye.geometry.position.x = 20
+    expectSafe(model)
+
+    const resized = resizeCanvasFromCenter(model, 100, 64)
+    expect(isGazeCanvasSafe(resized)).toBe(false)
+
+    const recovered = setIndependentEyePositionSafely(resized, 'left', 'x', 19)
+
+    expectSafe(recovered)
+    expect(recovered.leftEye.geometry.position.x).toBeCloseTo(19)
+  })
+
+  it('can recover vertical position when a canvas resize leaves the current model outside', () => {
+    const model = createModel()
+    model.leftEye.geometry.position.y = 19
+    expectSafe(model)
+
+    const resized = resizeCanvasFromCenter(model, 128, 50)
+    expect(isGazeCanvasSafe(resized)).toBe(false)
+
+    const recovered = setIndependentEyePositionSafely(resized, 'left', 'y', 19)
+
+    expectSafe(recovered)
+    expect(recovered.leftEye.geometry.position.y).toBeCloseTo(19)
   })
 })
