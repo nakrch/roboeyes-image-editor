@@ -17,6 +17,8 @@
 
 ## Phase 1 — Static RoboEyes-style editor
 
+**Status: Complete. Formal completion audit: #78.**
+
 ゴール:
 
 > **RoboEyes の目をブラウザ上で自由に調整し、PNG / SVG として保存できる。**
@@ -102,7 +104,11 @@
 - PNG / SVG として保存できる
 - small-display resolution を正確に扱える
 
+これらの完了条件は Issue #78 で監査済み。
+
 ## Phase 2 — Expressions
+
+**Status: In progress.**
 
 目的: 表情を固定画像ではなく model parameters で表現する。
 
