@@ -2,7 +2,7 @@
 
 > 🚧 **Under active development**
 >
-> This project is still in an early development phase. The editor is not yet ready for general use, and several features described below are planned rather than implemented.
+> **Phase 1 is complete. Phase 2 expression work is in progress.** Animation and embedded-display export remain planned for later phases.
 
 **RoboEyes Image Editor** is a browser-based parametric editor for creating robot eye and face graphics for small displays.
 
@@ -33,9 +33,11 @@ The site is rebuilt and redeployed automatically whenever changes are pushed or 
 
 ## Current Status
 
-The project is currently in **Phase 1 / foundation development**.
+**Phase 1 is complete and Phase 2 is in progress.**
 
-At this stage, the React / TypeScript / Vite application foundation and project architecture are being established. Actual eye rendering, realtime parameter editing, and image export are still under development.
+The browser editor now supports the Phase 1 static-image workflow: generic eye geometry and gaze editing, linked/independent eye controls, realtime SVG preview, presets, small-display resolutions, and PNG/SVG export. The implementation keeps the generic model, RoboEyes adapter, renderer, UI, and export layers separated.
+
+Phase 2 extends the same parametric model with expressions and eyelid controls. Animation and embedded-display export remain later-phase work.
 
 Implementation progresses incrementally through GitHub Issues so that the generic model, RoboEyes adapter, renderer, editor UI, and export layers remain separated from the beginning.
 
@@ -87,7 +89,7 @@ Renderer
 - animation は最終的に timeline 主体ではなく **state + transition** を中心にする
 - MVP は静止画エディタから始め、将来の animation / embedded export を阻害しない構造にする
 
-## MVP
+## Phase 1 MVP — Complete
 
 Phase 1 のゴールは次です。
 
@@ -106,6 +108,8 @@ Phase 1 のゴールは次です。
 - realtime SVG preview
 - PNG export
 - SVG export
+
+Phase 1 の完了監査は Issue #78 で記録しています。
 
 MVP でも内部実装は最初から `RoboEyes → adapter → generic model → renderer` に分離します。
 
