@@ -1,4 +1,8 @@
-import { resolveEyeExpression, resolveGazeReactiveHeightScale } from './expression'
+import {
+  resolveEyeExpression,
+  resolveEyeLidAperture,
+  resolveGazeReactiveHeightScale,
+} from './expression'
 import type { EyeGeometry } from './eye'
 import type { FaceModel } from './face'
 
@@ -35,7 +39,6 @@ type VisibleEyeRect = {
 
 const STROKE_HALF_WIDTH = 0.5
 const OVERLAP_EPSILON = 1e-9
-const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 
 function visibleEyeRect(
   model: FaceModel,
@@ -43,6 +46,7 @@ function visibleEyeRect(
   geometry: EyeGeometry,
 ): VisibleEyeRect {
   const expression = resolveEyeExpression(model.expression, side)
+  const aperture = resolveEyeLidAperture(model.expression, side)
   const effectiveHeightScale = resolveGazeReactiveHeightScale(
     model.expression,
     side,
@@ -50,17 +54,11 @@ function visibleEyeRect(
     model.canvas.width,
   )
   const scaledHeight = Math.max(0, geometry.height * effectiveHeightScale)
-  const inner = clamp01(expression.upperLidInner)
-  const outer = clamp01(expression.upperLidOuter)
-  const upperLeft = side === 'left' ? outer : inner
-  const upperRight = side === 'left' ? inner : outer
-  const lower = clamp01(expression.lowerLid)
-  const curvature = clamp01(expression.lowerLidCurvature)
-  const upperLeftY = -scaledHeight / 2 + scaledHeight * upperLeft
-  const upperRightY = -scaledHeight / 2 + scaledHeight * upperRight
-  const lowerY = -scaledHeight / 2 + scaledHeight * (1 - lower)
+  const upperLeftY = -scaledHeight / 2 + scaledHeight * aperture.upperLeft
+  const upperRightY = -scaledHeight / 2 + scaledHeight * aperture.upperRight
+  const lowerY = -scaledHeight / 2 + scaledHeight * aperture.lower
+  const lowerMidY = -scaledHeight / 2 + scaledHeight * aperture.lowerMid
   const upperMidY = (upperLeftY + upperRightY) / 2
-  const lowerMidY = Math.max(upperMidY, lowerY - scaledHeight * 0.5 * curvature)
   const localTop = Math.min(upperLeftY, upperRightY, upperMidY)
   const localBottom = Math.max(lowerY, lowerMidY)
   const visibleHeight = Math.max(0, localBottom - localTop)
