@@ -1,4 +1,9 @@
-import { canFitEyesInCanvas, visibleEyesOverlap, type FaceModel } from '../../core/model'
+import {
+  canFitEyesInCanvas,
+  isGazeCanvasSafe,
+  visibleEyesOverlap,
+  type FaceModel,
+} from '../../core/model'
 import {
   updateEyeGeometry,
   type EyeSide,
@@ -37,8 +42,6 @@ function applyLinkedDimension(
       },
     }
 
-    // Reapply the existing anchored spacing along the current pair axis. This keeps
-    // the pair center/axis intact instead of rebuilding a horizontal layout.
     return setAnchoredPairSpacing(resized, spacing)
   }
 
@@ -65,7 +68,7 @@ function applyIndependentDimension(
 }
 
 function isDimensionCandidateSafe(model: FaceModel): boolean {
-  return canFitEyesInCanvas(model) && !visibleEyesOverlap(model)
+  return canFitEyesInCanvas(model) && isGazeCanvasSafe(model) && !visibleEyesOverlap(model)
 }
 
 function refineDimensionBoundary(
@@ -124,12 +127,6 @@ function findDimensionAnchor(
   return best
 }
 
-/**
- * Return the contiguous safe interval around the current dimension.
- * Safety is not assumed to be monotonic: under expression tilt, making linked eyes
- * narrower can move their centers together to preserve edge spacing and may create
- * overlap before width reaches the global minimum.
- */
 function safeDimensionRange(
   currentValue: number,
   apply: (value: number) => FaceModel,
@@ -176,13 +173,11 @@ export function independentEyeDimensionRanges(
   }
 }
 
-/** Backward-compatible maximum-only view used by existing tests/callers. */
 export function linkedEyeDimensionLimits(model: FaceModel): EyeDimensionLimits {
   const ranges = linkedEyeDimensionRanges(model)
   return { width: ranges.width.max, height: ranges.height.max }
 }
 
-/** Backward-compatible maximum-only view used by existing tests/callers. */
 export function independentEyeDimensionLimits(
   model: FaceModel,
   side: EyeSide,
