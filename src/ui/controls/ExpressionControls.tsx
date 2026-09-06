@@ -18,6 +18,11 @@ import {
   setIndependentDirectionalLidSafely,
   setSharedDirectionalLidSafely,
 } from '../editor/directionalLidSafety'
+import {
+  isGazeReactiveKey,
+  setIndependentGazeReactiveSafely,
+  setSharedGazeReactiveSafely,
+} from '../editor/gazeReactiveSafety'
 import { NumericControl } from './NumericControl'
 
 type Props = {
@@ -34,6 +39,8 @@ const fields: Array<{ key: keyof EyeExpression; label: string; min: number; max:
   { key: 'lowerLidCurvature', label: 'Lower lid curvature', min: 0, max: 1, step: 0.05 },
   { key: 'tilt', label: 'Expression tilt', min: -30, max: 30, step: 'any' },
   { key: 'heightScale', label: 'Eye height scale', min: 0.5, max: 1.5, step: 'any' },
+  { key: 'gazeHeightExpansion', label: 'Gaze height expansion', min: 0, max: 1, step: 0.05 },
+  { key: 'gazeHeightThreshold', label: 'Gaze height threshold', min: 0, max: 1, step: 0.05 },
 ]
 
 function sharedValue(expression: FaceModel['expression'], key: keyof EyeExpression): number {
@@ -41,6 +48,8 @@ function sharedValue(expression: FaceModel['expression'], key: keyof EyeExpressi
   if (key === 'upperLidInner') return expression.upperLidInner ?? expression.upperLid
   if (key === 'upperLidOuter') return expression.upperLidOuter ?? expression.upperLid
   if (key === 'lowerLidCurvature') return expression.lowerLidCurvature ?? 0
+  if (key === 'gazeHeightExpansion') return expression.gazeHeightExpansion ?? 0
+  if (key === 'gazeHeightThreshold') return expression.gazeHeightThreshold ?? 0.15
   return expression[key] as number
 }
 
@@ -59,6 +68,11 @@ export function ExpressionControls({ model, linkedEyes, onChange }: Props) {
   const updateShared = (key: keyof EyeExpression, value: number) => {
     if (isExpressionGeometryKey(key)) {
       onChange((current) => setSharedExpressionGeometrySafely(current, key, value))
+      return
+    }
+
+    if (isGazeReactiveKey(key)) {
+      onChange((current) => setSharedGazeReactiveSafely(current, key, value))
       return
     }
 
@@ -86,6 +100,11 @@ export function ExpressionControls({ model, linkedEyes, onChange }: Props) {
   const updateSide = (side: 'left' | 'right', key: keyof EyeExpression, value: number) => {
     if (isExpressionGeometryKey(key)) {
       onChange((current) => setIndependentExpressionGeometrySafely(current, side, key, value))
+      return
+    }
+
+    if (isGazeReactiveKey(key)) {
+      onChange((current) => setIndependentGazeReactiveSafely(current, side, key, value))
       return
     }
 
