@@ -11,6 +11,26 @@ Read these before making architectural changes:
 3. `docs/roadmap.md`
 4. the active GitHub Issue
 
+## Reference-first implementation rule
+
+Before designing or implementing behavior, geometry, expressions, animation, compatibility, rendering, controls, or export semantics that are related to RoboEyes, first inspect the current implementation in the original **FluxGarage/RoboEyes** repository.
+
+Also inspect one or more representative derivative / port implementations when they are relevant and available (for example established MicroPython or other RoboEyes-derived libraries). Use them to understand how the behavior has been interpreted across implementations, not just how one codebase happens to encode it.
+
+Preferred decision order:
+
+1. **Original FluxGarage/RoboEyes behavior and implementation**
+2. **Representative derivative/port implementations**
+3. **Common behavioral/geometric pattern inferred from those references**
+4. **Generic, renderer-independent abstraction for this editor**
+5. **Project-specific UX improvements**, only when they do not silently change the intended RoboEyes-compatible behavior
+
+Do not invent a new behavioral model first and compare it with RoboEyes afterward. Reference implementations should inform the design before implementation starts.
+
+The project does **not** need to copy upstream APIs or internal data structures literally. Preserve the architecture below: translate reference behavior into a generic model rather than leaking RoboEyes-specific flags or APIs into the renderer. When the generic abstraction intentionally differs from upstream internals, document the reason in the Issue or PR.
+
+For visual/expression work, prefer checking the actual drawing primitives, geometry calculations, interpolation/tweening, and edge-case handling in the reference implementations rather than relying only on README descriptions or screenshots.
+
 ## Non-negotiable architecture
 
 ```text
