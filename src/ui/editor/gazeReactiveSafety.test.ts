@@ -40,7 +40,7 @@ describe('gaze-reactive expression safety', () => {
       canvas: { width: 128, height: 44 },
       leftEye: { geometry: { ...model.leftEye.geometry, position: { x: 40, y: 22 }, height: 30 } },
       rightEye: { geometry: { ...model.rightEye.geometry, position: { x: 88, y: 22 }, height: 30 } },
-      gaze: { x: -8, y: 0 },
+      gaze: { x: -24, y: 0 },
       expression: { ...model.expression, gazeHeightExpansion: 0 },
     }
     const next = setSharedGazeReactiveSafely(tight, 'gazeHeightExpansion', 1)
