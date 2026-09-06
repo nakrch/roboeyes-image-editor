@@ -10,10 +10,13 @@ import {
 
 export type EyeDimensionKey = 'width' | 'height'
 export type EyeDimensionLimits = { width: number; height: number }
+export type EyeDimensionRange = { min: number; max: number }
+export type EyeDimensionRanges = { width: EyeDimensionRange; height: EyeDimensionRange }
 
 const EYE_DIMENSION_MIN = 1
 const EYE_DIMENSION_MAX = 160
 const DIMENSION_REFINE_STEPS = 18
+const DIMENSION_SCAN_STEPS = 320
 
 function applyLinkedDimension(
   model: FaceModel,
@@ -65,58 +68,127 @@ function isDimensionCandidateSafe(model: FaceModel): boolean {
   return canFitEyesInCanvas(model) && !visibleEyesOverlap(model)
 }
 
-function safeDimensionMax(
-  currentValue: number,
+function refineDimensionBoundary(
+  safeValue: number,
+  unsafeValue: number,
   apply: (value: number) => FaceModel,
 ): number {
-  if (isDimensionCandidateSafe(apply(EYE_DIMENSION_MAX))) return EYE_DIMENSION_MAX
-
-  if (!isDimensionCandidateSafe(apply(EYE_DIMENSION_MIN))) {
-    return Math.min(EYE_DIMENSION_MAX, Math.max(EYE_DIMENSION_MIN, currentValue))
-  }
-
-  let safe = EYE_DIMENSION_MIN
-  let unsafe = EYE_DIMENSION_MAX
-
+  let safe = safeValue
+  let unsafe = unsafeValue
   for (let index = 0; index < DIMENSION_REFINE_STEPS; index += 1) {
     const midpoint = (safe + unsafe) / 2
     if (isDimensionCandidateSafe(apply(midpoint))) safe = midpoint
     else unsafe = midpoint
   }
-
   return safe
 }
 
-/** Canvas-safe, non-overlapping maximum dimensions when both eyes are edited together. */
-export function linkedEyeDimensionLimits(model: FaceModel): EyeDimensionLimits {
+function scanDimensionBoundary(
+  anchor: number,
+  endpoint: number,
+  apply: (value: number) => FaceModel,
+): number {
+  if (anchor === endpoint) return anchor
+  let previous = anchor
+
+  for (let index = 1; index <= DIMENSION_SCAN_STEPS; index += 1) {
+    const candidate = anchor + (endpoint - anchor) * (index / DIMENSION_SCAN_STEPS)
+    if (!isDimensionCandidateSafe(apply(candidate))) {
+      return refineDimensionBoundary(previous, candidate, apply)
+    }
+    previous = candidate
+  }
+
+  return endpoint
+}
+
+function findDimensionAnchor(
+  currentValue: number,
+  apply: (value: number) => FaceModel,
+): number | undefined {
+  const current = Math.min(EYE_DIMENSION_MAX, Math.max(EYE_DIMENSION_MIN, currentValue))
+  if (isDimensionCandidateSafe(apply(current))) return current
+
+  let best: number | undefined
+  let bestDistance = Number.POSITIVE_INFINITY
+  for (let index = 0; index <= DIMENSION_SCAN_STEPS; index += 1) {
+    const candidate = EYE_DIMENSION_MIN +
+      (EYE_DIMENSION_MAX - EYE_DIMENSION_MIN) * (index / DIMENSION_SCAN_STEPS)
+    if (!isDimensionCandidateSafe(apply(candidate))) continue
+    const distance = Math.abs(candidate - current)
+    if (distance < bestDistance) {
+      best = candidate
+      bestDistance = distance
+    }
+  }
+  return best
+}
+
+/**
+ * Return the contiguous safe interval around the current dimension.
+ * Safety is not assumed to be monotonic: under expression tilt, making linked eyes
+ * narrower can move their centers together to preserve edge spacing and may create
+ * overlap before width reaches the global minimum.
+ */
+function safeDimensionRange(
+  currentValue: number,
+  apply: (value: number) => FaceModel,
+): EyeDimensionRange {
+  const anchor = findDimensionAnchor(currentValue, apply)
+  if (anchor === undefined) {
+    const current = Math.min(EYE_DIMENSION_MAX, Math.max(EYE_DIMENSION_MIN, currentValue))
+    return { min: current, max: current }
+  }
+
+  return {
+    min: scanDimensionBoundary(anchor, EYE_DIMENSION_MIN, apply),
+    max: scanDimensionBoundary(anchor, EYE_DIMENSION_MAX, apply),
+  }
+}
+
+export function linkedEyeDimensionRanges(model: FaceModel): EyeDimensionRanges {
   const currentWidth = (model.leftEye.geometry.width + model.rightEye.geometry.width) / 2
   const currentHeight = (model.leftEye.geometry.height + model.rightEye.geometry.height) / 2
 
   return {
-    width: safeDimensionMax(currentWidth, (value) =>
+    width: safeDimensionRange(currentWidth, (value) =>
       applyLinkedDimension(model, 'width', value),
     ),
-    height: safeDimensionMax(currentHeight, (value) =>
+    height: safeDimensionRange(currentHeight, (value) =>
       applyLinkedDimension(model, 'height', value),
     ),
   }
 }
 
-/** Canvas-safe, non-overlapping maximum dimensions for one independently edited eye. */
+export function independentEyeDimensionRanges(
+  model: FaceModel,
+  side: EyeSide,
+): EyeDimensionRanges {
+  const geometry = side === 'left' ? model.leftEye.geometry : model.rightEye.geometry
+
+  return {
+    width: safeDimensionRange(geometry.width, (value) =>
+      applyIndependentDimension(model, side, 'width', value),
+    ),
+    height: safeDimensionRange(geometry.height, (value) =>
+      applyIndependentDimension(model, side, 'height', value),
+    ),
+  }
+}
+
+/** Backward-compatible maximum-only view used by existing tests/callers. */
+export function linkedEyeDimensionLimits(model: FaceModel): EyeDimensionLimits {
+  const ranges = linkedEyeDimensionRanges(model)
+  return { width: ranges.width.max, height: ranges.height.max }
+}
+
+/** Backward-compatible maximum-only view used by existing tests/callers. */
 export function independentEyeDimensionLimits(
   model: FaceModel,
   side: EyeSide,
 ): EyeDimensionLimits {
-  const geometry = side === 'left' ? model.leftEye.geometry : model.rightEye.geometry
-
-  return {
-    width: safeDimensionMax(geometry.width, (value) =>
-      applyIndependentDimension(model, side, 'width', value),
-    ),
-    height: safeDimensionMax(geometry.height, (value) =>
-      applyIndependentDimension(model, side, 'height', value),
-    ),
-  }
+  const ranges = independentEyeDimensionRanges(model, side)
+  return { width: ranges.width.max, height: ranges.height.max }
 }
 
 export function setLinkedEyeDimensionSafely(
@@ -124,9 +196,10 @@ export function setLinkedEyeDimensionSafely(
   key: EyeDimensionKey,
   value: number,
 ): FaceModel {
-  const limits = linkedEyeDimensionLimits(model)
-  const safeValue = Math.min(limits[key], Math.max(EYE_DIMENSION_MIN, value))
-  return applyLinkedDimension(model, key, safeValue)
+  const range = linkedEyeDimensionRanges(model)[key]
+  const safeValue = Math.min(range.max, Math.max(range.min, value))
+  const next = applyLinkedDimension(model, key, safeValue)
+  return isDimensionCandidateSafe(next) ? next : model
 }
 
 export function setIndependentEyeDimensionSafely(
@@ -135,7 +208,8 @@ export function setIndependentEyeDimensionSafely(
   key: EyeDimensionKey,
   value: number,
 ): FaceModel {
-  const limits = independentEyeDimensionLimits(model, side)
-  const safeValue = Math.min(limits[key], Math.max(EYE_DIMENSION_MIN, value))
-  return applyIndependentDimension(model, side, key, safeValue)
+  const range = independentEyeDimensionRanges(model, side)[key]
+  const safeValue = Math.min(range.max, Math.max(range.min, value))
+  const next = applyIndependentDimension(model, side, key, safeValue)
+  return isDimensionCandidateSafe(next) ? next : model
 }
