@@ -73,7 +73,7 @@ describe('renderFaceToSvg', () => {
 
     expect(leftPath).toContain('M 26 22.6 L 58 33.8')
     expect(rightPath).toContain('M 72 34 L 108 22')
-    expect(leftPath).toContain('Q 42 28.2 26 42.8')
-    expect(rightPath).toContain('Q 90 28 72 43.5')
+    expect(leftPath).toContain('Q 42 31 26 40.8')
+    expect(rightPath).toContain('Q 90 31 72 41.5')
   })
 })
