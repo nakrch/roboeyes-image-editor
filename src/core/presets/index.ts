@@ -20,9 +20,12 @@ export {
   CUSTOM_PRESET_STORAGE_KEY,
   createCustomPreset,
   loadCustomPresets,
+  nextCustomPresetName,
   parsePreset,
+  removeCustomPreset,
   saveCustomPresets,
   serializePreset,
+  uniquePresetName,
 } from './storage'
 export { clonePreset, isFacePreset } from './schema'
 export type { FacePreset, NumericConstraint, PresetConstraints } from './schema'
