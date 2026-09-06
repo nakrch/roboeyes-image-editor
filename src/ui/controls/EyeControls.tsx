@@ -7,10 +7,12 @@ import {
 } from '../editor/eyeDimensions'
 import {
   anchoredPairSpacing,
-  anchoredPairSpacingMax,
   anchoredPairSpacingMin,
-  setAnchoredPairSpacingSafely,
 } from '../editor/geometrySafety'
+import {
+  canvasSafeAnchoredPairSpacingMax,
+  setCanvasSafeAnchoredPairSpacing,
+} from '../editor/spacingCanvasSafety'
 import {
   movePair,
   pairCenterX,
@@ -43,7 +45,7 @@ export function EyeControls({
   const linkedDimensionLimits = linkedEyeDimensionLimits(model)
   const spacing = anchoredPairSpacing(model)
   const spacingMin = anchoredPairSpacingMin(model)
-  const spacingMax = anchoredPairSpacingMax(model)
+  const spacingMax = canvasSafeAnchoredPairSpacingMax(model)
 
   const updateLinkedGeometry = (key: GeometryKey, value: number) => {
     onChange((current) => {
@@ -151,7 +153,7 @@ export function EyeControls({
           min={spacingMin}
           max={spacingMax}
           step="any"
-          onChange={(value) => onChange((current) => setAnchoredPairSpacingSafely(current, value))}
+          onChange={(value) => onChange((current) => setCanvasSafeAnchoredPairSpacing(current, value))}
         />
       </div>
     </details>
