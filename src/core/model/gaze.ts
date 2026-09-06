@@ -1,4 +1,4 @@
-import { resolveEyeExpression } from './expression'
+import { resolveEyeExpression, resolveGazeReactiveHeightScale } from './expression'
 import type { EyeGeometry } from './eye'
 import type { FaceModel } from './face'
 
@@ -43,7 +43,13 @@ function visibleEyeRect(
   geometry: EyeGeometry,
 ): VisibleEyeRect {
   const expression = resolveEyeExpression(model.expression, side)
-  const scaledHeight = Math.max(0, geometry.height * expression.heightScale)
+  const effectiveHeightScale = resolveGazeReactiveHeightScale(
+    model.expression,
+    side,
+    model.gaze.x,
+    model.canvas.width,
+  )
+  const scaledHeight = Math.max(0, geometry.height * effectiveHeightScale)
   const inner = clamp01(expression.upperLidInner)
   const outer = clamp01(expression.upperLidOuter)
   const upperLeft = side === 'left' ? outer : inner
@@ -64,9 +70,6 @@ function visibleEyeRect(
   const cos = Math.cos(radians)
   const sin = Math.sin(radians)
 
-  // Use a conservative oriented bounding rectangle around the clipped aperture.
-  // Directional lids and curved lower masks can only reduce the eye from the full width,
-  // while localTop/localBottom capture their maximum visible vertical extent.
   const center = {
     x: geometry.position.x - visibleCenterOffsetY * sin,
     y: geometry.position.y + visibleCenterOffsetY * cos,
@@ -118,8 +121,6 @@ export function visibleEyesOverlap(model: FaceModel): boolean {
   }
   const axes = [left.axisX, left.axisY, right.axisX, right.axisY]
 
-  // Separating-axis theorem for the two conservative oriented aperture bounds.
-  // Edge contact is allowed; only positive-area intersection counts as overlap.
   for (const axis of axes) {
     const centerDistance = Math.abs(centerDelta.x * axis.x + centerDelta.y * axis.y)
     const requiredDistance = projectionRadius(left, axis) + projectionRadius(right, axis)
