@@ -1,4 +1,9 @@
-import { resolveEyeExpression, type EyeGeometry, type FaceModel } from '../../core/model'
+import {
+  resolveEyeExpression,
+  resolveGazeReactiveHeightScale,
+  type EyeGeometry,
+  type FaceModel,
+} from '../../core/model'
 
 export type SvgRenderOptions = {
   transparentBackground?: boolean
@@ -32,7 +37,13 @@ function renderEye(
   const centerX = geometry.position.x + model.gaze.x
   const centerY = geometry.position.y + model.gaze.y
   const expression = resolveEyeExpression(model.expression, id)
-  const scaledHeight = geometry.height * Math.max(0, expression.heightScale)
+  const effectiveHeightScale = resolveGazeReactiveHeightScale(
+    model.expression,
+    id,
+    model.gaze.x,
+    model.canvas.width,
+  )
+  const scaledHeight = geometry.height * effectiveHeightScale
   const x = centerX - geometry.width / 2
   const y = centerY - scaledHeight / 2
   const radius = Math.max(
