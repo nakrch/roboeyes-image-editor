@@ -29,6 +29,10 @@ function createModel(): FaceModel {
   return roboEyesToFaceModel(defaultRoboEyesPreset)
 }
 
+function editorCommit(model: FaceModel): FaceModel {
+  return clampGaze(model)
+}
+
 function mulberry32(seed: number): () => number {
   let state = seed >>> 0
   return () => {
@@ -80,7 +84,6 @@ function allGeometryNumbers(model: FaceModel): number[] {
 
 function assertGeometryInvariants(model: FaceModel, context: string): void {
   const details = `${context}\nmodel=${JSON.stringify(model)}`
-
   if (allGeometryNumbers(model).some((value) => !Number.isFinite(value))) {
     throw new Error(`non-finite geometry\n${details}`)
   }
@@ -91,16 +94,12 @@ function assertGeometryInvariants(model: FaceModel, context: string): void {
     throw new Error(`visible eyes overlap\n${details}`)
   }
 
-  const leftExpression = resolveEyeExpression(model.expression, 'left')
-  const rightExpression = resolveEyeExpression(model.expression, 'right')
-  const leftExpectedVisible = leftExpression.upperLid + leftExpression.lowerLid < 1 - 1e-9
-  const rightExpectedVisible = rightExpression.upperLid + rightExpression.lowerLid < 1 - 1e-9
-
-  if (leftExpectedVisible && visibleHeight(model, 'left') <= 0) {
-    throw new Error(`left eye disappeared unexpectedly\n${details}`)
-  }
-  if (rightExpectedVisible && visibleHeight(model, 'right') <= 0) {
-    throw new Error(`right eye disappeared unexpectedly\n${details}`)
+  for (const side of ['left', 'right'] as const) {
+    const expression = resolveEyeExpression(model.expression, side)
+    const expectedVisible = expression.upperLid + expression.lowerLid < 1 - 1e-9
+    if (expectedVisible && visibleHeight(model, side) <= 0) {
+      throw new Error(`${side} eye disappeared unexpectedly\n${details}`)
+    }
   }
 }
 
@@ -111,61 +110,81 @@ function resizeCanvasSafely(model: FaceModel, requestedWidth: number, requestedH
   return resizeCanvasFromCenter(model, width, height)
 }
 
-function applyRandomSafeOperation(
+function applyRandomEditorOperation(
   model: FaceModel,
   random: () => number,
 ): { model: FaceModel; operation: string } {
   const operation = Math.floor(random() * 9)
+  let next: FaceModel
+  let label: string
 
   switch (operation) {
     case 0: {
       const value = randomBetween(random, 1, 160)
-      return { model: setLinkedEyeDimensionSafely(model, 'width', value), operation: `linked width=${value}` }
+      next = setLinkedEyeDimensionSafely(model, 'width', value)
+      label = `linked width=${value}`
+      break
     }
     case 1: {
       const value = randomBetween(random, 1, 160)
-      return { model: setLinkedEyeDimensionSafely(model, 'height', value), operation: `linked height=${value}` }
+      next = setLinkedEyeDimensionSafely(model, 'height', value)
+      label = `linked height=${value}`
+      break
     }
     case 2: {
       const value = randomBetween(random, 0, 160)
-      return { model: setAnchoredPairSpacingSafely(model, value), operation: `spacing=${value}` }
+      next = setAnchoredPairSpacingSafely(model, value)
+      label = `spacing=${value}`
+      break
     }
     case 3: {
       const value = randomBetween(random, -45, 45)
-      return { model: rotatePairSafely(model, value), operation: `rotation=${value}` }
+      next = rotatePairSafely(model, value)
+      label = `rotation=${value}`
+      break
     }
     case 4: {
       const value = randomBetween(random, -30, 30)
-      return { model: setSharedExpressionGeometrySafely(model, 'tilt', value), operation: `tilt=${value}` }
+      next = setSharedExpressionGeometrySafely(model, 'tilt', value)
+      label = `tilt=${value}`
+      break
     }
     case 5: {
       const value = randomBetween(random, 0.5, 1.5)
-      return { model: setSharedExpressionGeometrySafely(model, 'heightScale', value), operation: `heightScale=${value}` }
+      next = setSharedExpressionGeometrySafely(model, 'heightScale', value)
+      label = `heightScale=${value}`
+      break
     }
     case 6: {
       const key = randomChoice(random, ['upperLid', 'lowerLid'] as const)
       const value = randomBetween(random, 0, 0.9)
-      return { model: setSharedLidSafely(model, key, value), operation: `${key}=${value}` }
+      next = setSharedLidSafely(model, key, value)
+      label = `${key}=${value}`
+      break
     }
     case 7: {
       const requested = {
         x: randomBetween(random, -96, 96),
         y: randomBetween(random, -96, 96),
       }
-      return {
-        model: clampGaze({ ...model, gaze: requested }),
-        operation: `gaze=${JSON.stringify(requested)}`,
-      }
+      next = { ...model, gaze: requested }
+      label = `gaze=${JSON.stringify(requested)}`
+      break
     }
     default: {
       const width = randomBetween(random, 32, 320)
       const height = randomBetween(random, 32, 240)
-      return {
-        model: resizeCanvasSafely(model, width, height),
-        operation: `canvas=${width}x${height}`,
-      }
+      next = resizeCanvasSafely(model, width, height)
+      label = `canvas=${width}x${height}`
+      break
     }
   }
+
+  return { model: editorCommit(next), operation: label }
+}
+
+function commit(model: FaceModel, updater: (current: FaceModel) => FaceModel): FaceModel {
+  return editorCommit(updater(model))
 }
 
 describe('geometry combinatorial regression', () => {
@@ -181,30 +200,28 @@ describe('geometry combinatorial regression', () => {
   for (const [index, scenario] of scenarios.entries()) {
     it(`keeps representative mixed case ${index + 1} valid`, () => {
       let model = createModel()
-      model = setSharedLidSafely(model, 'upperLid', scenario.upperLid)
-      model = setSharedLidSafely(model, 'lowerLid', scenario.lowerLid)
-      model = setSharedExpressionGeometrySafely(model, 'heightScale', scenario.scale)
-      model = setSharedExpressionGeometrySafely(model, 'tilt', scenario.tilt)
-      model = rotatePairSafely(model, scenario.rotation)
-      model = setAnchoredPairSpacingSafely(model, scenario.spacing)
-      model = setLinkedEyeDimensionSafely(model, 'width', 44)
-      model = setLinkedEyeDimensionSafely(model, 'height', 42)
-      model = clampGaze({ ...model, gaze: { x: 24, y: -16 } })
-
+      model = commit(model, (current) => setSharedLidSafely(current, 'upperLid', scenario.upperLid))
+      model = commit(model, (current) => setSharedLidSafely(current, 'lowerLid', scenario.lowerLid))
+      model = commit(model, (current) => setSharedExpressionGeometrySafely(current, 'heightScale', scenario.scale))
+      model = commit(model, (current) => setSharedExpressionGeometrySafely(current, 'tilt', scenario.tilt))
+      model = commit(model, (current) => rotatePairSafely(current, scenario.rotation))
+      model = commit(model, (current) => setAnchoredPairSpacingSafely(current, scenario.spacing))
+      model = commit(model, (current) => setLinkedEyeDimensionSafely(current, 'width', 44))
+      model = commit(model, (current) => setLinkedEyeDimensionSafely(current, 'height', 42))
+      model = editorCommit({ ...model, gaze: { x: 24, y: -16 } })
       assertGeometryInvariants(model, `scenario=${JSON.stringify(scenario)}`)
     })
   }
 
   it('keeps independent dimension edits valid in a rotated/lidded state', () => {
     let model = createModel()
-    model = setSharedLidSafely(model, 'upperLid', 0.4)
-    model = setSharedExpressionGeometrySafely(model, 'tilt', 18)
-    model = rotatePairSafely(model, 22)
-    model = setIndependentEyeDimensionSafely(model, 'left', 'width', 52)
-    model = setIndependentEyeDimensionSafely(model, 'right', 'height', 48)
-    model = setAnchoredPairSpacingSafely(model, 0)
-    model = clampGaze({ ...model, gaze: { x: -32, y: 18 } })
-
+    model = commit(model, (current) => setSharedLidSafely(current, 'upperLid', 0.4))
+    model = commit(model, (current) => setSharedExpressionGeometrySafely(current, 'tilt', 18))
+    model = commit(model, (current) => rotatePairSafely(current, 22))
+    model = commit(model, (current) => setIndependentEyeDimensionSafely(current, 'left', 'width', 52))
+    model = commit(model, (current) => setIndependentEyeDimensionSafely(current, 'right', 'height', 48))
+    model = commit(model, (current) => setAnchoredPairSpacingSafely(current, 0))
+    model = editorCommit({ ...model, gaze: { x: -32, y: 18 } })
     assertGeometryInvariants(model, 'independent dimension regression')
   })
 })
@@ -217,7 +234,7 @@ describe('geometry seeded fuzz', () => {
       const history: string[] = []
 
       for (let step = 0; step < STEPS_PER_SEED; step += 1) {
-        const result = applyRandomSafeOperation(model, random)
+        const result = applyRandomEditorOperation(model, random)
         model = result.model
         history.push(result.operation)
         assertGeometryInvariants(
