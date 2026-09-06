@@ -6,17 +6,19 @@ type SelectableExpressionPreset = ExpressionPreset | UserExpressionPreset
 type Props = {
   presets: SelectableExpressionPreset[]
   activePresetId: string
+  status: string
   onApply: (preset: SelectableExpressionPreset) => void
   onSaveCurrent: (name: string) => void
   onImport: (json: string) => void
   onExport: (preset: UserExpressionPreset) => void
+  onDelete: (preset: UserExpressionPreset) => void
 }
 
-export function ExpressionPresetPanel({ presets, activePresetId, onApply, onSaveCurrent, onImport, onExport }: Props) {
+export function ExpressionPresetPanel({ presets, activePresetId, status, onApply, onSaveCurrent, onImport, onExport, onDelete }: Props) {
   const [name, setName] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const activePreset = presets.find((preset) => preset.id === activePresetId)
-  const exportable = activePreset?.id.startsWith('expression-custom:')
+  const customPreset = activePreset?.id.startsWith('expression-custom:')
     ? activePreset as UserExpressionPreset
     : undefined
 
@@ -50,9 +52,12 @@ export function ExpressionPresetPanel({ presets, activePresetId, onApply, onSave
         <button type="button" onClick={() => { onSaveCurrent(name); setName('') }}>Save expression</button>
       </div>
 
+      {status && <p className="preset-status" role="status" aria-live="polite">{status}</p>}
+
       <div className="preset-file-actions">
         <button type="button" onClick={() => inputRef.current?.click()}>Import JSON</button>
-        <button type="button" disabled={!exportable} onClick={() => exportable && onExport(exportable)}>Export JSON</button>
+        <button type="button" disabled={!customPreset} onClick={() => customPreset && onExport(customPreset)}>Export JSON</button>
+        <button type="button" disabled={!customPreset} onClick={() => customPreset && onDelete(customPreset)}>Delete</button>
         <input ref={inputRef} className="visually-hidden" type="file" accept="application/json,.json" onChange={importFile} />
       </div>
     </aside>
