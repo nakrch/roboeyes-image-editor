@@ -5,12 +5,14 @@ import {
   isLidKey,
   setSharedExpressionGeometrySafely,
   setSharedLidSafely,
-  setSideExpressionGeometrySafely,
   setSideLidSafely,
   sharedExpressionGeometryRange,
-  sideExpressionGeometryRange,
   translatePairToKeepCurrentGaze,
 } from '../editor/geometrySafety'
+import {
+  independentExpressionGeometryRange,
+  setIndependentExpressionGeometrySafely,
+} from '../editor/independentExpressionSafety'
 import { NumericControl } from './NumericControl'
 
 type Props = {
@@ -67,7 +69,7 @@ export function ExpressionControls({ model, linkedEyes, onChange }: Props) {
 
   const updateSide = (side: 'left' | 'right', key: keyof EyeExpression, value: number) => {
     if (isExpressionGeometryKey(key)) {
-      onChange((current) => setSideExpressionGeometrySafely(current, side, key, value))
+      onChange((current) => setIndependentExpressionGeometrySafely(current, side, key, value))
       return
     }
 
@@ -127,7 +129,7 @@ export function ExpressionControls({ model, linkedEyes, onChange }: Props) {
                   <legend>{side === 'left' ? 'Left eye expression' : 'Right eye expression'}</legend>
                   {fields.map((field) => {
                     const range = isExpressionGeometryKey(field.key)
-                      ? sideExpressionGeometryRange(model, side, field.key)
+                      ? independentExpressionGeometryRange(model, side, field.key)
                       : { min: field.min, max: field.max }
                     return (
                       <NumericControl
