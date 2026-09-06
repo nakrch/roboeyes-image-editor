@@ -75,7 +75,7 @@ describe('expression model', () => {
     })
   })
 
-  it('expands only the eye on the active horizontal gaze side', () => {
+  it('smoothly expands only the eye on the active horizontal gaze side', () => {
     const curious: ExpressionModel = {
       upperLid: 0,
       lowerLid: 0,
@@ -86,10 +86,12 @@ describe('expression model', () => {
 
     expect(resolveGazeReactiveHeightScale(curious, 'left', 0, 128)).toBe(1)
     expect(resolveGazeReactiveHeightScale(curious, 'right', 0, 128)).toBe(1)
-    expect(resolveGazeReactiveHeightScale(curious, 'left', -8, 128)).toBe(1.4)
-    expect(resolveGazeReactiveHeightScale(curious, 'right', -8, 128)).toBe(1)
-    expect(resolveGazeReactiveHeightScale(curious, 'left', 8, 128)).toBe(1)
-    expect(resolveGazeReactiveHeightScale(curious, 'right', 8, 128)).toBe(1.4)
+    expect(resolveGazeReactiveHeightScale(curious, 'left', -35.2, 128)).toBeCloseTo(1.2)
+    expect(resolveGazeReactiveHeightScale(curious, 'right', -35.2, 128)).toBe(1)
+    expect(resolveGazeReactiveHeightScale(curious, 'left', -64, 128)).toBe(1.4)
+    expect(resolveGazeReactiveHeightScale(curious, 'left', 35.2, 128)).toBe(1)
+    expect(resolveGazeReactiveHeightScale(curious, 'right', 35.2, 128)).toBeCloseTo(1.2)
+    expect(resolveGazeReactiveHeightScale(curious, 'right', 64, 128)).toBe(1.4)
   })
 
   it('supports asymmetric gaze-reactive strength overrides', () => {
@@ -102,7 +104,7 @@ describe('expression model', () => {
       leftEye: { gazeHeightExpansion: 0.5 },
     }
 
-    expect(resolveGazeReactiveHeightScale(asymmetric, 'left', -8, 128)).toBe(1.5)
-    expect(resolveGazeReactiveHeightScale(asymmetric, 'right', 8, 128)).toBe(1.2)
+    expect(resolveGazeReactiveHeightScale(asymmetric, 'left', -64, 128)).toBe(1.5)
+    expect(resolveGazeReactiveHeightScale(asymmetric, 'right', 64, 128)).toBe(1.2)
   })
 })
