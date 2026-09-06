@@ -1,4 +1,4 @@
-export { resolveEyeExpression } from './expression'
+export { resolveEyeExpression, resolveGazeReactiveHeightScale } from './expression'
 export type { ExpressionModel, EyeExpression } from './expression'
 export { canFitEyesInCanvas, clampGaze, gazeLimits, isGazeCanvasSafe, minimumCanvasSize, visibleEyesOverlap } from './gaze'
 export type { CanvasMinimumSize, GazeLimits, NumericRange } from './gaze'

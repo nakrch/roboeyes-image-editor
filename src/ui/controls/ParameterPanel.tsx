@@ -1,4 +1,5 @@
 import { gazeLimits, minimumCanvasSize, type FaceModel } from '../../core/model'
+import { setGazeSafely } from '../editor/gazeSafety'
 import { resizeCanvasFromCenter } from '../editor/modelEditing'
 import { EyeControls } from './EyeControls'
 import { ExpressionControls } from './ExpressionControls'
@@ -124,7 +125,7 @@ export function ParameterPanel({
               min={safeGaze.x.min}
               max={safeGaze.x.max}
               step="any"
-              onChange={(value) => onChange((current) => ({ ...current, gaze: { ...current.gaze, x: value } }))}
+              onChange={(value) => onChange((current) => setGazeSafely(current, 'x', value))}
             />
             <NumericControl
               label="Gaze Y"
@@ -132,7 +133,7 @@ export function ParameterPanel({
               min={safeGaze.y.min}
               max={safeGaze.y.max}
               step="any"
-              onChange={(value) => onChange((current) => ({ ...current, gaze: { ...current.gaze, y: value } }))}
+              onChange={(value) => onChange((current) => setGazeSafely(current, 'y', value))}
             />
           </div>
         </details>
