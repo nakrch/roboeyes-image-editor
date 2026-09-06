@@ -3,6 +3,17 @@ export { defaultRoboEyesPreset, roboEyesPreset } from './roboeyes'
 export { expressionPresets, matchExpressionPreset } from './expressions'
 export type { ExpressionPreset } from './expressions'
 export {
+  CUSTOM_EXPRESSION_PRESET_STORAGE_KEY,
+  createUserExpressionPreset,
+  isExpressionModel,
+  isUserExpressionPreset,
+  loadCustomExpressionPresets,
+  parseExpressionPreset,
+  saveCustomExpressionPresets,
+  serializeExpressionPreset,
+} from './expressionStorage'
+export type { UserExpressionPreset } from './expressionStorage'
+export {
   CUSTOM_PRESET_STORAGE_KEY,
   createCustomPreset,
   loadCustomPresets,
