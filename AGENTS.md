@@ -80,4 +80,8 @@ over a timeline-first design.
 - Keep changes narrowly scoped.
 - Add tests around model/adapter/renderer/export behavior.
 - Update docs when a design decision changes.
+- **Before merging any user-visible UI/UX, interaction, renderer, preview, or output change, validate the latest PR head through the automatic PR Preview.** The preview deployment must be successful and must correspond to the latest PR head.
+- Do not merge a user-visible change while its PR Preview is failed, cancelled, stale, or unavailable.
+- When visual feel or interaction behavior matters, obtain manual confirmation from the PR Preview before merging. CI test/build is still required; Preview is an additional gate, not a replacement.
+- Docs-only or purely internal changes may skip manual Preview validation only when the Preview provides no meaningful validation.
 - If implementation pressure conflicts with `docs/direction.md`, do not silently change the architecture; surface the conflict and update the design deliberately.
