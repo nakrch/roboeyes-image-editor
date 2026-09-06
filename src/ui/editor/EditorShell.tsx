@@ -11,11 +11,13 @@ import {
   matchExpressionPreset,
   parseExpressionPreset,
   parsePreset,
+  removeCustomPreset,
   removeUserExpressionPreset,
   saveCustomExpressionPresets,
   saveCustomPresets,
   serializeExpressionPreset,
   serializePreset,
+  uniquePresetName,
   type ExpressionPreset,
   type FacePreset,
   type UserExpressionPreset,
@@ -49,6 +51,10 @@ function expressionEqual(a: FaceModel['expression'], b: FaceModel['expression'])
   return JSON.stringify(a) === JSON.stringify(b)
 }
 
+function snapshotEqual(a: EditorSnapshot, b: EditorSnapshot): boolean {
+  return JSON.stringify(a) === JSON.stringify(b)
+}
+
 export function EditorShell() {
   const [history, setHistory] = useState<HistoryState<EditorSnapshot>>(() => ({
     past: [],
@@ -67,6 +73,7 @@ export function EditorShell() {
     loadCustomExpressionPresets(window.localStorage),
   )
   const [presetError, setPresetError] = useState('')
+  const [presetStatus, setPresetStatus] = useState('')
   const [expressionPresetError, setExpressionPresetError] = useState('')
   const [expressionPresetStatus, setExpressionPresetStatus] = useState('')
   const presets: FacePreset[] = [...builtInPresets.map(clonePreset), ...customPresets]
@@ -107,6 +114,7 @@ export function EditorShell() {
     setActiveExpressionPresetId(matchExpressionPreset(preset.model.expression))
     setLinkedEyes(true)
     setPresetError('')
+    setPresetStatus('')
     commit(() => snapshotFromPreset(preset))
   }
 
@@ -124,19 +132,31 @@ export function EditorShell() {
   }
 
   const saveCurrentPreset = (name: string) => {
-    const preset = createCustomPreset(name, history.present.model, history.present.transparentBackground)
+    const preset = createCustomPreset(
+      name,
+      history.present.model,
+      history.present.transparentBackground,
+      presets,
+    )
     persistCustomPresets([...customPresets, preset])
     setActivePresetId(preset.id)
     setPresetError('')
+    setPresetStatus(`Saved “${preset.name}”.`)
   }
 
   const importPreset = (json: string) => {
     try {
       const imported = parsePreset(json)
-      const preset: FacePreset = { ...clonePreset(imported), id: `custom:${crypto.randomUUID()}`, name: imported.name || 'Imported preset' }
+      const preset: FacePreset = {
+        ...clonePreset(imported),
+        id: `custom:${crypto.randomUUID()}`,
+        name: uniquePresetName(imported.name, presets),
+      }
       persistCustomPresets([...customPresets, preset])
       applyPreset(preset)
+      setPresetStatus(`Imported “${preset.name}”.`)
     } catch {
+      setPresetStatus('')
       setPresetError('Could not import preset: invalid or unsupported JSON.')
     }
   }
@@ -149,6 +169,13 @@ export function EditorShell() {
     anchor.download = `${preset.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'preset'}.json`
     anchor.click()
     URL.revokeObjectURL(url)
+  }
+
+  const deletePreset = (preset: FacePreset) => {
+    persistCustomPresets(removeCustomPreset(customPresets, preset.id))
+    if (activePresetId === preset.id) setActivePresetId('custom')
+    setPresetError('')
+    setPresetStatus(`Deleted “${preset.name}”.`)
   }
 
   const persistExpressionPresets = (next: UserExpressionPreset[]) => {
@@ -210,6 +237,10 @@ export function EditorShell() {
   }
 
   const { model, transparentBackground } = history.present
+  const activePreset = presets.find((preset) => preset.id === activePresetId)
+  const displayedPresetId = activePreset && snapshotEqual(snapshotFromPreset(activePreset), history.present)
+    ? activePreset.id
+    : 'custom'
   const activeExpressionPreset = selectableExpressions.find((preset) => preset.id === activeExpressionPresetId)
   const activeExpressionId = activeExpressionPreset && expressionEqual(activeExpressionPreset.expression, model.expression)
     ? activeExpressionPreset.id
@@ -243,7 +274,16 @@ export function EditorShell() {
           </div>
 
           <div className="editor-sidebar">
-            <PresetPanel presets={presets} activePresetId={activePresetId} onApply={applyPreset} onSaveCurrent={saveCurrentPreset} onImport={importPreset} onExport={exportPreset} />
+            <PresetPanel
+              presets={presets}
+              activePresetId={displayedPresetId}
+              status={presetStatus}
+              onApply={applyPreset}
+              onSaveCurrent={saveCurrentPreset}
+              onImport={importPreset}
+              onExport={exportPreset}
+              onDelete={deletePreset}
+            />
             {presetError && <p className="preset-error" role="alert">{presetError}</p>}
             <ExpressionPresetPanel
               presets={selectableExpressions}
