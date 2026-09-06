@@ -13,9 +13,41 @@ describe('expression presets', () => {
     }
   })
 
-  it('recognizes exact presets and treats per-eye overrides as custom', () => {
+  it('uses original RoboEyes mask orientation for tired and angry', () => {
+    const angry = expressionPresets.find((preset) => preset.name === 'Angry')!
+    const tired = expressionPresets.find((preset) => preset.name === 'Tired')!
+
+    expect(angry.expression).toMatchObject({
+      upperLid: 0,
+      upperLidInner: 0.5,
+      upperLidOuter: 0,
+      lowerLid: 0,
+      tilt: 0,
+    })
+    expect(tired.expression).toMatchObject({
+      upperLid: 0,
+      upperLidInner: 0,
+      upperLidOuter: 0.5,
+      lowerLid: 0,
+      tilt: 0,
+    })
+  })
+
+  it('builds happy from a rounded lower mask without whole-eye tilt', () => {
     const happy = expressionPresets.find((preset) => preset.name === 'Happy')!
+
+    expect(happy.expression.tilt).toBe(0)
+    expect(happy.expression.lowerLid).toBeGreaterThan(0)
+    expect(happy.expression.lowerLidCurvature).toBeGreaterThan(0)
+  })
+
+  it('recognizes exact presets and directional parameters participate in matching', () => {
+    const happy = expressionPresets.find((preset) => preset.name === 'Happy')!
+    const angry = expressionPresets.find((preset) => preset.name === 'Angry')!
     expect(matchExpressionPreset(happy.expression)).toBe(happy.id)
+    expect(matchExpressionPreset(angry.expression)).toBe(angry.id)
+    expect(matchExpressionPreset({ ...happy.expression, lowerLidCurvature: 0.1 })).toBe('custom')
+    expect(matchExpressionPreset({ ...angry.expression, upperLidInner: 0.25 })).toBe('custom')
     expect(matchExpressionPreset({ ...happy.expression, leftEye: { upperLid: 0.7 } })).toBe('custom')
   })
 
