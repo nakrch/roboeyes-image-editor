@@ -73,6 +73,10 @@ over a timeline-first design.
 ## Development discipline
 
 - Work issue-by-issue.
+- **Use an Issue-first workflow for bugs, improvements, behavior changes, and feature work.** Create or identify the GitHub Issue before starting the implementation PR.
+- Record the reproduction/need, expected behavior, and acceptance criteria in the Issue when applicable.
+- Create the implementation PR from that Issue and link it with a closing keyword such as `Fixes #123` or `Closes #123` when the PR should complete the Issue.
+- Do not normally create a PR first and backfill the Issue afterward. Trivial typo-only or clearly non-behavioral documentation fixes may be handled without an Issue.
 - Keep changes narrowly scoped.
 - Add tests around model/adapter/renderer/export behavior.
 - Update docs when a design decision changes.
