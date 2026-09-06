@@ -77,16 +77,16 @@ describe('expression preset storage', () => {
     expect(next).not.toBe(model)
   })
 
-  it('assigns the first available sequential default name when the user leaves the name blank', () => {
+  it('assigns default names after the highest existing suffix', () => {
     const existing: UserExpressionPreset[] = [
       { ...asymmetricPreset, id: 'expression-custom:1', name: 'Custom expression 1' },
       { ...asymmetricPreset, id: 'expression-custom:3', name: 'Custom expression 3' },
     ]
-    expect(nextCustomExpressionName(existing)).toBe('Custom expression 2')
-    expect(createUserExpressionPreset('   ', asymmetricPreset.expression, existing).name).toBe('Custom expression 2')
+    expect(nextCustomExpressionName(existing)).toBe('Custom expression 4')
+    expect(createUserExpressionPreset('   ', asymmetricPreset.expression, existing).name).toBe('Custom expression 4')
   })
 
-  it('keeps a requested name when it is unused and appends sequential suffixes when duplicated', () => {
+  it('keeps a requested name when unused and appends after the highest duplicate suffix', () => {
     const existing = [
       { name: 'Sleepy' },
       { name: 'Sleepy 1' },
@@ -95,8 +95,18 @@ describe('expression preset storage', () => {
     ]
 
     expect(uniqueExpressionPresetName('Fresh', existing)).toBe('Fresh')
-    expect(uniqueExpressionPresetName('Sleepy', existing)).toBe('Sleepy 2')
+    expect(uniqueExpressionPresetName('Sleepy', existing)).toBe('Sleepy 4')
     expect(uniqueExpressionPresetName('Happy', existing)).toBe('Happy 1')
+  })
+
+  it('keeps duplicate numbering monotonic after an intermediate preset is deleted', () => {
+    const existing = [
+      { name: 'Sleepy' },
+      { name: 'Sleepy 1' },
+      { name: 'Sleepy 4' },
+    ]
+
+    expect(uniqueExpressionPresetName('Sleepy', existing)).toBe('Sleepy 5')
   })
 
   it('removes only the requested custom expression preset', () => {
