@@ -108,7 +108,8 @@ describe('independent eye position safety', () => {
     expectSafe(model)
 
     const resized = resizeCanvasFromCenter(model, 128, 50)
-    expect(canFitEyesInCanvas(resized)).toBe(false)
+    expect(canFitEyesInCanvas(resized)).toBe(true)
+    expect(isGazeCanvasSafe(resized)).toBe(false)
 
     const recovered = setIndependentEyePositionSafely(resized, 'left', 'y', 19)
 
