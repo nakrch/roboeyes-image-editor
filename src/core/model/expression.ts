@@ -13,6 +13,10 @@ export type EyeExpression = {
   tilt: number
   /** Vertical eye shape multiplier. Defaults to 1 for backward compatibility. */
   heightScale?: number
+  /** Additional height multiplier applied to the eye on the active horizontal gaze side. */
+  gazeHeightExpansion?: number
+  /** Horizontal gaze threshold as a fraction of half the canvas width. */
+  gazeHeightThreshold?: number
 }
 
 export type ExpressionModel = EyeExpression & {
@@ -37,5 +41,23 @@ export function resolveEyeExpression(
     lowerLidCurvature: override?.lowerLidCurvature ?? expression.lowerLidCurvature ?? 0,
     tilt: override?.tilt ?? expression.tilt,
     heightScale: override?.heightScale ?? expression.heightScale ?? 1,
+    gazeHeightExpansion: override?.gazeHeightExpansion ?? expression.gazeHeightExpansion ?? 0,
+    gazeHeightThreshold: override?.gazeHeightThreshold ?? expression.gazeHeightThreshold ?? 0.15,
   }
+}
+
+export function resolveGazeReactiveHeightScale(
+  expression: ExpressionModel,
+  side: 'left' | 'right',
+  gazeX: number,
+  canvasWidth: number,
+): number {
+  const resolved = resolveEyeExpression(expression, side)
+  const halfWidth = Math.max(1e-9, Math.abs(canvasWidth) / 2)
+  const normalizedMagnitude = Math.abs(gazeX) / halfWidth
+  const threshold = Math.min(1, Math.max(0, resolved.gazeHeightThreshold))
+  const pointsToSide = side === 'left' ? gazeX < 0 : gazeX > 0
+  const active = pointsToSide && normalizedMagnitude >= threshold
+  const expansion = active ? Math.max(0, resolved.gazeHeightExpansion) : 0
+  return Math.max(0, resolved.heightScale) * (1 + expansion)
 }
