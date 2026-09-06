@@ -39,9 +39,9 @@ describe('gaze safety with reactive expression geometry', () => {
       ...base,
       canvas: { width: 128, height: 128 },
     }
-    const next = setGazeSafely(roomy, 'x', -24)
+    const next = setGazeSafely(roomy, 'x', -20)
 
-    expect(next.gaze.x).toBe(-24)
+    expect(next.gaze.x).toBe(-20)
     expect(canFitEyesInCanvas(next)).toBe(true)
     expect(isGazeCanvasSafe(next)).toBe(true)
   })
