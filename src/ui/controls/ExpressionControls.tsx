@@ -1,11 +1,9 @@
 import { resolveEyeExpression, type FaceModel, type EyeExpression } from '../../core/model'
-import { expressionPresets, matchExpressionPreset } from '../../core/presets'
 import {
   isExpressionGeometryKey,
   isLidKey,
   setSharedExpressionGeometrySafely,
   sharedExpressionGeometryRange,
-  translatePairToKeepCurrentGaze,
 } from '../editor/geometrySafety'
 import {
   independentExpressionGeometryRange,
@@ -54,47 +52,24 @@ function sharedValue(expression: FaceModel['expression'], key: keyof EyeExpressi
 }
 
 export function ExpressionControls({ model, linkedEyes, onChange }: Props) {
-  const applyPreset = (id: string) => {
-    const preset = expressionPresets.find((item) => item.id === id)
-    if (!preset) return
-    onChange((current) =>
-      translatePairToKeepCurrentGaze({
-        ...current,
-        expression: structuredClone(preset.expression),
-      }),
-    )
-  }
-
   const updateShared = (key: keyof EyeExpression, value: number) => {
     if (isExpressionGeometryKey(key)) {
       onChange((current) => setSharedExpressionGeometrySafely(current, key, value))
       return
     }
-
     if (isGazeReactiveKey(key)) {
       onChange((current) => setSharedGazeReactiveSafely(current, key, value))
       return
     }
-
     if (isDirectionalLidKey(key)) {
       onChange((current) => setSharedDirectionalLidSafely(current, key, value))
       return
     }
-
     if (isLidKey(key)) {
       onChange((current) => setSharedComposedLidSafely(current, key, value))
       return
     }
-
-    onChange((current) => ({
-      ...current,
-      expression: {
-        ...current.expression,
-        [key]: value,
-        leftEye: undefined,
-        rightEye: undefined,
-      },
-    }))
+    onChange((current) => ({ ...current, expression: { ...current.expression, [key]: value, leftEye: undefined, rightEye: undefined } }))
   }
 
   const updateSide = (side: 'left' | 'right', key: keyof EyeExpression, value: number) => {
@@ -102,64 +77,31 @@ export function ExpressionControls({ model, linkedEyes, onChange }: Props) {
       onChange((current) => setIndependentExpressionGeometrySafely(current, side, key, value))
       return
     }
-
     if (isGazeReactiveKey(key)) {
       onChange((current) => setIndependentGazeReactiveSafely(current, side, key, value))
       return
     }
-
     if (isDirectionalLidKey(key)) {
       onChange((current) => setIndependentDirectionalLidSafely(current, side, key, value))
       return
     }
-
     if (isLidKey(key)) {
       onChange((current) => setIndependentComposedLidSafely(current, side, key, value))
       return
     }
-
     onChange((current) => {
       const property = side === 'left' ? 'leftEye' : 'rightEye'
-      return {
-        ...current,
-        expression: {
-          ...current.expression,
-          [property]: { ...current.expression[property], [key]: value },
-        },
-      }
+      return { ...current, expression: { ...current.expression, [property]: { ...current.expression[property], [key]: value } } }
     })
   }
 
   return (
     <details className="control-group collapsible-control-group" open>
-      <summary className="control-group-summary">
-        <span>Expression</span>
-        <select
-          aria-label="Expression preset"
-          value={matchExpressionPreset(model.expression)}
-          onClick={(event) => event.stopPropagation()}
-          onChange={(event) => applyPreset(event.target.value)}
-        >
-          {expressionPresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
-          <option value="custom">Custom</option>
-        </select>
-      </summary>
+      <summary className="control-group-summary">Expression parameters</summary>
       <div className="nested-controls control-group-body">
         {linkedEyes ? fields.map((field) => {
-          const range = isExpressionGeometryKey(field.key)
-            ? sharedExpressionGeometryRange(model, field.key)
-            : { min: field.min, max: field.max }
-          return (
-            <NumericControl
-              key={field.key}
-              label={field.label}
-              value={sharedValue(model.expression, field.key)}
-              min={range.min}
-              max={range.max}
-              step={field.step}
-              onChange={(value) => updateShared(field.key, value)}
-            />
-          )
+          const range = isExpressionGeometryKey(field.key) ? sharedExpressionGeometryRange(model, field.key) : { min: field.min, max: field.max }
+          return <NumericControl key={field.key} label={field.label} value={sharedValue(model.expression, field.key)} min={range.min} max={range.max} step={field.step} onChange={(value) => updateShared(field.key, value)} />
         }) : (
           <div className="eye-columns">
             {(['left', 'right'] as const).map((side) => {
@@ -168,20 +110,8 @@ export function ExpressionControls({ model, linkedEyes, onChange }: Props) {
                 <fieldset className="eye-fieldset" key={side}>
                   <legend>{side === 'left' ? 'Left eye expression' : 'Right eye expression'}</legend>
                   {fields.map((field) => {
-                    const range = isExpressionGeometryKey(field.key)
-                      ? independentExpressionGeometryRange(model, side, field.key)
-                      : { min: field.min, max: field.max }
-                    return (
-                      <NumericControl
-                        key={field.key}
-                        label={field.label}
-                        value={expression[field.key]}
-                        min={range.min}
-                        max={range.max}
-                        step={field.step}
-                        onChange={(value) => updateSide(side, field.key, value)}
-                      />
-                    )
+                    const range = isExpressionGeometryKey(field.key) ? independentExpressionGeometryRange(model, side, field.key) : { min: field.min, max: field.max }
+                    return <NumericControl key={field.key} label={field.label} value={expression[field.key]} min={range.min} max={range.max} step={field.step} onChange={(value) => updateSide(side, field.key, value)} />
                   })}
                 </fieldset>
               )
