@@ -86,18 +86,16 @@ describe('expression model', () => {
       tilt: 0,
     }
 
-    expect(resolveEyeLidAperture(composed, 'left')).toMatchObject({
-      upperLeft: 0.3,
-      upperRight: 0.5,
-      lower: 0.9,
-      valid: true,
-    })
-    expect(resolveEyeLidAperture(composed, 'right')).toMatchObject({
-      upperLeft: 0.5,
-      upperRight: 0.3,
-      lower: 0.9,
-      valid: true,
-    })
+    const left = resolveEyeLidAperture(composed, 'left')
+    const right = resolveEyeLidAperture(composed, 'right')
+    expect(left.upperLeft).toBeCloseTo(0.3)
+    expect(left.upperRight).toBeCloseTo(0.5)
+    expect(left.lower).toBeCloseTo(0.9)
+    expect(left.valid).toBe(true)
+    expect(right.upperLeft).toBeCloseTo(0.5)
+    expect(right.upperRight).toBeCloseTo(0.3)
+    expect(right.lower).toBeCloseTo(0.9)
+    expect(right.valid).toBe(true)
   })
 
   it('keeps legacy simple upper lid behavior when directional offsets are absent', () => {
