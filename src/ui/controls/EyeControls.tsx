@@ -7,6 +7,10 @@ import {
 } from '../editor/eyeDimensions'
 import { setIndependentEyePositionSafely } from '../editor/eyePositionSafety'
 import {
+  independentEyeRotationRange,
+  setIndependentEyeRotationSafely,
+} from '../editor/eyeRotationSafety'
+import {
   anchoredPairSpacing,
   anchoredPairSpacingMin,
 } from '../editor/geometrySafety'
@@ -73,6 +77,9 @@ export function EyeControls({
       if (key === 'width' || key === 'height') {
         return setIndependentEyeDimensionSafely(current, side, key, value)
       }
+      if (key === 'rotation') {
+        return setIndependentEyeRotationSafely(current, side, value)
+      }
 
       return updateEyeGeometry(current, side, (geometry) => ({ ...geometry, [key]: value }))
     })
@@ -128,6 +135,7 @@ export function EyeControls({
             {(['left', 'right'] as const).map((side) => {
               const geometry = side === 'left' ? left : right
               const dimensionRanges = independentEyeDimensionRanges(model, side)
+              const rotationRange = independentEyeRotationRange(model, side)
               return (
                 <fieldset className="eye-fieldset" key={side}>
                   <legend>{side === 'left' ? 'Left eye' : 'Right eye'}</legend>
@@ -136,7 +144,7 @@ export function EyeControls({
                   <NumericControl label="Corner radius" value={geometry.cornerRadius} min={0} max={80} onChange={(value) => updateIndependentGeometry(side, 'cornerRadius', value)} />
                   <NumericControl label="Position X" value={geometry.position.x} min={-320} max={640} onChange={(value) => updateEyePosition(side, 'x', value)} />
                   <NumericControl label="Position Y" value={geometry.position.y} min={-320} max={640} onChange={(value) => updateEyePosition(side, 'y', value)} />
-                  <NumericControl label="Rotation" value={geometry.rotation} min={-45} max={45} onChange={(value) => updateIndependentGeometry(side, 'rotation', value)} />
+                  <NumericControl label="Rotation" value={geometry.rotation} min={rotationRange.min} max={rotationRange.max} step="any" onChange={(value) => updateIndependentGeometry(side, 'rotation', value)} />
                 </fieldset>
               )
             })}
