@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import type { ExpressionPreset, UserExpressionPreset } from '../../core/presets'
 
 type SelectableExpressionPreset = ExpressionPreset | UserExpressionPreset
@@ -21,6 +21,10 @@ export function ExpressionPresetPanel({ presets, activePresetId, status, onApply
   const customPreset = activePreset?.id.startsWith('expression-custom:')
     ? activePreset as UserExpressionPreset
     : undefined
+
+  useEffect(() => {
+    if (activePreset) setName(activePreset.name)
+  }, [activePreset?.id, activePreset?.name])
 
   const importFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -49,7 +53,7 @@ export function ExpressionPresetPanel({ presets, activePresetId, status, onApply
 
       <div className="preset-actions">
         <input className="number-input" type="text" placeholder="Expression preset name" value={name} onChange={(event) => setName(event.target.value)} />
-        <button type="button" onClick={() => { onSaveCurrent(name); setName('') }}>Save expression</button>
+        <button type="button" onClick={() => onSaveCurrent(name)}>Save expression</button>
       </div>
 
       {status && <p className="preset-status" role="status" aria-live="polite">{status}</p>}
