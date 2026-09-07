@@ -165,7 +165,7 @@ describe('extensibility', () => {
     const frame = evaluateAnimationFrame({
       baseModel: base,
       definition: custom.animation,
-      context: createAnimationFrameContext(60, 22),
+      context: createAnimationFrameContext(30, 22),
       channelResolvers: behaviorProfileChannelResolvers,
     }).model
 
