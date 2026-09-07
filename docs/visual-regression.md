@@ -5,6 +5,8 @@ Phase 2 expression geometry is protected by textual SVG-signature fixtures in:
 - `src/renderers/svg/__fixtures__/phase2Expressions.ts`
 - `src/renderers/svg/phase2VisualRegression.test.ts`
 
+The same fixtures are also surfaced in the browser through `Visual Regression Gallery` at the bottom of the editor. The gallery is collapsed by default so it does not interfere with normal editing, but it can be expanded during PR review to compare all Phase 2 references at once.
+
 The fixtures intentionally store the visible **aperture path** and **eye transform** rather than raster screenshots. This keeps changes deterministic and makes geometry diffs reviewable in Git while still detecting changes to:
 
 - upper-lid direction and mirroring
@@ -33,6 +35,15 @@ Curious has separate left, center, and right gaze fixtures. An independent asymm
 
 The suite also checks that the SVG used by preview rendering and the SVG export path are identical for the same model and default export dimensions.
 
+## Browser gallery
+
+Each gallery card renders the current SVG from the normal renderer and compares its aperture paths and eye transforms with the stored fixture signature.
+
+- **Matches fixture** means the live renderer output still matches the committed reference.
+- **Changed** means the current visible geometry differs from the reference and should be reviewed before the fixture is updated.
+
+Cards also show the fixture id, canvas size, and gaze coordinates. This makes the deterministic CI checks reviewable visually without replacing them with screenshots.
+
 ## Reference orientation
 
 For the RoboEyes-compatible directional lids, the assertions preserve the FluxGarage/RoboEyes mask orientation:
@@ -49,6 +60,7 @@ A fixture change should be treated as a visible renderer/expression change, not 
 2. Update the expression/model implementation first.
 3. Inspect the changed textual paths/transforms.
 4. Run the full test/build suite.
-5. Validate the PR Preview before merge when the resulting output is user-visible.
+5. Expand the Visual Regression Gallery and inspect every affected card in the PR Preview.
+6. Validate the PR Preview before merge when the resulting output is user-visible.
 
 When a new built-in expression preset is added, the coverage assertion intentionally fails until at least one visual fixture is added for it.
