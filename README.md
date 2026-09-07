@@ -2,7 +2,7 @@
 
 > 🚧 **Under active development**
 >
-> **Phase 1 is complete. Phase 2 expression work is in progress.** Animation and embedded-display export remain planned for later phases.
+> **Phase 1 and Phase 2 are complete. Phase 3 animation/state-transition work is in progress.** Embedded-display export remains planned for Phase 4.
 
 **RoboEyes Image Editor** is a browser-based parametric editor for creating robot eye and face graphics for small displays.
 
@@ -29,17 +29,21 @@ The site is rebuilt and redeployed automatically whenever changes are pushed or 
 - small-display resolution presets
 - transparent and pixel-perfect preview workflows
 - expression presets and custom expression parameters
-- future animation and embedded-display export support
+- deterministic state/transition animation and embedded-display export support
 
 ## Current Status
 
-**Phase 1 is complete and Phase 2 is in progress.**
+**Phase 1 and Phase 2 are complete. Phase 3 is in progress.**
 
-The browser editor now supports the Phase 1 static-image workflow: generic eye geometry and gaze editing, linked/independent eye controls, realtime SVG preview, presets, small-display resolutions, and PNG/SVG export. The implementation keeps the generic model, RoboEyes adapter, renderer, UI, and export layers separated.
+The browser editor supports the complete Phase 1 static-image workflow: generic eye geometry and gaze editing, linked/independent eye controls, realtime SVG preview, presets, small-display resolutions, and PNG/SVG export. The implementation keeps the generic model, RoboEyes adapter, renderer, UI, and export layers separated.
 
-Phase 2 extends the same parametric model with expressions and eyelid controls. Animation and embedded-display export remain later-phase work.
+Phase 2 completed the parametric expression layer, including generic eyelid/mask authoring, RoboEyes-compatible core expressions, gaze-reactive Curious behavior, reusable expression-only presets, additional static expressions, and deterministic visual-regression coverage. The completed Phase 2 tracker is [Issue #86](https://github.com/nakrch/roboeyes-image-editor/issues/86).
 
-Implementation progresses incrementally through GitHub Issues so that the generic model, RoboEyes adapter, renderer, editor UI, and export layers remain separated from the beginning.
+Phase 3 is now active under [Issue #97](https://github.com/nakrch/roboeyes-image-editor/issues/97). It adds a deterministic animation layer around the existing static `FaceModel`, centered on **state + transition** semantics, including reusable ordered state programs with explicit hold/transition timing. The intent is not to build a free-form video/keyframe timeline editor.
+
+Animated WebP/GIF work is tracked as a Phase 3 follow-up, while sprite-sheet and embedded-display formats remain Phase 4 work. RoboEyes cyclops support is tracked separately as the static-layout backlog [Issue #110](https://github.com/nakrch/roboeyes-image-editor/issues/110), not as a Phase 3 blocker.
+
+Implementation progresses incrementally through GitHub Issues so that the generic model, RoboEyes adapter, renderer, editor UI, animation runtime, and export layers remain separated from the beginning.
 
 ## Core concept
 
@@ -86,7 +90,7 @@ Renderer
 - UI・モデル・adapter・renderer・export を分離する
 - 初期 renderer は SVG を採用する
 - 小型ディスプレイ用途を first-class に扱う
-- animation は最終的に timeline 主体ではなく **state + transition** を中心にする
+- animation は timeline 主体ではなく **state + transition** と再利用可能な ordered state program を中心にする
 - MVP は静止画エディタから始め、将来の animation / embedded export を阻害しない構造にする
 
 ## Phase 1 MVP — Complete
