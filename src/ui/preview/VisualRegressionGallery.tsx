@@ -75,7 +75,7 @@ export function VisualRegressionGallery() {
       <div className="visual-regression-grid">
         {phase2ExpressionVisualFixtures.map((fixture) => {
           const model = modelForFixture(fixture)
-          const svg = renderFaceToSvg(model)
+          const svg = renderFaceToSvg(model, { idPrefix: `visual-regression-${fixture.id}` })
           const matches = matchesFixture(svg, fixture)
 
           return (
