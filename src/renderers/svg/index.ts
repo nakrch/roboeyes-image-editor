@@ -8,6 +8,8 @@ import {
 
 export type SvgRenderOptions = {
   transparentBackground?: boolean
+  /** Optional stable prefix for inline-SVG definition IDs to avoid document-level collisions. */
+  idPrefix?: string
 }
 
 type RenderedEye = {
@@ -28,10 +30,15 @@ function escapeAttribute(value: string): string {
     .replaceAll('>', '&gt;')
 }
 
+function sanitizeIdPrefix(value: string | undefined): string {
+  return value?.trim().replace(/[^A-Za-z0-9_-]+/g, '-') ?? ''
+}
+
 function renderEye(
   id: 'left' | 'right',
   geometry: EyeGeometry,
   model: FaceModel,
+  idPrefix: string,
 ): RenderedEye {
   const centerX = geometry.position.x + model.gaze.x
   const centerY = geometry.position.y + model.gaze.y
@@ -56,7 +63,7 @@ function renderEye(
   const lowerMidY = y + scaledHeight * aperture.lowerMid
   const expressionRotation = id === 'left' ? -expression.tilt : expression.tilt
   const rotation = geometry.rotation + expressionRotation
-  const clipId = `eye-clip-${id}`
+  const clipId = `${idPrefix ? `${idPrefix}-` : ''}eye-clip-${id}`
   const stroke = model.colors.stroke ?? model.colors.eye
   const aperturePath = [
     `M ${number(x)} ${number(upperLeftY)}`,
@@ -78,8 +85,9 @@ export function renderFaceToSvg(
 ): string {
   const width = Math.max(0, model.canvas.width)
   const height = Math.max(0, model.canvas.height)
-  const left = renderEye('left', model.leftEye.geometry, model)
-  const right = renderEye('right', model.rightEye.geometry, model)
+  const idPrefix = sanitizeIdPrefix(options.idPrefix)
+  const left = renderEye('left', model.leftEye.geometry, model, idPrefix)
+  const right = renderEye('right', model.rightEye.geometry, model, idPrefix)
   const background = options.transparentBackground
     ? ''
     : `<rect data-background="true" x="0" y="0" width="${number(width)}" height="${number(height)}" fill="${escapeAttribute(model.colors.background)}" />`
