@@ -1,3 +1,7 @@
+import {
+  normalizePresetAnimationDefaults,
+  type PresetAnimationDefaults,
+} from '../../animation/persistence'
 import type { FaceModel } from '../model'
 import { isFacePreset, type FacePreset } from './schema'
 
@@ -41,6 +45,7 @@ export function createCustomPreset(
   model: FaceModel,
   transparentBackground = false,
   existingPresets: readonly { name: string }[] = [],
+  animationDefaults: PresetAnimationDefaults = {},
 ): FacePreset {
   return {
     id: `custom:${crypto.randomUUID()}`,
@@ -48,7 +53,7 @@ export function createCustomPreset(
     version: 1,
     model: structuredClone(model),
     constraints: {},
-    animationDefaults: {},
+    animationDefaults: normalizePresetAnimationDefaults(animationDefaults),
     preview: { transparentBackground },
   }
 }
@@ -57,14 +62,26 @@ export function removeCustomPreset(presets: readonly FacePreset[], id: string): 
   return presets.filter((preset) => preset.id !== id)
 }
 
+function normalizePresetAuthoringData(value: unknown): FacePreset {
+  if (!isFacePreset(value)) throw new Error('Invalid preset JSON')
+  try {
+    return {
+      ...structuredClone(value),
+      animationDefaults: normalizePresetAnimationDefaults(value.animationDefaults),
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    throw new Error(`Invalid preset animationDefaults: ${message}`)
+  }
+}
+
 export function serializePreset(preset: FacePreset): string {
-  return JSON.stringify(preset, null, 2)
+  return JSON.stringify(normalizePresetAuthoringData(preset), null, 2)
 }
 
 export function parsePreset(json: string): FacePreset {
   const parsed: unknown = JSON.parse(json)
-  if (!isFacePreset(parsed)) throw new Error('Invalid preset JSON')
-  return parsed
+  return normalizePresetAuthoringData(parsed)
 }
 
 export function loadCustomPresets(storage: Pick<Storage, 'getItem'>): FacePreset[] {
@@ -72,7 +89,16 @@ export function loadCustomPresets(storage: Pick<Storage, 'getItem'>): FacePreset
   if (!raw) return []
   try {
     const parsed: unknown = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed.filter(isFacePreset) : []
+    if (!Array.isArray(parsed)) return []
+    const presets: FacePreset[] = []
+    for (const value of parsed) {
+      try {
+        presets.push(normalizePresetAuthoringData(value))
+      } catch {
+        // Preserve prior storage behavior: invalid individual entries are skipped.
+      }
+    }
+    return presets
   } catch {
     return []
   }
@@ -82,5 +108,6 @@ export function saveCustomPresets(
   storage: Pick<Storage, 'setItem'>,
   presets: FacePreset[],
 ): void {
-  storage.setItem(CUSTOM_PRESET_STORAGE_KEY, JSON.stringify(presets))
+  const normalized = presets.map(normalizePresetAuthoringData)
+  storage.setItem(CUSTOM_PRESET_STORAGE_KEY, JSON.stringify(normalized))
 }

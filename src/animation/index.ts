@@ -119,6 +119,20 @@ export type {
 } from './motionOffset'
 
 export {
+  initializePresetAnimation,
+  isPresetAnimationDefaults,
+  normalizePersistedAnimationDefinition,
+  normalizePresetAnimationDefaults,
+  PRESET_ANIMATION_DEFAULTS_VERSION,
+} from './persistence'
+export type {
+  InitializedPresetAnimation,
+  LegacyEmptyAnimationDefaults,
+  PresetAnimationDefaults,
+  PresetAnimationDefaultsV1,
+} from './persistence'
+
+export {
   ANIMATION_PROGRAM_VERSION,
   animationProgramDurationMs,
   animationProgramRuntimeEvents,

@@ -1,3 +1,4 @@
+import type { PresetAnimationDefaults } from '../../animation/persistence'
 import type { FaceModel } from '../model'
 
 export type NumericConstraint = {
@@ -15,8 +16,8 @@ export type FacePreset = {
   version: 1
   model: FaceModel
   constraints: PresetConstraints
-  /** Reserved for future state/transition defaults without coupling the static model to animation. */
-  animationDefaults: Record<string, unknown>
+  /** Versioned Phase 3 authoring data; `{}` remains the Phase 1/2 compatibility value. */
+  animationDefaults: PresetAnimationDefaults
   preview?: {
     transparentBackground?: boolean
   }
@@ -42,7 +43,8 @@ export function isFacePreset(value: unknown): value is FacePreset {
       preset.constraints &&
       typeof preset.constraints === 'object' &&
       preset.animationDefaults &&
-      typeof preset.animationDefaults === 'object',
+      typeof preset.animationDefaults === 'object' &&
+      !Array.isArray(preset.animationDefaults),
   )
 }
 
