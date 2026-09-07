@@ -58,7 +58,7 @@ export type NormalizedEyeOpennessDefinition = {
   openDurationMs: number
   easing: EasingId
   closedScale: number
-  autoBlink: NormalizedAutoBlinkDefinition
+  autoBlink?: NormalizedAutoBlinkDefinition
 }
 
 export type ResolvedEyeOpenness = {
@@ -170,7 +170,9 @@ export function normalizeEyeOpennessDefinition(value: unknown): NormalizedEyeOpe
     closedScale: value.closedScale === undefined
       ? DEFAULT_EYE_OPENNESS_TIMING.closedScale
       : opennessValue(value.closedScale, 'Eye openness closedScale'),
-    autoBlink: normalizeAutoBlinkDefinition(value.autoBlink ?? {}),
+    ...(value.autoBlink === undefined
+      ? {}
+      : { autoBlink: normalizeAutoBlinkDefinition(value.autoBlink) }),
   }
 }
 
@@ -417,7 +419,7 @@ export const eyeOpennessChannelResolver: AnimationChannelResolver = ({
 }) => {
   const definition = definitionFromChannel(channelDefinition)
   const expandedEvents = expandAutoBlinkEvents(
-    definition.autoBlink,
+    definition.autoBlink ?? normalizeAutoBlinkDefinition({}),
     events,
     context.timeMs,
     context.seed,
