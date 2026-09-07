@@ -1,4 +1,20 @@
 export {
+  AUTO_BLINK_CONTROL_ACTIONS,
+  AUTO_BLINK_EVENT_PRIORITY,
+  AUTO_BLINK_RANDOM_STREAM,
+  DEFAULT_AUTO_BLINK,
+  expandAutoBlinkEvents,
+  isAutoBlinkControlAction,
+  normalizeAutoBlinkDefinition,
+  scheduledAutoBlinkEvents,
+} from './autoBlink'
+export type {
+  AutoBlinkControlAction,
+  AutoBlinkDefinition,
+  NormalizedAutoBlinkDefinition,
+} from './autoBlink'
+
+export {
   advancePlaybackClock,
   createPlaybackClock,
   pausePlaybackClock,

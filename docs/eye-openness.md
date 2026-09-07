@@ -1,6 +1,6 @@
 # Eye openness behavior
 
-Issue #100 adds deterministic blink, wink, open/close, and persistent sleep behavior on top of the Phase 3 runtime from #98 and state transitions from #99.
+Issue #100 adds deterministic blink, wink, open/close, and persistent sleep behavior on top of the Phase 3 runtime from #98 and state transitions from #99. Issue #101 extends the same channel with deterministic auto-blink scheduling.
 
 ## Reference basis
 
@@ -45,6 +45,12 @@ The `eye-openness` channel accepts a serializable definition:
   openDurationMs,
   easing,
   closedScale,
+  autoBlink?: {
+    enabled,
+    startTimeMs,
+    intervalMs,
+    variationMs,
+  },
 }
 ```
 
@@ -60,9 +66,11 @@ Defaults are tuned to the reference behavior while remaining explicit-time and f
 
 These defaults reproduce the fast close / slightly softer reopen feel without copying RoboEyes' frame-dependent `(current + target) / 2` rule.
 
+When `autoBlink` is omitted, the normalized #100 eye-openness shape remains unchanged for backward compatibility. Auto-blink configuration and scheduling semantics are documented in [`auto-blink.md`](auto-blink.md).
+
 ## Runtime actions
 
-The `eye-openness` runtime channel recognizes:
+The `eye-openness` runtime channel recognizes manual/persistent actions:
 
 - `blink` — both eyes close, hold, then reopen
 - `wink-left` — left eye only
@@ -72,6 +80,13 @@ The `eye-openness` runtime channel recognizes:
 - `open` — both eyes transition open and stay open
 
 Runtime-event payloads may override close/hold/open duration, easing, and closed scale for that event only.
+
+Issue #101 also adds scheduler control records:
+
+- `auto-blink-enable`
+- `auto-blink-disable`
+
+These control the generation of ordinary `blink` events; they do not create a second visual blink path.
 
 ## Interruption and retrigger rules
 
@@ -85,6 +100,7 @@ Within eye openness:
 - **Sleep during blink:** same interruption rule as close, but persistent state is recorded as `sleep`.
 - **Open from closed/sleep:** rebase from the current low openness and transition to fully open.
 - **Blink/wink while persistent closed/sleep:** ignored until an explicit `open` changes persistent state.
+- **Automatic blink while closed/sleep:** uses the same ignored-blink rule; the deterministic schedule itself is not shifted or corrupted.
 
 The evaluator reconstructs these results from the explicit event log. It does not depend on hidden mutable playback state or prior rendered frames.
 
@@ -94,19 +110,18 @@ The evaluator reconstructs these results from the explicit event log. It does no
 
 ## Determinism
 
-The same base model, eye-openness definition, ordered runtime events, and explicit `timeMs` always produce the same left/right openness and the same resolved `FaceModel`.
+The same base model, eye-openness definition, ordered runtime events, explicit `timeMs`, and seed always produce the same left/right openness and the same resolved `FaceModel`.
 
 Sampling timestamps in a different order does not change results. Browser frame cadence is irrelevant.
 
 ## Scope boundary
 
-This issue does not implement:
+This layer still does not implement:
 
-- automatic blink scheduling (#101)
 - idle gaze (#102)
 - Confused/Laugh motion primitives (#103)
 - behavior profiles (#104)
 - sequence authoring (#112)
-- UI playback controls (#107)
+- UI playback/authoring controls (#107)
 
-Those features reuse this eye-openness channel rather than duplicating blink logic.
+Those features reuse the existing generic animation channels rather than duplicating renderer logic.
