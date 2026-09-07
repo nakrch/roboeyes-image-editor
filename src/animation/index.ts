@@ -10,6 +10,13 @@ export {
 export type { PlaybackClockState, PlaybackClockStatus } from './clock'
 
 export {
+  applyEasing,
+  EASING_IDS,
+  isEasingId,
+} from './easing'
+export type { EasingId } from './easing'
+
+export {
   deriveRandomStreamSeed,
   MAX_ANIMATION_SEED,
   normalizeAnimationSeed,
@@ -56,3 +63,32 @@ export type {
   ResolvedAnimationFrame,
   RuntimeAnimationEvent,
 } from './runtime'
+
+export {
+  createFaceTransition,
+  eyeSpacing,
+  FACE_TRANSITION_KIND,
+  faceTransitionProgress,
+  GAZE_DIRECTIONS,
+  gazeTargetForDirection,
+  gazeTargetForRoboEyesPosition,
+  interpolateExpressionModel,
+  interpolateFaceModel,
+  interpolateNumber,
+  normalizeFaceStateTarget,
+  normalizeFaceTransitionDefinition,
+  normalizedGazeTarget,
+  retargetFaceTransition,
+  ROBOEYES_GAZE_POSITIONS,
+  sampleFaceTransition,
+  stateTransitionChannelResolver,
+  withEyeSpacing,
+} from './transition'
+export type {
+  EyeStateTarget,
+  FaceStateTarget,
+  FaceTransitionDefinition,
+  GazeDirection,
+  RetargetFaceTransitionOptions,
+  RoboEyesGazePosition,
+} from './transition'
