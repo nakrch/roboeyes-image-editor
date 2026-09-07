@@ -71,6 +71,30 @@ export type {
 } from './idleGaze'
 
 export {
+  applyMotionOffset,
+  DEFAULT_CONFUSED_MOTION,
+  DEFAULT_LAUGH_MOTION,
+  DEFAULT_MOTION_PRIMITIVE,
+  isMotionOffsetAction,
+  MOTION_AXES,
+  MOTION_OFFSET_ACTIONS,
+  MOTION_OFFSET_KIND,
+  MOTION_WAVEFORMS,
+  motionOffsetChannelResolver,
+  normalizeMotionPrimitiveDefinition,
+  resolveMotionOffset,
+  sampleMotionPrimitive,
+} from './motionOffset'
+export type {
+  MotionAxis,
+  MotionOffsetAction,
+  MotionPrimitiveDefinition,
+  MotionWaveform,
+  NormalizedMotionPrimitiveDefinition,
+  ResolvedMotionOffset,
+} from './motionOffset'
+
+export {
   deriveRandomStreamSeed,
   MAX_ANIMATION_SEED,
   normalizeAnimationSeed,
