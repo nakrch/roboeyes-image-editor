@@ -15,6 +15,30 @@ export type {
 } from './autoBlink'
 
 export {
+  angryBehaviorProfile,
+  BEHAVIOR_PROFILE_VERSION,
+  behaviorProfileChannelResolvers,
+  behaviorProfileMotionOffsetResolver,
+  builtInBehaviorProfiles,
+  confusedBehaviorProfile,
+  CONTINUOUS_MOTION_KIND,
+  curiousBehaviorProfile,
+  defaultBehaviorProfile,
+  evaluateBehaviorProfileFrame,
+  findBehaviorProfile,
+  frozenBehaviorProfile,
+  happyBehaviorProfile,
+  normalizeBehaviorProfile,
+  normalizeContinuousMotionDefinition,
+  scaryBehaviorProfile,
+  sleepBehaviorProfile,
+} from './behaviorProfiles'
+export type {
+  BehaviorProfile,
+  ContinuousMotionDefinition,
+} from './behaviorProfiles'
+
+export {
   advancePlaybackClock,
   createPlaybackClock,
   pausePlaybackClock,
