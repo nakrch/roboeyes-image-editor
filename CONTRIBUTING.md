@@ -120,13 +120,12 @@ UI の細部より、domain と renderer の再現性を先に保証します。
 5. PR 本文から `Fixes #123` / `Closes #123` 等で Issue を紐付ける
 6. test/build/CI を通す
 7. 最新 PR head の自動 PR Preview が完了したら、**生成された Preview URL を merge 前にユーザーとのチャットへ直接提示する**
-8. **Preview URLを提示した時点で作業を止める。同じ応答/ターンでmergeしない**
-9. ユーザーがPreviewを確認できる時間を確保し、**その後の新しいユーザーメッセージで `OK` / `問題ない` / `mergeして` 等の明示的なmerge承認を得る**
-10. ユーザーに見える変更は、その承認が実際のPreview確認後であることを優先する
-11. CI、最新headのPreview成功、Preview URL提示、明示的なmerge承認のすべてが揃ってから merge する
-12. merge により対象 Issue を close する
+8. **URL提示時に、そのPRが「ユーザー確認が必要な変更」か「内部変更」かを必ず明記する**
+9. UI/UX、操作、renderer、preview、animationの見た目/挙動、export出力など、Previewで意味のある確認ができる **ユーザー向け変更** では、その場で停止し、次のユーザーメッセージで `OK` / `問題ない` / `mergeして` 等の明示的なmerge承認を得る
+10. docs-only、test、CI/config、pure refactor、runtime/core内部変更など、Preview上の見た目に意味のある差分がない **内部変更** では、その旨を明記する。URL提示とCI/Preview成功後は、別の承認メッセージを待たずmergeしてよい
+11. merge により対象 Issue を close する
 
-実装開始時の「お願いします」「進めて」、自走許可、CI成功、Previewに目視差分がないことは、merge承認として扱いません。**merge承認は必ずPreview URL提示後に改めて受けます。**
+内部変更なのに単に「Previewは同じです」とだけ書くのではなく、**「これは内部変更です。Preview上の見た目差分はありません」** と分類まで伝えます。
 
 原則として「先に PR を作り、後から Issue を作る」運用は避けます。
 
@@ -134,9 +133,9 @@ UI の細部より、domain と renderer の再現性を先に保証します。
 
 ## 8. PR Preview before merge
 
-実装 PR では、**PR Preview URL のユーザーへの直接提示と、その後の明示的なmerge承認を merge 前の必須 handoff gate** とします。GitHub上のBotコメントだけで済ませず、現在のユーザーとのチャットに、すぐ開ける形でPreview URLを表示します。
+実装 PR では、**PR Preview URL のユーザーへの直接提示と、変更種別の明示**を merge 前の handoff gate とします。GitHub上のBotコメントだけで済ませず、現在のユーザーとのチャットに、すぐ開ける形でPreview URLを表示します。
 
-**重要: Preview URLを初めて提示した応答ではmergeしません。そこで必ず停止し、次のユーザーメッセージを待ちます。**
+### ユーザー向け変更
 
 対象例:
 
@@ -144,9 +143,22 @@ UI の細部より、domain と renderer の再現性を先に保証します。
 - slider、pointer、touch、keyboard などの interaction
 - editor の操作感や入力感度
 - renderer / preview の見た目
-- animation / temporal behavior
+- animation の見た目や時間挙動
 - export 結果など、ユーザーが直接確認できる出力
-- internal/runtime/docs-only の実装PR（目視差分がなくてもhandoff手順自体は同じ）
+
+この場合は、Preview URLを提示した応答ではmergeしません。そこで停止し、ユーザーがPreviewを確認した後の新しいメッセージで明示的なmerge承認を得ます。
+
+### 内部変更
+
+対象例:
+
+- docs-only
+- test
+- CI/config
+- pure refactor
+- runtime/core内部ロジックで、Preview上の見た目に意味のある差分がないもの
+
+この場合もPreview URLはmerge前にチャットへ提示しますが、**同時に「内部変更であり、Preview上の見た目差分はない」ことを明示**します。CIとPreviewが成功していれば、別のユーザー承認メッセージを待たずmergeして構いません。
 
 merge 前に確認すること:
 
@@ -154,13 +166,12 @@ merge 前に確認すること:
 - Preview が最新 PR head から生成されている
 - Preview URL が開ける
 - **Preview URL をユーザーとのチャットへ提示済み**
-- **URL提示後の新しいユーザーメッセージで明示的なmerge承認を得ている**
+- **そのPRがユーザー向け変更か内部変更かを明示済み**
+- ユーザー向け変更では、URL提示後に明示的なmerge承認を得ている
 - 視覚・操作感が関係する場合は、実機または適切なブラウザで手動確認済み
 - test/build/CI も成功している
 
-PR Preview が failed / cancelled / stale / unavailable の状態では merge しません。Preview は CI の代替ではなく、**CI + Preview + user approval のすべて**を merge gate とします。
-
-Preview を開いても意味のある追加検証にならない docs-only、コメントのみ、pure refactor、internal runtime 変更でも、Preview URL が生成された場合はmerge前にチャットへURLを提示し、**その場では止めてユーザーの明示承認を待ちます**。
+PR Preview が failed / cancelled / stale / unavailable の状態では、ユーザー向け変更を merge しません。Preview は CI の代替ではなく、CI + Preview を merge gate とします。
 
 ## 9. Pull request / commit scope
 
@@ -192,6 +203,7 @@ RoboEyes や類似プロジェクトの思想・API・実装を参考にする�
 - 必要な docs を更新する
 - Phase scope を不必要に広げていない
 - 実装 PR では、最新 PR Preview URL を merge 前にユーザーとのチャットへ提示している
-- **Preview URL提示後にユーザーから明示的なmerge承認を得ている**
-- **Preview URLを初めて提示した応答/ターンではmergeしていない**
+- **ユーザー向け変更か内部変更かを明示している**
+- ユーザー向け変更では、Preview URL提示後にユーザーから明示的なmerge承認を得ている
+- 内部変更では、Preview上の見た目差分がないことを明記している
 - ユーザー向け変更では、最新 PR Preview が成功し、必要な実機・目視確認が完了している
