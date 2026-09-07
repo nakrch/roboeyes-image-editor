@@ -17,6 +17,24 @@ export {
 export type { EasingId } from './easing'
 
 export {
+  applyEyeOpenness,
+  DEFAULT_EYE_OPENNESS_TIMING,
+  EYE_OPENNESS_ACTIONS,
+  EYE_OPENNESS_KIND,
+  EYE_OPENNESS_STATES,
+  eyeOpennessChannelResolver,
+  normalizeEyeOpennessDefinition,
+  resolveEyeOpenness,
+} from './eyeOpenness'
+export type {
+  EyeOpennessAction,
+  EyeOpennessDefinition,
+  EyeOpennessState,
+  NormalizedEyeOpennessDefinition,
+  ResolvedEyeOpenness,
+} from './eyeOpenness'
+
+export {
   deriveRandomStreamSeed,
   MAX_ANIMATION_SEED,
   normalizeAnimationSeed,
