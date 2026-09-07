@@ -13,7 +13,7 @@ Read these before making architectural changes:
 
 ## PR Preview handoff rule
 
-**After opening an implementation PR, do not merge it before the latest PR Preview URL has been surfaced to the user in the chat and the user has explicitly approved proceeding with the merge.**
+**After opening an implementation PR, surface the latest PR Preview URL to the user in the chat before merge and explicitly state whether the change is user-visible or internal-only.**
 
 Required handoff sequence:
 
@@ -21,14 +21,14 @@ Required handoff sequence:
 2. Wait for the automatic **PR Preview** deployment for the latest PR head.
 3. Retrieve the generated preview URL (normally posted to the PR by the preview workflow).
 4. **Present that URL to the user in the chat as an easy-to-open link before merge.**
-5. **STOP after presenting the URL. Do not merge in the same response/turn.**
-6. Wait for a new user message that explicitly authorizes the merge, for example `OK`, `問題ない`, `mergeして`, or an equivalent clear approval.
-7. For user-visible UI/UX, interaction, renderer, preview, animation, or output changes, the approval should follow the user's actual Preview inspection whenever meaningful.
-8. Merge only after the normal CI/build gates, successful latest-head Preview, and explicit user approval are all satisfied.
+5. **At the same time, explicitly classify the PR as either:**
+   - **user-visible**: UI/UX, interaction, renderer, preview appearance, animation appearance/behavior, or output changes that the user can meaningfully inspect; or
+   - **internal-only**: docs-only, tests, CI/config, pure refactor, or runtime/core changes with no meaningful visible Preview difference.
+6. For **user-visible** changes, **STOP after presenting the URL and wait for a new user message that explicitly approves merge** (for example `OK`, `問題ない`, `mergeして`). Do not merge in the same response/turn in which the Preview URL is first shown.
+7. For **internal-only** changes, tell the user that the Preview has no meaningful visible difference. Explicit post-Preview approval is not required; after URL handoff and successful CI/Preview gates, merge may proceed in the same turn.
+8. Merge only after the normal CI/build gates and the applicable Preview/user-approval gate are satisfied.
 
-The user's initial request to implement an Issue, general permission to proceed autonomously, CI success, or the fact that Preview provides little meaningful validation **must not be treated as merge approval**. The approval must come after the Preview URL has been shown.
-
-Do not treat the GitHub PR comment alone as sufficient handoff: the preview URL must also be shown directly in the active user conversation. If a Preview is genuinely unavailable or not produced, state that explicitly and do not merge unless the user explicitly decides how to proceed.
+Do not treat a GitHub PR comment alone as sufficient handoff: the preview URL must also be shown directly in the active user conversation. For internal-only changes, never omit the classification; say clearly that the change is internal and the Preview is expected to look unchanged. If a Preview is genuinely unavailable or not produced, state that explicitly instead of silently merging.
 
 ## Reference-first implementation rule
 
@@ -119,11 +119,10 @@ over a timeline-first design.
 - Keep changes narrowly scoped.
 - Add tests around model/adapter/renderer/export behavior.
 - Update docs when a design decision changes.
-- **Before merging any user-visible UI/UX, interaction, renderer, preview, or output change, validate the latest PR head through the automatic PR Preview.** The preview deployment must be successful and must correspond to the latest PR head.
-- **Before any implementation PR is merged, surface the latest PR Preview URL directly to the user in the active chat, then stop and wait for explicit merge approval in a subsequent user message.**
-- **Never call merge in the same response/turn in which the Preview URL is first presented.**
-- Do not infer merge approval from the original implementation request, autonomous-execution permission, successful CI, or an internal/docs-only scope.
+- **Before any implementation PR is merged, surface the latest PR Preview URL directly to the user in the active chat and explicitly say whether the change is user-visible or internal-only.**
+- For user-visible UI/UX, interaction, renderer, preview, animation appearance/behavior, or output changes, validate the latest PR head through the automatic PR Preview, then stop and wait for explicit merge approval in a subsequent user message.
+- **Never call merge in the same response/turn in which the Preview URL for a user-visible change is first presented.**
+- For docs-only, tests, CI/config, pure refactor, or internal/runtime changes with no meaningful visible Preview difference, state that clearly; after URL handoff and successful CI/Preview, merge may proceed without a separate approval message.
 - Do not merge a user-visible change while its PR Preview is failed, cancelled, stale, or unavailable.
 - When visual feel or interaction behavior matters, obtain manual confirmation from the PR Preview before merging. CI test/build is still required; Preview is an additional gate, not a replacement.
-- Docs-only or purely internal changes may have little meaningful visual validation, but the URL handoff + explicit post-handoff approval gate still applies to implementation PRs when a Preview URL is produced.
 - If implementation pressure conflicts with `docs/direction.md`, do not silently change the architecture; surface the conflict and update the design deliberately.
