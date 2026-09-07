@@ -12,17 +12,15 @@ import {
   EMPTY_ANIMATION_DEFINITION,
   normalizeAnimationDefinition,
   type AnimationDefinition,
+  type AnimationRuntimeChannel,
   type JsonValue,
 } from './runtime'
 import { normalizeFaceTransitionDefinition } from './transition'
 
 export const PRESET_ANIMATION_DEFAULTS_VERSION = 1 as const
 
-/**
- * Empty object is retained as the Phase 1/2 compatibility representation.
- * Non-empty authoring data uses the versioned envelope below.
- */
-export type LegacyEmptyAnimationDefaults = Record<string, never>
+/** Empty object is retained as the Phase 1/2 compatibility representation. */
+export type LegacyEmptyAnimationDefaults = { version?: never }
 
 export type PresetAnimationDefaultsV1 = {
   version: typeof PRESET_ANIMATION_DEFAULTS_VERSION
@@ -60,7 +58,109 @@ function isEmptyRecord(value: Record<string, unknown>): boolean {
   return Object.keys(value).length === 0
 }
 
+const EXPRESSION_KEYS = [
+  'upperLid',
+  'upperLidInner',
+  'upperLidOuter',
+  'lowerLid',
+  'lowerLidCurvature',
+  'tilt',
+  'heightScale',
+  'gazeHeightExpansion',
+  'gazeHeightThreshold',
+] as const
+
+function assertPointStrict(value: unknown, label: string, partial: boolean): void {
+  if (!isRecord(value)) return
+  assertAllowedKeys(value, ['x', 'y'], label)
+  if (!partial && (!('x' in value) || !('y' in value))) {
+    throw new RangeError(`${label} must contain x and y`)
+  }
+}
+
+function assertExpressionStrict(value: unknown, label: string): void {
+  if (!isRecord(value)) return
+  assertAllowedKeys(value, [...EXPRESSION_KEYS, 'leftEye', 'rightEye'], label)
+  for (const side of ['leftEye', 'rightEye'] as const) {
+    if (value[side] === undefined || !isRecord(value[side])) continue
+    assertAllowedKeys(value[side], EXPRESSION_KEYS, `${label}.${side}`)
+  }
+}
+
+function assertEyeTargetStrict(value: unknown, label: string): void {
+  if (!isRecord(value)) return
+  assertAllowedKeys(value, ['geometry'], label)
+  if (!isRecord(value.geometry)) return
+  assertAllowedKeys(
+    value.geometry,
+    ['position', 'width', 'height', 'cornerRadius', 'rotation'],
+    `${label}.geometry`,
+  )
+  if (value.geometry.position !== undefined) {
+    assertPointStrict(value.geometry.position, `${label}.geometry.position`, true)
+  }
+}
+
+function assertFaceStateTargetStrict(value: unknown, label: string): void {
+  if (!isRecord(value)) return
+  assertAllowedKeys(value, ['gaze', 'leftEye', 'rightEye', 'eyeSpacing', 'expression'], label)
+  if (value.gaze !== undefined) assertPointStrict(value.gaze, `${label}.gaze`, true)
+  if (value.leftEye !== undefined) assertEyeTargetStrict(value.leftEye, `${label}.leftEye`)
+  if (value.rightEye !== undefined) assertEyeTargetStrict(value.rightEye, `${label}.rightEye`)
+  if (value.expression !== undefined) assertExpressionStrict(value.expression, `${label}.expression`)
+}
+
+function assertAnimationChannelStrict(channel: string, value: JsonValue): void {
+  if (!isRecord(value)) return
+  switch (channel) {
+    case 'state-transition':
+      // `from` is a runtime retarget/rebase snapshot and must never leak into persisted authoring data.
+      assertAllowedKeys(
+        value,
+        ['kind', 'id', 'startTimeMs', 'durationMs', 'easing', 'target'],
+        'Persisted state-transition definition',
+      )
+      if (value.target !== undefined) assertFaceStateTargetStrict(value.target, 'Persisted state-transition target')
+      return
+    case 'gaze-pose':
+      assertAllowedKeys(
+        value,
+        ['kind', 'enabled', 'startTimeMs', 'intervalMs', 'variationMs', 'transitionDurationMs', 'easing', 'xRange', 'yRange'],
+        'Persisted idle-gaze definition',
+      )
+      if (isRecord(value.xRange)) assertAllowedKeys(value.xRange, ['min', 'max'], 'Persisted idle-gaze xRange')
+      if (isRecord(value.yRange)) assertAllowedKeys(value.yRange, ['min', 'max'], 'Persisted idle-gaze yRange')
+      return
+    case 'eye-openness':
+      assertAllowedKeys(
+        value,
+        ['kind', 'state', 'closeDurationMs', 'holdDurationMs', 'openDurationMs', 'easing', 'closedScale', 'autoBlink'],
+        'Persisted eye-openness definition',
+      )
+      if (isRecord(value.autoBlink)) {
+        assertAllowedKeys(
+          value.autoBlink,
+          ['enabled', 'startTimeMs', 'intervalMs', 'variationMs'],
+          'Persisted auto-blink definition',
+        )
+      }
+      return
+    case 'motion-offset':
+      assertAllowedKeys(
+        value,
+        ['kind', 'startTimeMs', 'axis', 'amplitude', 'periodMs', 'phase', 'waveform'],
+        'Persisted continuous-motion definition',
+      )
+      return
+    case 'transient-effect':
+      throw new RangeError('Persisted transient-effect data is not supported until its schema is defined')
+    default:
+      throw new RangeError(`Unsupported persisted animation channel: ${channel}`)
+  }
+}
+
 function normalizeAnimationChannelDefinition(channel: string, value: JsonValue): JsonValue {
+  assertAnimationChannelStrict(channel, value)
   switch (channel) {
     case 'state-transition':
       return normalizeFaceTransitionDefinition(value) as unknown as JsonValue
@@ -87,7 +187,7 @@ export function normalizePersistedAnimationDefinition(value: unknown): Animation
   const channels: AnimationDefinition['channels'] = {}
   for (const [channel, channelDefinition] of Object.entries(normalized.channels)) {
     if (channelDefinition === undefined) continue
-    channels[channel as keyof typeof channels] = normalizeAnimationChannelDefinition(channel, channelDefinition)
+    channels[channel as AnimationRuntimeChannel] = normalizeAnimationChannelDefinition(channel, channelDefinition)
   }
   return { ...normalized, channels }
 }
@@ -118,6 +218,9 @@ function assertProgramShapeStrict(value: unknown): void {
       ['id', 'target', 'transitionDurationMs', 'easing', 'holdDurationMs', 'actions'],
       `Persisted animation program step ${stepIndex}`,
     )
+    if (step.target !== undefined) {
+      assertFaceStateTargetStrict(step.target, `Persisted animation program step ${stepIndex} target`)
+    }
     if (!Array.isArray(step.actions)) continue
     for (let actionIndex = 0; actionIndex < step.actions.length; actionIndex += 1) {
       const action = step.actions[actionIndex]
@@ -172,14 +275,14 @@ export function isPresetAnimationDefaults(value: unknown): value is PresetAnimat
 
 /**
  * Create deterministic runtime inputs from persisted authoring defaults. This
- * function intentionally creates no elapsed position, one-shot history, PRNG
- * cursor, pause state, or scheduler progress.
+ * intentionally creates no elapsed position, one-shot history, PRNG cursor,
+ * pause state, or scheduler progress.
  */
 export function initializePresetAnimation(
   value: PresetAnimationDefaults,
 ): InitializedPresetAnimation {
   const normalized = normalizePresetAnimationDefaults(value)
-  if (!('version' in normalized)) {
+  if (normalized.version === undefined) {
     return {
       seed: 0,
       definition: { ...EMPTY_ANIMATION_DEFINITION },
