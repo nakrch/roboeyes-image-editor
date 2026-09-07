@@ -119,9 +119,10 @@ UI の細部より、domain と renderer の再現性を先に保証します。
 4. その Issue を解決するための実装 PR を作る
 5. PR 本文から `Fixes #123` / `Closes #123` 等で Issue を紐付ける
 6. test/build/CI を通す
-7. ユーザーに見える変更は、最新 PR head の自動 PR Preview を開き、実機・目視で確認する
-8. CI と必要な Preview 確認の両方が完了してから merge する
-9. merge により対象 Issue を close する
+7. 最新 PR head の自動 PR Preview が完了したら、**生成された Preview URL を merge 前にユーザーとのチャットへ直接提示する**
+8. ユーザーに見える変更は、その Preview を実機・目視で確認してもらう
+9. CI と必要な Preview 確認の両方が完了してから merge する
+10. merge により対象 Issue を close する
 
 原則として「先に PR を作り、後から Issue を作る」運用は避けます。
 
@@ -130,6 +131,8 @@ UI の細部より、domain と renderer の再現性を先に保証します。
 ## 8. PR Preview before merge
 
 ユーザーが見たり触ったりする変更では、**PR Preview を merge 前の必須検証にします**。
+
+さらに、実装 PR では **PR Preview URL のユーザーへの直接提示を merge 前の handoff gate** とします。GitHub上のBotコメントだけで済ませず、現在のユーザーとのチャットに、すぐ開ける形でPreview URLを表示します。
 
 対象例:
 
@@ -144,12 +147,13 @@ merge 前に確認すること:
 - PR Preview workflow が成功している
 - Preview が最新 PR head から生成されている
 - Preview URL が開ける
+- **Preview URL をユーザーとのチャットへ提示済み**
 - 視覚・操作感が関係する場合は、実機または適切なブラウザで手動確認済み
 - test/build/CI も成功している
 
 PR Preview が failed / cancelled / stale / unavailable の状態では、ユーザー向け変更を merge しません。Preview は CI の代替ではなく、**CI + Preview の両方**を merge gate とします。
 
-docs-only、コメントのみ、pure refactor など、Preview を開いても意味のある追加検証にならない変更は手動 Preview 確認を省略できます。ただし通常の CI は必要です。
+docs-only、コメントのみ、pure refactor など、Preview を開いても意味のある追加検証にならない変更は手動 Preview 確認を省略できます。ただし通常の CI は必要です。Preview URL が生成された場合は、これらの変更でも merge 前にチャットへURLを提示します。
 
 ## 9. Pull request / commit scope
 
@@ -180,4 +184,5 @@ RoboEyes や類似プロジェクトの思想・API・実装を参考にする�
 - layer boundary を壊していない
 - 必要な docs を更新する
 - Phase scope を不必要に広げていない
+- 実装 PR では、最新 PR Preview URL を merge 前にユーザーとのチャットへ提示している
 - ユーザー向け変更では、最新 PR Preview が成功し、必要な実機・目視確認が完了している

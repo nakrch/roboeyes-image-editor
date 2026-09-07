@@ -11,6 +11,21 @@ Read these before making architectural changes:
 3. `docs/roadmap.md`
 4. the active GitHub Issue
 
+## PR Preview handoff rule
+
+**After opening an implementation PR, do not merge it before the PR Preview URL has been surfaced to the user in the chat.**
+
+Required handoff sequence:
+
+1. Open the PR.
+2. Wait for the automatic **PR Preview** deployment for the latest PR head.
+3. Retrieve the generated preview URL (normally posted to the PR by the preview workflow).
+4. **Present that URL to the user in the chat as an easy-to-open link before merge.**
+5. For user-visible UI/UX, interaction, renderer, preview, animation, or output changes, wait for the user's manual confirmation before merging.
+6. Merge only after the normal CI/build gates and the applicable Preview gate are satisfied.
+
+Do not treat the GitHub PR comment alone as sufficient handoff: the preview URL must also be shown directly in the active user conversation. If a Preview is genuinely unavailable or not produced, state that explicitly instead of silently merging.
+
 ## Reference-first implementation rule
 
 Before designing or implementing behavior, geometry, expressions, animation, compatibility, rendering, controls, or export semantics that are related to RoboEyes, first inspect the current implementation in the original **FluxGarage/RoboEyes** repository.
@@ -101,7 +116,8 @@ over a timeline-first design.
 - Add tests around model/adapter/renderer/export behavior.
 - Update docs when a design decision changes.
 - **Before merging any user-visible UI/UX, interaction, renderer, preview, or output change, validate the latest PR head through the automatic PR Preview.** The preview deployment must be successful and must correspond to the latest PR head.
+- **Before any implementation PR is merged, surface the latest PR Preview URL directly to the user in the active chat.**
 - Do not merge a user-visible change while its PR Preview is failed, cancelled, stale, or unavailable.
 - When visual feel or interaction behavior matters, obtain manual confirmation from the PR Preview before merging. CI test/build is still required; Preview is an additional gate, not a replacement.
-- Docs-only or purely internal changes may skip manual Preview validation only when the Preview provides no meaningful validation.
+- Docs-only or purely internal changes may skip manual Preview validation only when the Preview provides no meaningful validation, but the preview handoff rule above still applies when a Preview URL is produced.
 - If implementation pressure conflicts with `docs/direction.md`, do not silently change the architecture; surface the conflict and update the design deliberately.
