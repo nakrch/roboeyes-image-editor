@@ -51,6 +51,26 @@ export type {
 } from './eyeOpenness'
 
 export {
+  DEFAULT_IDLE_GAZE,
+  IDLE_GAZE_CONTROL_ACTIONS,
+  IDLE_GAZE_KIND,
+  IDLE_GAZE_RANDOM_STREAM,
+  idleGazeChannelResolver,
+  isIdleGazeControlAction,
+  normalizeIdleGazeDefinition,
+  resolveIdleGaze,
+  scheduledIdleGazeTargets,
+} from './idleGaze'
+export type {
+  IdleGazeControlAction,
+  IdleGazeDefinition,
+  IdleGazeRange,
+  NormalizedIdleGazeDefinition,
+  ResolvedIdleGaze,
+  ScheduledIdleGazeTarget,
+} from './idleGaze'
+
+export {
   deriveRandomStreamSeed,
   MAX_ANIMATION_SEED,
   normalizeAnimationSeed,
