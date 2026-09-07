@@ -1,4 +1,11 @@
 import type { FaceModel } from '../core/model'
+import {
+  expandAutoBlinkEvents,
+  isAutoBlinkControlAction,
+  normalizeAutoBlinkDefinition,
+  type AutoBlinkDefinition,
+  type NormalizedAutoBlinkDefinition,
+} from './autoBlink'
 import { applyEasing, isEasingId, type EasingId } from './easing'
 import {
   cloneFaceModel,
@@ -40,6 +47,7 @@ export type EyeOpennessDefinition = {
   openDurationMs?: number
   easing?: EasingId
   closedScale?: number
+  autoBlink?: AutoBlinkDefinition
 }
 
 export type NormalizedEyeOpennessDefinition = {
@@ -50,6 +58,7 @@ export type NormalizedEyeOpennessDefinition = {
   openDurationMs: number
   easing: EasingId
   closedScale: number
+  autoBlink: NormalizedAutoBlinkDefinition
 }
 
 export type ResolvedEyeOpenness = {
@@ -60,7 +69,13 @@ export type ResolvedEyeOpenness = {
 
 type EyeSide = 'left' | 'right'
 
-type EyeTiming = Omit<NormalizedEyeOpennessDefinition, 'kind' | 'state'>
+type EyeTiming = {
+  closeDurationMs: number
+  holdDurationMs: number
+  openDurationMs: number
+  easing: EasingId
+  closedScale: number
+}
 
 type SteadyMotion = {
   type: 'steady'
@@ -155,6 +170,7 @@ export function normalizeEyeOpennessDefinition(value: unknown): NormalizedEyeOpe
     closedScale: value.closedScale === undefined
       ? DEFAULT_EYE_OPENNESS_TIMING.closedScale
       : opennessValue(value.closedScale, 'Eye openness closedScale'),
+    autoBlink: normalizeAutoBlinkDefinition(value.autoBlink ?? {}),
   }
 }
 
@@ -366,6 +382,7 @@ export function resolveEyeOpenness(
 
   for (const event of events) {
     if (event.channel !== 'eye-openness' || event.startTimeMs > timeMs) continue
+    if (isAutoBlinkControlAction(event.action)) continue
     applyEvent(tracks, event, timing)
   }
 
@@ -399,5 +416,11 @@ export const eyeOpennessChannelResolver: AnimationChannelResolver = ({
   events,
 }) => {
   const definition = definitionFromChannel(channelDefinition)
-  return applyEyeOpenness(model, resolveEyeOpenness(definition, events, context.timeMs))
+  const expandedEvents = expandAutoBlinkEvents(
+    definition.autoBlink,
+    events,
+    context.timeMs,
+    context.seed,
+  )
+  return applyEyeOpenness(model, resolveEyeOpenness(definition, expandedEvents, context.timeMs))
 }
