@@ -119,6 +119,23 @@ export type {
 } from './motionOffset'
 
 export {
+  ANIMATION_PROGRAM_VERSION,
+  animationProgramDurationMs,
+  animationProgramRuntimeEvents,
+  normalizeAnimationProgram,
+  PROGRAM_PLAYBACK_MODES,
+  sampleAnimationProgram,
+} from './program'
+export type {
+  AnimationProgram,
+  AnimationProgramStep,
+  ProgramAction,
+  ProgramPlaybackMode,
+  ProgramSamplePhase,
+  SampledAnimationProgram,
+} from './program'
+
+export {
   deriveRandomStreamSeed,
   MAX_ANIMATION_SEED,
   normalizeAnimationSeed,
@@ -180,6 +197,7 @@ export {
   normalizeFaceStateTarget,
   normalizeFaceTransitionDefinition,
   normalizedGazeTarget,
+  resolveFaceStateTarget,
   retargetFaceTransition,
   ROBOEYES_GAZE_POSITIONS,
   sampleFaceTransition,
