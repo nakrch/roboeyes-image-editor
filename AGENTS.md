@@ -13,7 +13,7 @@ Read these before making architectural changes:
 
 ## PR Preview handoff rule
 
-**After opening an implementation PR, do not merge it before the PR Preview URL has been surfaced to the user in the chat.**
+**After opening an implementation PR, do not merge it before the latest PR Preview URL has been surfaced to the user in the chat and the user has explicitly approved proceeding with the merge.**
 
 Required handoff sequence:
 
@@ -21,10 +21,14 @@ Required handoff sequence:
 2. Wait for the automatic **PR Preview** deployment for the latest PR head.
 3. Retrieve the generated preview URL (normally posted to the PR by the preview workflow).
 4. **Present that URL to the user in the chat as an easy-to-open link before merge.**
-5. For user-visible UI/UX, interaction, renderer, preview, animation, or output changes, wait for the user's manual confirmation before merging.
-6. Merge only after the normal CI/build gates and the applicable Preview gate are satisfied.
+5. **STOP after presenting the URL. Do not merge in the same response/turn.**
+6. Wait for a new user message that explicitly authorizes the merge, for example `OK`, `問題ない`, `mergeして`, or an equivalent clear approval.
+7. For user-visible UI/UX, interaction, renderer, preview, animation, or output changes, the approval should follow the user's actual Preview inspection whenever meaningful.
+8. Merge only after the normal CI/build gates, successful latest-head Preview, and explicit user approval are all satisfied.
 
-Do not treat the GitHub PR comment alone as sufficient handoff: the preview URL must also be shown directly in the active user conversation. If a Preview is genuinely unavailable or not produced, state that explicitly instead of silently merging.
+The user's initial request to implement an Issue, general permission to proceed autonomously, CI success, or the fact that Preview provides little meaningful validation **must not be treated as merge approval**. The approval must come after the Preview URL has been shown.
+
+Do not treat the GitHub PR comment alone as sufficient handoff: the preview URL must also be shown directly in the active user conversation. If a Preview is genuinely unavailable or not produced, state that explicitly and do not merge unless the user explicitly decides how to proceed.
 
 ## Reference-first implementation rule
 
@@ -116,8 +120,10 @@ over a timeline-first design.
 - Add tests around model/adapter/renderer/export behavior.
 - Update docs when a design decision changes.
 - **Before merging any user-visible UI/UX, interaction, renderer, preview, or output change, validate the latest PR head through the automatic PR Preview.** The preview deployment must be successful and must correspond to the latest PR head.
-- **Before any implementation PR is merged, surface the latest PR Preview URL directly to the user in the active chat.**
+- **Before any implementation PR is merged, surface the latest PR Preview URL directly to the user in the active chat, then stop and wait for explicit merge approval in a subsequent user message.**
+- **Never call merge in the same response/turn in which the Preview URL is first presented.**
+- Do not infer merge approval from the original implementation request, autonomous-execution permission, successful CI, or an internal/docs-only scope.
 - Do not merge a user-visible change while its PR Preview is failed, cancelled, stale, or unavailable.
 - When visual feel or interaction behavior matters, obtain manual confirmation from the PR Preview before merging. CI test/build is still required; Preview is an additional gate, not a replacement.
-- Docs-only or purely internal changes may skip manual Preview validation only when the Preview provides no meaningful validation, but the preview handoff rule above still applies when a Preview URL is produced.
+- Docs-only or purely internal changes may have little meaningful visual validation, but the URL handoff + explicit post-handoff approval gate still applies to implementation PRs when a Preview URL is produced.
 - If implementation pressure conflicts with `docs/direction.md`, do not silently change the architecture; surface the conflict and update the design deliberately.
