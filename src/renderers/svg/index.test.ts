@@ -46,6 +46,16 @@ describe('renderFaceToSvg', () => {
     expect(svg).toContain('<svg xmlns="http://www.w3.org/2000/svg"')
   })
 
+  it('supports stable namespaced definition ids for multiple inline SVGs', () => {
+    const svg = renderFaceToSvg(model, { idPrefix: 'gallery fixture/1' })
+
+    expect(svg).toContain('id="gallery-fixture-1-eye-clip-left"')
+    expect(svg).toContain('id="gallery-fixture-1-eye-clip-right"')
+    expect(svg).toContain('clip-path="url(#gallery-fixture-1-eye-clip-left)"')
+    expect(svg).toContain('clip-path="url(#gallery-fixture-1-eye-clip-right)"')
+    expect(svg).not.toContain('id="eye-clip-left"')
+  })
+
   it('applies gaze and expression transforms deterministically', () => {
     const first = renderFaceToSvg(model)
     const second = renderFaceToSvg(model)

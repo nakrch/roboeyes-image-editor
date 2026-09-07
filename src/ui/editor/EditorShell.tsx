@@ -27,6 +27,7 @@ import { ParameterPanel } from '../controls/ParameterPanel'
 import { PresetPanel } from '../controls/PresetPanel'
 import { ExportPanel } from '../export/ExportPanel'
 import { PreviewArea } from '../preview/PreviewArea'
+import { VisualRegressionGallery } from '../preview/VisualRegressionGallery'
 import { ContinuousEditProvider } from './continuousEdit'
 import { commitHistory, redoHistory, undoHistory, type HistoryState } from './history'
 
@@ -301,6 +302,8 @@ export function EditorShell() {
           </div>
         </section>
       </ContinuousEditProvider>
+
+      <VisualRegressionGallery />
     </main>
   )
 }
