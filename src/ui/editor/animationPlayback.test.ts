@@ -4,6 +4,7 @@ import {
   createAnimationPlaybackSession,
   pauseAnimationPlayback,
   playAnimationPlayback,
+  previewAnimationProgramStep,
   restartAnimationPlayback,
   setAnimationDocumentHidden,
   setAnimationPlaybackRate,
@@ -51,5 +52,37 @@ describe('animation playback session', () => {
       true,
     )
     expect(setAnimationDocumentHidden(deliberatelyPaused, false).clock.status).toBe('paused')
+  })
+
+  it('pauses and seeks to the selected sequence step hold frame', () => {
+    const program = {
+      version: 1 as const,
+      id: 'animation:preview',
+      playbackMode: 'loop' as const,
+      steps: [
+        {
+          id: 'step:one',
+          target: {},
+          transitionDurationMs: 0,
+          easing: 'linear' as const,
+          holdDurationMs: 800,
+        },
+        {
+          id: 'step:two',
+          target: {},
+          transitionDurationMs: 200,
+          easing: 'ease-in-out' as const,
+          holdDurationMs: 600,
+        },
+      ],
+    }
+    const session = previewAnimationProgramStep(
+      playAnimationPlayback(createAnimationPlaybackSession()),
+      program,
+      'step:two',
+    )
+    expect(session.clock.status).toBe('paused')
+    expect(session.clock.positionMs).toBe(1_000)
+    expect(session.resumeAfterVisibility).toBe(false)
   })
 })
