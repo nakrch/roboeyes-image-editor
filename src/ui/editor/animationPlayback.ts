@@ -6,6 +6,7 @@ import {
   seekPlaybackClock,
   setPlaybackRate,
   stopPlaybackClock,
+  type AnimationProgram,
   type PlaybackClockState,
 } from '../../animation'
 
@@ -49,6 +50,26 @@ export function advanceAnimationPlayback(
   elapsedRealMs: number,
 ): AnimationPlaybackSession {
   return { ...session, clock: advancePlaybackClock(session.clock, elapsedRealMs) }
+}
+
+/** Pause and seek to the selected step's first forward hold frame. */
+export function previewAnimationProgramStep(
+  session: AnimationPlaybackSession,
+  program: AnimationProgram,
+  stepId: string,
+): AnimationPlaybackSession {
+  const index = program.steps.findIndex((step) => step.id === stepId)
+  if (index < 0) return pauseAnimationPlayback(session)
+  let positionMs = 0
+  for (let cursor = 0; cursor < index; cursor += 1) {
+    const step = program.steps[cursor]
+    positionMs += step.transitionDurationMs + step.holdDurationMs
+  }
+  positionMs += program.steps[index].transitionDurationMs
+  return {
+    clock: pausePlaybackClock(seekPlaybackClock(session.clock, positionMs)),
+    resumeAfterVisibility: false,
+  }
 }
 
 /** Hidden browser time never contributes to logical animation time. */
