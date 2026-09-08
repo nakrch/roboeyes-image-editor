@@ -7,6 +7,7 @@ import {
   type AnimationProgram,
   type AnimationProgramStep,
   type EasingId,
+  type JsonObject,
   type JsonValue,
   type PresetAnimationDefaults,
   type PresetAnimationDefaultsV1,
@@ -27,7 +28,8 @@ type AnimationPanelProps = {
   onStop: () => void
   onRestart: () => void
   onPlaybackRateChange: (rate: number) => void
-  onTrigger: (action: string, channel: RuntimeAnimationEvent['channel']) => void
+  onTrigger: (action: string, channel: RuntimeAnimationEvent['channel'], payload?: JsonObject) => void
+  onPreviewSequenceStep: (program: AnimationProgram, stepId: string) => void
 }
 
 function editable(defaults: PresetAnimationDefaults): PresetAnimationDefaultsV1 {
@@ -153,6 +155,7 @@ export function AnimationPanel({
   onRestart,
   onPlaybackRateChange,
   onTrigger,
+  onPreviewSequenceStep,
 }: AnimationPanelProps) {
   const authored = editable(animationDefaults)
   const eye = eyeDefinition(animationDefaults)
@@ -261,10 +264,23 @@ export function AnimationPanel({
           <button type="button" onClick={() => onTrigger('wink-right', 'eye-openness')}>Wink R</button>
           <button type="button" onClick={() => onTrigger('open', 'eye-openness')}>Open</button>
           <button type="button" onClick={() => onTrigger('close', 'eye-openness')}>Close</button>
-          <button type="button" onClick={() => onTrigger('sleep', 'eye-openness')}>Sleep</button>
-          <button type="button" onClick={() => onTrigger('confused', 'motion-offset')}>Confused</button>
+          <button
+            type="button"
+            onClick={() => onTrigger('sleep', 'eye-openness', { closeDurationMs: 300, easing: 'ease-in-out' })}
+          >
+            Sleep
+          </button>
+          <button
+            type="button"
+            onClick={() => onTrigger('confused', 'motion-offset', { amplitude: 6, durationMs: 450, periodMs: 60 })}
+          >
+            Confused
+          </button>
           <button type="button" onClick={() => onTrigger('laugh', 'motion-offset')}>Laugh</button>
         </div>
+        <p className="animation-note">
+          Close and Sleep are persistent states: both stay closed until Open. Close is a quick closed state; Sleep closes more slowly and records the semantic sleep state used by behaviors/programs.
+        </p>
       </div>
 
       <div className="animation-section">
@@ -290,7 +306,7 @@ export function AnimationPanel({
           </select>
         </label>
         <p className="animation-note">
-          Static Expression remains separate; selecting a behavior profile does not replace the current Expression.
+          Profiles may show their recommended Expression in Preview so their character is visible (for example Frozen-like vs Angry). The authored static Expression remains separate and is not overwritten.
         </p>
       </div>
 
@@ -412,10 +428,12 @@ export function AnimationPanel({
                       onChange={(event) => {
                         const expression = expressionPresets.find((preset) => preset.id === event.target.value)?.expression
                         if (expression === undefined) return
-                        updateProgram(updateStep(program, step.id, (current) => ({
+                        const nextProgram = updateStep(program, step.id, (current) => ({
                           ...current,
                           target: { ...current.target, expression: structuredClone(expression) },
-                        })))
+                        }))
+                        updateProgram(nextProgram)
+                        onPreviewSequenceStep(nextProgram, step.id)
                       }}
                     >
                       {expressionId === 'custom' && <option value="custom">Custom current target</option>}
