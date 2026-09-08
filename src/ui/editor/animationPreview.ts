@@ -1,4 +1,5 @@
 import type { FaceModel } from '../../core/model'
+import { expressionPresets } from '../../core/presets'
 import {
   ANIMATION_DEFINITION_VERSION,
   PRESET_ANIMATION_DEFAULTS_VERSION,
@@ -9,6 +10,7 @@ import {
   stateTransitionChannelResolver,
   type AnimationChannelResolvers,
   type AnimationDefinition,
+  type JsonObject,
   type PresetAnimationDefaults,
   type PresetAnimationDefaultsV1,
   type RuntimeAnimationEvent,
@@ -50,6 +52,17 @@ function mergeDefinitions(
   }
 }
 
+function previewBaseModel(
+  baseModel: FaceModel,
+  recommendedExpressionPresetId: string | undefined,
+): FaceModel {
+  const result = structuredClone(baseModel)
+  if (recommendedExpressionPresetId === undefined) return result
+  const recommended = expressionPresets.find((preset) => preset.id === recommendedExpressionPresetId)
+  if (recommended !== undefined) result.expression = structuredClone(recommended.expression)
+  return result
+}
+
 /**
  * Convert legacy `{}` defaults into an editable versioned envelope only when the
  * editor actually changes animation authoring data.
@@ -79,10 +92,14 @@ export function evaluateEditorAnimationFrame(
   const initialized = initializePresetAnimation(defaults)
   const manualEvents = options.runtimeEvents ?? []
 
-  let stateModel = structuredClone(baseModel)
+  const previewBase = previewBaseModel(
+    baseModel,
+    initialized.behaviorProfile?.recommendedExpressionPresetId,
+  )
+  let stateModel = previewBase
   let programEvents: readonly RuntimeAnimationEvent[] = []
   if (initialized.program !== undefined) {
-    const sample = sampleAnimationProgram(initialized.program, baseModel, options.timeMs)
+    const sample = sampleAnimationProgram(initialized.program, previewBase, options.timeMs)
     stateModel = sample.model
     programEvents = sample.runtimeEvents
   }
@@ -107,6 +124,7 @@ export function nextRuntimeEvent(
   channel: RuntimeAnimationEvent['channel'],
   timeMs: number,
   order: number,
+  payload?: JsonObject,
 ): RuntimeAnimationEvent {
   return {
     id: `@editor/${order}/${action}`,
@@ -115,5 +133,6 @@ export function nextRuntimeEvent(
     startTimeMs: timeMs,
     order,
     priority: 100,
+    ...(payload === undefined ? {} : { payload: structuredClone(payload) }),
   }
 }
