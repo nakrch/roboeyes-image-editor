@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { roboEyesPreset } from '../../core/presets'
+import { expressionPresets, roboEyesPreset } from '../../core/presets'
 import { curiousBehaviorProfile, type PresetAnimationDefaults } from '../../animation'
 import { editableAnimationDefaults, evaluateEditorAnimationFrame, nextRuntimeEvent } from './animationPreview'
+
+function expression(id: string) {
+  const found = expressionPresets.find((preset) => preset.id === id)
+  if (found === undefined) throw new Error(`Missing expression preset ${id}`)
+  return found.expression
+}
 
 describe('editor animation preview composition', () => {
   it('keeps legacy empty defaults static until authoring data is changed', () => {
@@ -15,7 +21,7 @@ describe('editor animation preview composition', () => {
     expect(editable.definition?.enabled).toBe(false)
   })
 
-  it('combines a behavior profile with the authored base expression without mutating it', () => {
+  it('previews a behavior profile recommended expression without mutating the authored base expression', () => {
     const base = structuredClone(roboEyesPreset.model)
     const before = structuredClone(base.expression)
     const defaults: PresetAnimationDefaults = {
@@ -24,12 +30,12 @@ describe('editor animation preview composition', () => {
       behaviorProfile: structuredClone(curiousBehaviorProfile),
     }
     const frame = evaluateEditorAnimationFrame(base, defaults, { timeMs: 800 })
-    expect(frame.expression).toEqual(before)
+    expect(frame.expression).toEqual(expression('expression:curious'))
     expect(base.expression).toEqual(before)
     expect(frame.gaze).not.toEqual(base.gaze)
   })
 
-  it('suppresses ambient motion for reduced motion while preserving direct triggers', () => {
+  it('suppresses ambient motion for reduced motion while preserving static profile preview and direct triggers', () => {
     const base = structuredClone(roboEyesPreset.model)
     const defaults: PresetAnimationDefaults = {
       version: 1,
@@ -40,7 +46,8 @@ describe('editor animation preview composition', () => {
       timeMs: 800,
       reducedMotion: true,
     })
-    expect(reduced).toEqual(base)
+    expect(reduced.gaze).toEqual(base.gaze)
+    expect(reduced.expression).toEqual(expression('expression:curious'))
 
     const blink = nextRuntimeEvent('blink', 'eye-openness', 0, 0)
     const direct = evaluateEditorAnimationFrame(base, defaults, {
@@ -50,6 +57,15 @@ describe('editor animation preview composition', () => {
     })
     expect(direct.leftEye.geometry.height).toBeLessThan(base.leftEye.geometry.height)
     expect(direct.rightEye.geometry.height).toBeLessThan(base.rightEye.geometry.height)
+  })
+
+  it('preserves editor-specific manual trigger payload overrides', () => {
+    const event = nextRuntimeEvent('confused', 'motion-offset', 50, 2, {
+      amplitude: 6,
+      durationMs: 450,
+      periodMs: 60,
+    })
+    expect(event.payload).toEqual({ amplitude: 6, durationMs: 450, periodMs: 60 })
   })
 
   it('samples sequence state before ambient/runtime channels and remains seekable', () => {
