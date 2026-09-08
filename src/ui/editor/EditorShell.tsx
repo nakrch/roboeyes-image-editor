@@ -24,6 +24,8 @@ import {
 } from '../../core/presets'
 import {
   normalizePresetAnimationDefaults,
+  type AnimationProgram,
+  type JsonObject,
   type PresetAnimationDefaults,
   type RuntimeAnimationEvent,
 } from '../../animation'
@@ -39,6 +41,7 @@ import {
   createAnimationPlaybackSession,
   pauseAnimationPlayback,
   playAnimationPlayback,
+  previewAnimationProgramStep,
   restartAnimationPlayback,
   setAnimationDocumentHidden,
   setAnimationPlaybackRate,
@@ -309,11 +312,21 @@ export function EditorShell() {
     setExpressionPresetStatus(`Deleted “${preset.name}”.`)
   }
 
-  const triggerAnimation = (action: string, channel: RuntimeAnimationEvent['channel']) => {
+  const triggerAnimation = (
+    action: string,
+    channel: RuntimeAnimationEvent['channel'],
+    payload?: JsonObject,
+  ) => {
     const order = runtimeEventOrder.current++
-    const event = nextRuntimeEvent(action, channel, playback.clock.positionMs, order)
+    const event = nextRuntimeEvent(action, channel, playback.clock.positionMs, order, payload)
     setRuntimeEvents((current) => [...current, event])
     setPlayback((current) => current.clock.status === 'playing' ? current : playAnimationPlayback(current))
+  }
+
+  const previewSequenceStep = (program: AnimationProgram, stepId: string) => {
+    runtimeEventOrder.current = 0
+    setRuntimeEvents([])
+    setPlayback((current) => previewAnimationProgramStep(current, program, stepId))
   }
 
   const { model, transparentBackground, animationDefaults } = history.present
@@ -379,6 +392,7 @@ export function EditorShell() {
               }}
               onPlaybackRateChange={(rate) => setPlayback((current) => setAnimationPlaybackRate(current, rate))}
               onTrigger={triggerAnimation}
+              onPreviewSequenceStep={previewSequenceStep}
             />
             <PresetPanel
               presets={presets}
