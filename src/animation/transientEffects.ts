@@ -58,7 +58,7 @@ export type SweatEffectDefinition = {
   /** Reference-space values based on the RoboEyes 64 px-tall display behavior. */
   minTargetY?: number
   maxTargetY?: number
-  /** Reference-space pixels per millisecond; scaled with canvas height at sampling time. */
+  /** Reference-space pixels per millisecond. Larger canvases scale distance and duration, not velocity. */
   fallSpeed?: number
   /** Controls the generic teardrop bulb roundness. */
   radius?: number
@@ -260,8 +260,9 @@ function sampledTargetY(
 }
 
 function cycleDurationMs(definition: NormalizedSweatEffectDefinition, targetY: number, scale: number): number {
-  const startY = SWEAT_START_Y * scale
-  return Math.max(1, (Math.max(startY, targetY) - startY) / (definition.fallSpeed * scale))
+  const targetYReference = targetY / scale
+  const referenceDurationMs = (Math.max(SWEAT_START_Y, targetYReference) - SWEAT_START_Y) / definition.fallSpeed
+  return Math.max(1, referenceDurationMs * scale)
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -296,22 +297,30 @@ function sweatOverlayAtTime(
   }
 
   const elapsedMs = Math.max(0, timeMs - cycleStartTimeMs)
-  const fallSpeed = definition.fallSpeed * scale
-  const y = Math.min(targetY, startY + fallSpeed * elapsedMs)
-  const growthEndY = Math.max(startY, targetY / 2)
-  const growthDurationMs = Math.max(0, (growthEndY - startY) / fallSpeed)
-  const growthElapsedMs = Math.min(elapsedMs, growthDurationMs)
-  const shrinkElapsedMs = Math.max(0, elapsedMs - growthDurationMs)
-  const widthAtGrowthEnd = (SWEAT_INITIAL_WIDTH + SWEAT_GROWTH_RATE * growthElapsedMs) * scale
-  const heightAtGrowthEnd = (SWEAT_INITIAL_HEIGHT + SWEAT_GROWTH_RATE * growthElapsedMs) * scale
-  const rawWidth = shrinkElapsedMs === 0
-    ? (SWEAT_INITIAL_WIDTH + SWEAT_GROWTH_RATE * elapsedMs) * scale
-    : widthAtGrowthEnd - SWEAT_WIDTH_SHRINK_RATE * shrinkElapsedMs * scale
-  const rawHeight = shrinkElapsedMs === 0
-    ? (SWEAT_INITIAL_HEIGHT + SWEAT_GROWTH_RATE * elapsedMs) * scale
-    : heightAtGrowthEnd - SWEAT_HEIGHT_SHRINK_RATE * shrinkElapsedMs * scale
-  const width = clamp(rawWidth, 0, model.canvas.width)
-  const height = clamp(rawHeight, 0, Math.max(0, model.canvas.height - y))
+  const referenceElapsedMs = elapsedMs / scale
+  const targetYReference = targetY / scale
+  const yReference = Math.min(
+    targetYReference,
+    SWEAT_START_Y + definition.fallSpeed * referenceElapsedMs,
+  )
+  const y = yReference * scale
+  const growthEndYReference = Math.max(SWEAT_START_Y, targetYReference / 2)
+  const growthDurationReferenceMs = Math.max(
+    0,
+    (growthEndYReference - SWEAT_START_Y) / definition.fallSpeed,
+  )
+  const growthElapsedReferenceMs = Math.min(referenceElapsedMs, growthDurationReferenceMs)
+  const shrinkElapsedReferenceMs = Math.max(0, referenceElapsedMs - growthDurationReferenceMs)
+  const widthAtGrowthEnd = SWEAT_INITIAL_WIDTH + SWEAT_GROWTH_RATE * growthElapsedReferenceMs
+  const heightAtGrowthEnd = SWEAT_INITIAL_HEIGHT + SWEAT_GROWTH_RATE * growthElapsedReferenceMs
+  const rawWidthReference = shrinkElapsedReferenceMs === 0
+    ? SWEAT_INITIAL_WIDTH + SWEAT_GROWTH_RATE * referenceElapsedMs
+    : widthAtGrowthEnd - SWEAT_WIDTH_SHRINK_RATE * shrinkElapsedReferenceMs
+  const rawHeightReference = shrinkElapsedReferenceMs === 0
+    ? SWEAT_INITIAL_HEIGHT + SWEAT_GROWTH_RATE * referenceElapsedMs
+    : heightAtGrowthEnd - SWEAT_HEIGHT_SHRINK_RATE * shrinkElapsedReferenceMs
+  const width = clamp(rawWidthReference * scale, 0, model.canvas.width)
+  const height = clamp(rawHeightReference * scale, 0, Math.max(0, model.canvas.height - y))
   if (width <= 0 || height <= 0) return undefined
 
   const range = sweatXRange(model.canvas.width, dropIndex, definition.dropCount)
