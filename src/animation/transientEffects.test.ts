@@ -74,24 +74,44 @@ describe('transient effect definitions', () => {
 })
 
 describe('deterministic animated sweat', () => {
-  it('samples compact teardrop start, mid, and reset frames from explicit time', () => {
+  it('samples medium teardrop start/mid frames, then waits before the next fixed-cadence cycle', () => {
     const base = roboEyesPreset.model
     const start = resolveTransientEffectFrame(fixedSweat, [], base, 0, 17)
-    const mid = resolveTransientEffectFrame(fixedSweat, [], base, 120, 17)
-    const reset = resolveTransientEffectFrame(fixedSweat, [], base, 240, 17)
+    const mid = resolveTransientEffectFrame(fixedSweat, [], base, 110, 17)
+    const waiting = resolveTransientEffectFrame(fixedSweat, [], base, 300, 17)
+    const reset = resolveTransientEffectFrame(fixedSweat, [], base, 400, 17)
 
     expect(start.overlays).toHaveLength(3)
     expect(start.overlays.every((drop) => drop.kind === 'teardrop')).toBe(true)
-    expect(start.overlays.every((drop) => drop.y === 2 && drop.width === 0.9 && drop.height === 1.8)).toBe(true)
+    expect(start.overlays.every((drop) => drop.y === 2 && drop.width === 1.3 && drop.height === 2.4)).toBe(true)
 
     expect(mid.overlays).toHaveLength(3)
-    expect(mid.overlays.every((drop) => drop.kind === 'teardrop' && drop.y === 5)).toBe(true)
-    expect(mid.overlays.every((drop) => drop.width > 1.6 && drop.width < 1.8)).toBe(true)
-    expect(mid.overlays.every((drop) => drop.height > 3.2 && drop.height < 3.6)).toBe(true)
+    expect(mid.overlays.every((drop) => drop.kind === 'teardrop')).toBe(true)
+    expect(mid.overlays.every((drop) => drop.y > 4 && drop.y < 5.5)).toBe(true)
+    expect(mid.overlays.every((drop) => drop.width > 2.4 && drop.width < 2.8)).toBe(true)
+    expect(mid.overlays.every((drop) => drop.height > 4.5 && drop.height <= 5)).toBe(true)
 
+    expect(waiting.overlays).toHaveLength(0)
     expect(reset.overlays).toHaveLength(3)
-    expect(reset.overlays.every((drop) => drop.y === 2 && drop.width === 0.9 && drop.height === 1.8)).toBe(true)
+    expect(reset.overlays.every((drop) => drop.y === 2 && drop.width === 1.3 && drop.height === 2.4)).toBe(true)
     expect(reset.overlays.every((drop) => drop.id.includes('cycle-1'))).toBe(true)
+  })
+
+  it('keeps cycle frequency stable when eye-safe travel distance becomes shorter', () => {
+    const base = structuredClone(roboEyesPreset.model)
+    const shorter = structuredClone(base)
+    shorter.leftEye.geometry.position.y = 30
+    shorter.rightEye.geometry.position.y = 30
+
+    const baseAt300 = resolveTransientEffectFrame(fixedSweat, [], base, 300, 17)
+    const shortAt300 = resolveTransientEffectFrame(fixedSweat, [], shorter, 300, 17)
+    const baseReset = resolveTransientEffectFrame(fixedSweat, [], base, 400, 17)
+    const shortReset = resolveTransientEffectFrame(fixedSweat, [], shorter, 400, 17)
+
+    expect(baseAt300.overlays).toHaveLength(0)
+    expect(shortAt300.overlays).toHaveLength(0)
+    expect(baseReset.overlays.every((drop) => drop.id.includes('cycle-1'))).toBe(true)
+    expect(shortReset.overlays.every((drop) => drop.id.includes('cycle-1'))).toBe(true)
   })
 
   it('does not scale droplets with canvas alone and only weakly follows eye size', () => {
@@ -115,8 +135,8 @@ describe('deterministic animated sweat', () => {
     largeEyes.rightEye.geometry.position.y = 64
     const largeEyesStart = resolveTransientEffectFrame(fixedSweat, [], largeEyes, 0, 17)
 
-    expect(largeEyesStart.overlays[0].width).toBeCloseTo(1.125)
-    expect(largeEyesStart.overlays[0].height).toBeCloseTo(2.25)
+    expect(largeEyesStart.overlays[0].width).toBeCloseTo(1.625)
+    expect(largeEyesStart.overlays[0].height).toBeCloseTo(3)
     expect(largeEyesStart.overlays[0].y).toBeCloseTo(4)
     expect(largeEyesStart.overlays[0].width).toBeLessThan(baseStart.overlays[0].width * 1.5)
   })
