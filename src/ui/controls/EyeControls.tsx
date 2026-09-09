@@ -16,6 +16,11 @@ import {
   anchoredPairSpacingMin,
 } from '../editor/geometrySafety'
 import {
+  centerRelativePositionRange,
+  fromCenterRelativePosition,
+  toCenterRelativePosition,
+} from '../editor/centerRelativePosition'
+import {
   canvasSafeAnchoredPairSpacingMax,
   setCanvasSafeAnchoredPairSpacing,
 } from '../editor/spacingCanvasSafety'
@@ -45,6 +50,9 @@ type EyeControlsProps = {
   onSingleEyeLayoutChange: (enabled: boolean) => void
 }
 
+const POSITION_ABSOLUTE_MIN = -320
+const POSITION_ABSOLUTE_MAX = 640
+
 export function EyeControls({
   model,
   linkedEyes,
@@ -55,6 +63,18 @@ export function EyeControls({
   const left = model.leftEye.geometry
   const right = model.rightEye.geometry
   const singleEye = isSingleEyeLayout(model)
+  const positionXRange = centerRelativePositionRange(
+    model,
+    'x',
+    POSITION_ABSOLUTE_MIN,
+    POSITION_ABSOLUTE_MAX,
+  )
+  const positionYRange = centerRelativePositionRange(
+    model,
+    'y',
+    POSITION_ABSOLUTE_MIN,
+    POSITION_ABSOLUTE_MAX,
+  )
 
   // These helpers intentionally perform exhaustive canvas-safety scans. During
   // animation playback the parent editor re-renders at preview cadence, but the
@@ -123,10 +143,15 @@ export function EyeControls({
 
   const updateEyePosition = (side: EyeSide, axis: 'x' | 'y', value: number) => {
     onChange((current) => {
+      const absoluteValue = fromCenterRelativePosition(current, axis, value)
       if (singleEye && side === 'left') {
-        return moveSingleEye(current, axis === 'x' ? value : undefined, axis === 'y' ? value : undefined)
+        return moveSingleEye(
+          current,
+          axis === 'x' ? absoluteValue : undefined,
+          axis === 'y' ? absoluteValue : undefined,
+        )
       }
-      return setIndependentEyePositionSafely(current, side, axis, value)
+      return setIndependentEyePositionSafely(current, side, axis, absoluteValue)
     })
   }
 
@@ -189,8 +214,8 @@ export function EyeControls({
             <NumericControl label="Eye width" value={left.width} min={singleDerived!.dimensionRanges.width.min} max={singleDerived!.dimensionRanges.width.max} step="any" onChange={(value) => updateIndependentGeometry('left', 'width', value)} />
             <NumericControl label="Eye height" value={left.height} min={singleDerived!.dimensionRanges.height.min} max={singleDerived!.dimensionRanges.height.max} step="any" onChange={(value) => updateIndependentGeometry('left', 'height', value)} />
             <NumericControl label="Corner radius" value={left.cornerRadius} min={0} max={80} onChange={(value) => updateIndependentGeometry('left', 'cornerRadius', value)} />
-            <NumericControl label="Position X" value={left.position.x} min={-320} max={640} onChange={(value) => updateEyePosition('left', 'x', value)} />
-            <NumericControl label="Position Y" value={left.position.y} min={-320} max={640} onChange={(value) => updateEyePosition('left', 'y', value)} />
+            <NumericControl label="Position X" value={toCenterRelativePosition(model, 'x', left.position.x)} min={positionXRange.min} max={positionXRange.max} onChange={(value) => updateEyePosition('left', 'x', value)} />
+            <NumericControl label="Position Y" value={toCenterRelativePosition(model, 'y', left.position.y)} min={positionYRange.min} max={positionYRange.max} onChange={(value) => updateEyePosition('left', 'y', value)} />
             <NumericControl label="Rotation" value={left.rotation} min={singleDerived!.rotationRange.min} max={singleDerived!.rotationRange.max} step="any" onChange={(value) => updateIndependentGeometry('left', 'rotation', value)} />
           </div>
         ) : linkedEyes ? (
@@ -198,8 +223,28 @@ export function EyeControls({
             <NumericControl label="Eye width" value={(left.width + right.width) / 2} min={linkedDerived.dimensionRanges.width.min} max={linkedDerived.dimensionRanges.width.max} step="any" onChange={(value) => updateLinkedGeometry('width', value)} />
             <NumericControl label="Eye height" value={(left.height + right.height) / 2} min={linkedDerived.dimensionRanges.height.min} max={linkedDerived.dimensionRanges.height.max} step="any" onChange={(value) => updateLinkedGeometry('height', value)} />
             <NumericControl label="Corner radius" value={(left.cornerRadius + right.cornerRadius) / 2} min={0} max={80} onChange={(value) => updateLinkedGeometry('cornerRadius', value)} />
-            <NumericControl label="Position X" value={pairCenterX(model)} min={-320} max={640} onChange={(value) => onChange((current) => movePair(current, value, undefined))} />
-            <NumericControl label="Position Y" value={pairCenterY(model)} min={-320} max={640} onChange={(value) => onChange((current) => movePair(current, undefined, value))} />
+            <NumericControl
+              label="Position X"
+              value={toCenterRelativePosition(model, 'x', pairCenterX(model))}
+              min={positionXRange.min}
+              max={positionXRange.max}
+              onChange={(value) => onChange((current) => movePair(
+                current,
+                fromCenterRelativePosition(current, 'x', value),
+                undefined,
+              ))}
+            />
+            <NumericControl
+              label="Position Y"
+              value={toCenterRelativePosition(model, 'y', pairCenterY(model))}
+              min={positionYRange.min}
+              max={positionYRange.max}
+              onChange={(value) => onChange((current) => movePair(
+                current,
+                undefined,
+                fromCenterRelativePosition(current, 'y', value),
+              ))}
+            />
             <NumericControl
               label="Rotation"
               value={pairRotation(model)}
@@ -220,8 +265,8 @@ export function EyeControls({
                   <NumericControl label="Width" value={geometry.width} min={derived.dimensionRanges.width.min} max={derived.dimensionRanges.width.max} step="any" onChange={(value) => updateIndependentGeometry(side, 'width', value)} />
                   <NumericControl label="Height" value={geometry.height} min={derived.dimensionRanges.height.min} max={derived.dimensionRanges.height.max} step="any" onChange={(value) => updateIndependentGeometry(side, 'height', value)} />
                   <NumericControl label="Corner radius" value={geometry.cornerRadius} min={0} max={80} onChange={(value) => updateIndependentGeometry(side, 'cornerRadius', value)} />
-                  <NumericControl label="Position X" value={geometry.position.x} min={-320} max={640} onChange={(value) => updateEyePosition(side, 'x', value)} />
-                  <NumericControl label="Position Y" value={geometry.position.y} min={-320} max={640} onChange={(value) => updateEyePosition(side, 'y', value)} />
+                  <NumericControl label="Position X" value={toCenterRelativePosition(model, 'x', geometry.position.x)} min={positionXRange.min} max={positionXRange.max} onChange={(value) => updateEyePosition(side, 'x', value)} />
+                  <NumericControl label="Position Y" value={toCenterRelativePosition(model, 'y', geometry.position.y)} min={positionYRange.min} max={positionYRange.max} onChange={(value) => updateEyePosition(side, 'y', value)} />
                   <NumericControl label="Rotation" value={geometry.rotation} min={derived.rotationRange.min} max={derived.rotationRange.max} step="any" onChange={(value) => updateIndependentGeometry(side, 'rotation', value)} />
                 </fieldset>
               )
