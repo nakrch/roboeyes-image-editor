@@ -94,14 +94,15 @@ export const DEFAULT_SWEAT_EFFECT: Readonly<NormalizedSweatEffectDefinition> = O
 const REFERENCE_CANVAS_WIDTH = 128
 const REFERENCE_EYE_SIZE = 36
 const SWEAT_START_Y = 2
-const SWEAT_INITIAL_WIDTH = 0.9
-const SWEAT_INITIAL_HEIGHT = 1.8
-const SWEAT_PEAK_WIDTH = 1.8
-const SWEAT_PEAK_HEIGHT = 3.6
-const SWEAT_FINAL_WIDTH = 0.65
-const SWEAT_FINAL_HEIGHT = 1.3
+const SWEAT_INITIAL_WIDTH = 1.3
+const SWEAT_INITIAL_HEIGHT = 2.4
+const SWEAT_PEAK_WIDTH = 2.7
+const SWEAT_PEAK_HEIGHT = 5.0
+const SWEAT_FINAL_WIDTH = 0.95
+const SWEAT_FINAL_HEIGHT = 1.8
 const SWEAT_GROWTH_END_PROGRESS = 0.55
 const SWEAT_EYE_MARGIN = 1.5
+const SWEAT_REFERENCE_CYCLE_TRAVEL = 10
 const MAX_SWEAT_CYCLES = 10_000
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -299,12 +300,21 @@ function sampledTargetY(
   return sampleRandomRange(seed, `transient:${definition.id}:drop-${dropIndex}:target-y`, cycleIndex, min, max)
 }
 
-function cycleDurationMs(
+function fallDurationMs(
   definition: NormalizedSweatEffectDefinition,
   startY: number,
   targetY: number,
 ): number {
   return Math.max(1, (Math.max(startY, targetY) - startY) / definition.fallSpeed)
+}
+
+function cycleDurationMs(
+  definition: NormalizedSweatEffectDefinition,
+  motionScale: number,
+  activeDurationMs: number,
+): number {
+  const referenceCycleMs = SWEAT_REFERENCE_CYCLE_TRAVEL * motionScale / definition.fallSpeed
+  return Math.max(activeDurationMs, referenceCycleMs)
 }
 
 function sweatSizeAtProgress(progress: number, sizeScale: number): { width: number; height: number } {
@@ -340,7 +350,8 @@ function sweatOverlayAtTime(
   let cycleStartTimeMs = epochStartTimeMs
   let cycleIndex = 0
   let targetY = sampledTargetY(definition, model, seed, dropIndex, cycleIndex, startY, maxTargetY)
-  let durationMs = cycleDurationMs(definition, startY, targetY)
+  let activeDurationMs = fallDurationMs(definition, startY, targetY)
+  let durationMs = cycleDurationMs(definition, motionScale, activeDurationMs)
 
   while (timeMs >= cycleStartTimeMs + durationMs) {
     cycleStartTimeMs += durationMs
@@ -349,11 +360,14 @@ function sweatOverlayAtTime(
       throw new RangeError(`Sweat effect exceeds max cycles (${MAX_SWEAT_CYCLES}) before requested time`)
     }
     targetY = sampledTargetY(definition, model, seed, dropIndex, cycleIndex, startY, maxTargetY)
-    durationMs = cycleDurationMs(definition, startY, targetY)
+    activeDurationMs = fallDurationMs(definition, startY, targetY)
+    durationMs = cycleDurationMs(definition, motionScale, activeDurationMs)
   }
 
   const elapsedMs = Math.max(0, timeMs - cycleStartTimeMs)
-  const progress = clamp(elapsedMs / durationMs, 0, 1)
+  if (elapsedMs >= activeDurationMs) return undefined
+
+  const progress = clamp(elapsedMs / activeDurationMs, 0, 1)
   const y = interpolate(startY, targetY, progress)
   const size = sweatSizeAtProgress(progress, sizeScale)
   const width = clamp(size.width, 0, model.canvas.width)
