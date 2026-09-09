@@ -30,4 +30,15 @@ describe('static asset export', () => {
 
     expect(svg).not.toContain('data-background="true"')
   })
+
+  it('exports the same single-eye visibility used by preview rendering', () => {
+    const model = roboEyesToFaceModel({ ...defaultRoboEyesPreset, cyclops: true })
+    const first = renderExportSvg(model)
+    const second = renderExportSvg(structuredClone(model))
+
+    expect(first).toBe(second)
+    expect(first).toContain('data-eye="left"')
+    expect(first).not.toContain('data-eye="right"')
+    expect(model.leftEye.geometry.position.x).toBe(model.canvas.width / 2)
+  })
 })
