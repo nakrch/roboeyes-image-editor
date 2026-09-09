@@ -44,6 +44,35 @@ Each gallery card renders the current SVG from the normal renderer and compares 
 
 Cards also show the fixture id, canvas size, and gaze coordinates. This makes the deterministic CI checks reviewable visually without replacing them with screenshots.
 
+### Expression selection
+
+Issue #96 also makes the gallery an optional expression browser without changing its regression role.
+
+- **Apply expression** copies only the fixture expression into the authored editor model through the normal history path.
+- Built-in expression identity is preserved so the Expression Presets selector follows the applied card.
+- The asymmetric fixture applies as `Custom`; it is not automatically saved as a user expression preset.
+- The 240×240 Happy fixture applies only Happy. The editor's current canvas dimensions are not replaced by 240×240.
+- Curious left/center/right cards keep gaze explicit: **Apply expression** preserves the authored gaze, while **Apply + gaze** deliberately applies both Curious and that fixture's gaze.
+
+The main editor preview uses a short deterministic Phase 3 state transition when a gallery selection is applied. Only the final authored expression/gaze is committed as one history entry. The interpolated frames are transient preview state and never produce frame-by-frame Undo/Redo entries.
+
+### Motion preview boundary
+
+Each card can start an explicit **Preview motion** loop. This is intentionally separate from the regression fixture shown above it:
+
+```text
+fixed fixture model -> renderer -> Matches fixture / Changed
+
+fixed fixture model -> Phase 3 sampler(time) -> separate Motion preview
+```
+
+The motion preview uses `createFaceTransition()` / `sampleFaceTransition()` with explicit logical time. It does not add timers, randomness, or expression names to `renderFaceToSvg()`, and it never feeds animated output into fixture matching. Expanding the gallery alone starts no motion; playback is opt-in per card.
+
+This separation is important because the gallery now serves two purposes without conflating them:
+
+1. deterministic regression review of committed fixture geometry;
+2. user-facing visual browsing and temporary animation inspection.
+
 ## Reference orientation
 
 For the RoboEyes-compatible directional lids, the assertions preserve the FluxGarage/RoboEyes mask orientation:
@@ -61,6 +90,8 @@ A fixture change should be treated as a visible renderer/expression change, not 
 3. Inspect the changed textual paths/transforms.
 4. Run the full test/build suite.
 5. Expand the Visual Regression Gallery and inspect every affected card in the PR Preview.
-6. Validate the PR Preview before merge when the resulting output is user-visible.
+6. Confirm `Matches fixture` / `Changed` still reflects only the fixed card render, not Motion preview output.
+7. Validate expression apply, Curious explicit gaze behavior, and Motion preview in the PR Preview when those controls change.
+8. Validate the PR Preview before merge when the resulting output is user-visible.
 
 When a new built-in expression preset is added, the coverage assertion intentionally fails until at least one visual fixture is added for it.
