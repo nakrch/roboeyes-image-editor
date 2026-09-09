@@ -1,8 +1,10 @@
 import {
   canFitEyesInCanvas,
+  gazeLimits,
   isGazeCanvasSafe,
   visibleEyesOverlap,
   type FaceModel,
+  type NumericRange,
 } from '../../core/model'
 import { updateEyeGeometry, type EyeSide } from './modelEditing'
 
@@ -26,6 +28,16 @@ function withEyePosition(
     ...geometry,
     position: { ...geometry.position, [axis]: value },
   }))
+}
+
+function withOnlyEyeVisible(model: FaceModel, side: EyeSide): FaceModel {
+  return {
+    ...model,
+    eyeVisibility: {
+      left: side === 'left',
+      right: side === 'right',
+    },
+  }
 }
 
 function isIndependentPositionSafe(model: FaceModel): boolean {
@@ -68,6 +80,66 @@ function refineSafeBoundary(
   }
 
   return safe
+}
+
+/**
+ * Absolute coordinate interval for moving the currently visible eyes as one rigid
+ * group while keeping the authored gaze fully inside the canvas. This preserves all
+ * current geometry, expression, rotation, spacing, and visibility constraints.
+ */
+export function rigidEyePositionRange(
+  model: FaceModel,
+  axis: EyePositionAxis,
+  currentPosition: number,
+): NumericRange {
+  const translationRange = gazeLimits(model)[axis]
+  const currentGaze = model.gaze[axis]
+  return {
+    min: currentPosition + translationRange.min - currentGaze,
+    max: currentPosition + translationRange.max - currentGaze,
+  }
+}
+
+function independentCanvasPositionRange(
+  model: FaceModel,
+  side: EyeSide,
+  axis: EyePositionAxis,
+): NumericRange {
+  const currentPosition = positionValue(model, side, axis)
+  const isolated = withOnlyEyeVisible(model, side)
+  const translationRange = gazeLimits(isolated)[axis]
+  const currentGaze = model.gaze[axis]
+  return {
+    min: currentPosition + translationRange.min - currentGaze,
+    max: currentPosition + translationRange.max - currentGaze,
+  }
+}
+
+/**
+ * Absolute coordinate interval reachable by the Independent Position control from
+ * the current state. Canvas limits are derived from the target eye's rendered bounds,
+ * while the existing movement safety logic further clips the range at the first
+ * overlap boundary so the slider cannot offer values the editor would reject.
+ */
+export function independentEyePositionRange(
+  model: FaceModel,
+  side: EyeSide,
+  axis: EyePositionAxis,
+): NumericRange {
+  const canvasRange = independentCanvasPositionRange(model, side, axis)
+
+  // Preserve the existing recovery path for imported/legacy states that are already
+  // outside the normal invariant. The setter can still move directly into a safe
+  // destination inside this canvas-derived interval.
+  if (!isIndependentPositionSafe(model)) return canvasRange
+
+  const minModel = setIndependentEyePositionSafely(model, side, axis, canvasRange.min)
+  const maxModel = setIndependentEyePositionSafely(model, side, axis, canvasRange.max)
+
+  return {
+    min: positionValue(minModel, side, axis),
+    max: positionValue(maxModel, side, axis),
+  }
 }
 
 /**
