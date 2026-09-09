@@ -1,182 +1,190 @@
 # Architecture
 
-この文書は `roboeyes-image-editor` の初期アーキテクチャと各レイヤーの責務を定義します。
+この文書は `roboeyes-image-editor` の現在のアーキテクチャと各レイヤーの責務を定義します。
 
-設計思想の一次資料は [`direction.md`](direction.md) です。実装上の詳細はこの文書で具体化します。
+設計思想の一次資料は [`direction.md`](direction.md) です。詳細な機能仕様は [`README.md`](README.md) から参照してください。
 
 ## 1. Core rule
 
-最重要ルールは、RoboEyes 固有の概念を renderer や UI に直接埋め込まないことです。
+最重要ルールは、RoboEyes 固有の概念を renderer や generic model に直接埋め込まないことです。
 
 ```text
-RoboEyes Parameters
+RoboEyes / style parameters
         ↓
-RoboEyes Adapter
+adapter
         ↓
-Generic Face Model
+generic FaceModel + generic animation data
         ↓
-Renderer
+deterministic evaluator / renderer
         ↓
-Preview / Export
+preview / export
 ```
 
-UI は必要に応じて RoboEyes 互換項目を表示できますが、描画は必ず generic model を経由します。
+UI は RoboEyes 互換項目を表示できますが、描画・animation・export は generic data を経由します。
 
 ## 2. Layer responsibilities
 
 ### `core/model`
 
-renderer・UI・RoboEyes API に依存しない内部表現を定義します。
+renderer・UI・RoboEyes API に依存しない domain model を定義します。
 
 責務:
 
 - canvas
 - left/right eye geometry
-- optional eye visibility / single-eye layout state
-- position
-- size
-- radius
-- rotation
+- eye visibility / single-eye layout
+- position / size / radius / rotation
 - gaze
-- expression / eyelid
+- expression / eyelid geometry
 - colors / stroke / background
-- 将来の animation state へ拡張できる型
+- serializable plain data invariants
 
 禁止:
 
 - React 型への依存
 - SVG DOM への依存
 - RoboEyes 固有メソッド名への依存
+- runtime timer/random state の保持
 
 ### `core/adapters`
 
-外部または特定スタイルのパラメータを generic model に変換します。
+外部 API や特定スタイルの語彙を generic model / generic parameters に変換します。
 
-初期対象:
+代表例:
 
-- RoboEyes adapter
+- RoboEyes geometry / gaze vocabulary
+- RoboEyes cyclops compatibility
 
-将来は別スタイル adapter を追加できます。
+adapter は互換性の境界であり、renderer に RoboEyes 固有フラグを流しません。
 
 ### `core/presets`
 
-固定画像ではなく、初期パラメータ・constraint・expression default・color・将来の animation default の集合を扱います。
+再利用可能な authoring data を扱います。
+
+- face preset
+- expression preset
+- animation defaults
+- deterministic seed
+
+Preset JSON は runtime playback state を保存しません。
 
 ### `renderers/svg`
 
-`FaceModel` を SVG に変換します。
+`FaceModel` と renderer-independent overlay data を SVG に変換します。
 
 責務:
 
-- model を deterministic に描画
-- canvas size を厳密に尊重
-- transparent background
-- rotation / radius / transform
-- standalone SVG への serializable な出力
+- deterministic rendering
+- exact canvas size
+- transparent / opaque background
+- geometry / expression / transform rendering
+- standalone SVG serialization
+- transient overlay primitive rendering
 
 禁止:
 
-- RoboEyes adapter の呼び出し
+- timer / wall clock / randomness
+- animation scheduling
+- RoboEyes-specific behavior branches
 - editor state の保持
-
-### `renderers/canvas`
-
-初期 MVP では実装必須ではありません。SVG では不足する要件が出た場合に追加します。
-
-### `ui`
-
-ユーザー操作を generic model / preset / adapter に反映し preview を表示します。
-
-想定構成:
-
-- `ui/editor/` — editor state orchestration
-- `ui/controls/` — slider / numeric / color / toggle
-- `ui/preview/` — live preview
 
 ### `animation`
 
-Phase 3 以降で使用します。
+静的 `FaceModel` を explicit logical time と seed から resolved frame に変換します。
 
-timeline 主体ではなく **state + transition** を基本とします。
+主な責務:
+
+- playback clock helpers
+- deterministic random substreams / schedulers
+- state transitions / easing / spring
+- eye openness / blink / auto-blink
+- idle gaze
+- motion offsets / one-shots
+- behavior profiles
+- ordered state programs
+- transient-effect frame resolution
+- versioned animation authoring data
+
+中心契約:
 
 ```text
-state
-  + transition
-  + easing/timing
-  → interpolated FaceModel
+base FaceModel
++ AnimationDefinition / AnimationProgram
++ RuntimeAnimationEvent[]
++ explicit timeMs
++ seed
+        ↓
+evaluate
+        ↓
+resolved FaceModel + optional overlays
 ```
+
+同じ入力からは、sampling order や browser frame cadence に依存せず同じ結果を得ます。
+
+### `ui`
+
+ユーザー操作、authoring state、preview runtime state を仲介します。
+
+責務:
+
+- model / preset / animation authoring controls
+- Undo / Redo / Reset
+- realtime static preview
+- animation play / pause / stop / restart / speed
+- manual runtime triggers
+- reduced-motion preview policy
+- import/export orchestration
+
+Authoring state と resolved preview state を分離し、再生 frame ごとに Undo/Redo history を増やしません。
 
 ### `export`
 
-renderer / model の結果を各出力形式へ変換します。
+renderer / deterministic frame sampler の結果をファイルへ変換します。
 
-初期:
+現在の出力:
 
 - SVG
 - PNG
-
-将来:
-
-- WebP
 - animated WebP
 - GIF
-- sprite sheet
-- RGB565
-- monochrome bitmap
-- XBM
-- C/C++ array
 
-## 3. Initial directory structure
+Static export は authored base model を、animated export は explicit timestamp で deterministic runtime を sampling した frame sequence を使用します。
+
+## 3. Directory structure
+
+概念上の責務は次の構造に対応します。
 
 ```text
 src/
 ├─ core/
 │  ├─ model/
-│  │  ├─ face.ts
-│  │  ├─ eye.ts
-│  │  └─ expression.ts
-│  ├─ presets/
-│  │  ├─ roboeyes.ts
-│  │  └─ minimal.ts
-│  └─ adapters/
-│     └─ roboeyes.ts
+│  ├─ adapters/
+│  └─ presets/
 ├─ renderers/
-│  ├─ svg/
-│  └─ canvas/
+│  └─ svg/
 ├─ animation/
-│  ├─ states.ts
-│  ├─ transition.ts
-│  └─ easing.ts
 ├─ export/
-│  ├─ png.ts
-│  ├─ webp.ts
-│  ├─ svg.ts
-│  ├─ spritesheet.ts
-│  └─ embedded.ts
 └─ ui/
-   ├─ editor/
-   ├─ controls/
-   └─ preview/
 ```
 
-未実装の将来レイヤーは、MVP 時点で空ディレクトリを無理に作る必要はありません。責務境界だけを維持します。
+実ファイル構成は必要に応じて変化して構いません。重要なのはディレクトリ名そのものではなく責務境界です。
 
 ## 4. Data flow
 
-### RoboEyes-compatible editing
+### RoboEyes-compatible static editing
 
 ```text
 UI RoboEyes controls
         ↓
 RoboEyes parameter state
         ↓
-RoboEyes Adapter
+RoboEyes adapter
         ↓
 FaceModel
         ↓
-SVG Renderer
+SVG renderer
         ↓
-Live Preview
+Live preview / static export
 ```
 
 ### Generic editing
@@ -186,94 +194,119 @@ Generic UI controls
         ↓
 FaceModel
         ↓
-SVG Renderer
+SVG renderer
         ↓
-Live Preview
+Live preview / static export
 ```
 
-### Static export
+### Animation preview
 
 ```text
-FaceModel
-   ↓
-SVG Renderer
-   ├─→ SVG export
-   └─→ rasterize → PNG export
+Authored FaceModel + animation defaults
+        + runtime events
+        + logical time / seed
+        ↓
+Animation evaluator
+        ↓
+Resolved FaceModel + overlays
+        ↓
+SVG renderer
+        ↓
+Preview
 ```
 
-### Single-eye / RoboEyes cyclops compatibility
-
-RoboEyes の `cyclops` は adapter 入力に限定し、generic model / renderer へ同名フラグを持ち込みません。
+### Animated export
 
 ```text
-RoboEyes cyclops = ON
+Authored model + animation data
         ↓
-RoboEyes Adapter
+deterministic timestamp schedule
         ↓
-FaceModel.eyeVisibility = { left: true, right: false }
-        + visible left eye centered
+resolved frames
         ↓
-visibility-aware safety / animation
+SVG render + rasterize
         ↓
-SVG renderer / preview / export
+GIF / animated WebP encoder
 ```
 
-`FaceModel.eyeVisibility` は optional とし、省略時は従来どおり両眼を表示します。これにより既存 preset / JSON / two-eye model をそのまま互換に保ちます。
+Realtime `requestAnimationFrame` cadence is not an export input.
 
-元の RoboEyes は cyclops 時に右眼の current width/height と eye spacing を 0 にし、残る左眼が single-eye の画面制約を使う実装です。本プロジェクトでは同じ見た目・位置挙動を保ちつつ、右眼 geometry を破壊せず hidden state として保持します。editor で Single eye へ切り替えた場合は左眼を現在の pair center に置き、Two eyes に戻すと現在の single-eye center を中心に保存済み spacing / geometry から両眼レイアウトを再構成します。
+## 5. Single-eye / RoboEyes cyclops compatibility
 
-visibility は現時点では **static/discrete layout state** です。Phase 3 の transition / spring / runtime はこの状態をそのまま保持し、renderer 側で `cyclops` や animation 名に分岐しません。
+RoboEyes の `cyclops` は adapter 入力に限定し、generic model / renderer に同名の behavior branch を持ち込みません。
 
-## 5. State ownership
+```text
+RoboEyes cyclops
+        ↓
+Adapter
+        ↓
+FaceModel.eyeVisibility + centered generic layout
+        ↓
+visibility-aware model / animation
+        ↓
+renderer / preview / export
+```
 
-MVP では editor state を React 側に置いて構いませんが、domain model 自体は React 非依存にします。
+Hidden eye geometry は破壊せず保持し、two-eye layout へ戻せるようにします。
 
-推奨分離:
+## 6. State ownership
 
-- `domain/model`: serializable plain data
-- `editor state`: current values, history, active preset
-- `view state`: zoom, preview mode, panel open/close
+状態を次の3種類に分けます。
 
-Undo / Redo は model/editor state の履歴を対象とし、renderer 内では管理しません。
+- **domain/authoring state** — serializable `FaceModel`, preset, animation definition/program
+- **editor/view state** — selected panel, zoom, active controls, history
+- **runtime preview state** — playback position/status, current manual events, browser timing input
 
-## 6. Small-display requirements
-
-小型ディスプレイ対応は後付けではなく、設計要件です。
-
-renderer / preview / export は以下を阻害しないようにします。
-
-- exact fixed canvas
-- pixel-perfect preview
-- nearest-neighbor preview
-- monochrome / 1-bit preview
-- transparent background
-- safe area
-- embedded formats
+Runtime preview state を preset JSON や renderer に持ち込みません。
 
 ## 7. Determinism
 
-同じ `FaceModel` 入力に対して renderer は同じ出力を返すことを原則とします。
+### Renderer
 
-random idle や flicker のような挙動は model/animation レイヤーで seed または明示状態として扱い、renderer に randomness を持ち込みません。
+同じ `FaceModel` / overlay input に対して同じ visual output を返します。
 
-## 8. Extensibility rules
+### Animation
+
+randomness は seed + named stream + event index から決定し、`Math.random()` や sampling order に依存しません。
+
+### Export
+
+animated export は explicit timestamp schedule を使用し、monitor refresh rate や dropped preview frames に依存しません。
+
+## 8. Small-display requirements
+
+小型ディスプレイ対応は後付けではなく設計要件です。
+
+- exact fixed canvas
+- common fixed-size presets
+- transparent background
+- deterministic geometry
+- predictable rasterization
+- pixel-perfect / nearest-neighbor inspection を追加しやすい構造
+
+## 9. Extensibility rules
 
 新機能を追加する際は以下を確認します。
 
-1. RoboEyes 固有機能か generic face 機能か
-2. model に表現すべきか adapter で吸収すべきか
-3. renderer 固有の都合が model に漏れていないか
-4. small-display / export workflow を壊していないか
-5. animation を追加する場合、固定フレーム列ではなく state/transition で表現できないか
+1. RoboEyes/style 固有機能か generic face 機能か
+2. model / adapter / animation / renderer / UI のどこが責務を持つべきか
+3. renderer 固有の都合が domain model に漏れていないか
+4. runtime state が persisted authoring data に混ざっていないか
+5. randomness / time が deterministic contract を壊していないか
+6. static editing/export を animation が壊していないか
+7. small-display workflow を不必要に複雑化していないか
 
-## 9. MVP boundary
+## 10. Current scope boundary
 
-Phase 1 では次だけを完成させます。
+現在のプロジェクトは **Parametric Robot Face Editor** です。
 
-- generic face model
-- RoboEyes adapter
-- SVG renderer
-- realtime editor UI
-- PNG / SVG static export
+中心スコープ:
 
-animation、sprite sheet、embedded export は設計上の拡張余地を確保しますが、Phase 1 の実装必須範囲には含めません。
+- parametric eye/face geometry
+- expression authoring
+- RoboEyes compatibility
+- deterministic state-based animation
+- reusable behavior/program authoring
+- static/animated image asset export
+
+free-form video/keyframe timeline、3D rig、汎用 character studio へ広げることは現在の中心スコープではありません。
