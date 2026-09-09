@@ -14,6 +14,14 @@ export const GALLERY_MOTION_PREVIEW_CYCLE_MS = 1_800
 const GALLERY_MOTION_TRANSITION_MS = 350
 const GALLERY_MOTION_TARGET_HOLD_END_MS = 950
 const GALLERY_MOTION_RETURN_END_MS = GALLERY_MOTION_TARGET_HOLD_END_MS + GALLERY_MOTION_TRANSITION_MS
+const REGRESSION_ONLY_FIXTURE_IDS = new Set([
+  'curious-center-128x64',
+  'happy-240x240',
+])
+
+export function isInteractiveGalleryFixture(fixture: Phase2ExpressionVisualFixture): boolean {
+  return !REGRESSION_ONLY_FIXTURE_IDS.has(fixture.id)
+}
 
 export function expressionForFixture(fixture: Phase2ExpressionVisualFixture): ExpressionModel {
   if (fixture.expression) return structuredClone(fixture.expression)
