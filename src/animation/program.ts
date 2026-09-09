@@ -10,7 +10,12 @@ import {
   type NormalizedRuntimeAnimationEvent,
   type RuntimeAnimationEvent,
 } from './runtime'
-import { normalizeSpringParameters, springResponse, type SpringParameters } from './spring'
+import {
+  interpolateSpringFaceModel,
+  normalizeSpringParameters,
+  springResponse,
+  type SpringParameters,
+} from './spring'
 import {
   interpolateFaceModel,
   normalizeFaceStateTarget,
@@ -358,11 +363,16 @@ export function sampleAnimationProgram(
     if (localTimeMs < transitionEnd && step.transitionDurationMs > 0) {
       const source = sourceModelForVisit(program, targets, traversal, cycleIndex, visitIndex, baseModel)
       const rawProgress = Math.max(0, Math.min(1, (localTimeMs - start) / step.transitionDurationMs))
-      const progress = step.spring === undefined
+      const springProgress = step.spring === undefined
+        ? undefined
+        : springResponse(step.spring, localTimeMs - start)
+      const progress = springProgress === undefined
         ? applyEasing(step.easing, rawProgress)
-        : Math.min(1, Math.max(0, springResponse(step.spring, localTimeMs - start)))
+        : Math.min(1, Math.max(0, springProgress))
       return {
-        model: interpolateFaceModel(source, target, progress),
+        model: springProgress === undefined
+          ? interpolateFaceModel(source, target, progress)
+          : interpolateSpringFaceModel(source, target, springProgress),
         programTimeMs: localTimeMs,
         cycleIndex,
         stepIndex: visit.stepIndex,
