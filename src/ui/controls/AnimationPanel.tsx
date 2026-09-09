@@ -17,6 +17,7 @@ import {
 } from '../../animation'
 import { editableAnimationDefaults } from '../editor/animationPreview'
 import type { AnimationPlaybackSession } from '../editor/animationPlayback'
+import { normalizeNumericControlValue } from './numericInputDraft'
 
 type AnimationPanelProps = {
   model: FaceModel
@@ -411,7 +412,7 @@ export function AnimationPanel({
           </label>
           <label className="animation-field">
             <span>Amplitude</span>
-            <input className="number-input" type="number" min="0" step="0.5" value={numberValue(motion.amplitude, 2)} onChange={(event) => setMotion({ ...motion, amplitude: Math.max(0, Number(event.target.value) || 0) })} />
+            <input className="number-input" type="number" min="0" step="0.5" value={numberValue(motion.amplitude, 2)} onChange={(event) => setMotion({ ...motion, amplitude: normalizeNumericControlValue(Number(event.target.value) || 0, 0, Number.MAX_SAFE_INTEGER, 0.5) })} />
           </label>
           <label className="animation-field">
             <span>Period (ms)</span>

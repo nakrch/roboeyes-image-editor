@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useContinuousEdit } from '../editor/continuousEdit'
-import { resolveNumericDraft } from './numericInputDraft'
+import {
+  formatNumericControlValue,
+  normalizeNumericControlValue,
+  numericControlBounds,
+  resolveNumericDraft,
+} from './numericInputDraft'
 import {
   classifyTouchSliderIntent,
   TOUCH_FINE_DRAG_SCALE,
@@ -49,11 +54,22 @@ export function NumericControl({
   const touchDrag = useRef<TouchDragState | null>(null)
   const suppressTouchClick = useRef(false)
   const numberInputEditing = useRef(false)
-  const [numberDraft, setNumberDraft] = useState(() => String(value))
+  const bounds = numericControlBounds(min, max, step)
+  const displayedValue = normalizeNumericControlValue(value, min, max, step)
+  const [numberDraft, setNumberDraft] = useState(() =>
+    formatNumericControlValue(value, min, max, step),
+  )
 
   useEffect(() => {
-    if (!numberInputEditing.current) setNumberDraft(String(value))
-  }, [value])
+    if (!numberInputEditing.current) {
+      setNumberDraft(formatNumericControlValue(value, min, max, step))
+    }
+  }, [max, min, step, value])
+
+  const emitNormalizedChange = (next: number) => {
+    const normalized = normalizeNumericControlValue(next, min, max, step)
+    if (normalized !== value) onChange(normalized)
+  }
 
   const endTouchDrag = () => {
     if (touchDrag.current?.intent === 'horizontal') continuousEdit.end()
@@ -61,9 +77,9 @@ export function NumericControl({
   }
 
   const commitNumberDraft = () => {
-    const committed = resolveNumericDraft(numberDraft, min, max)
+    const committed = resolveNumericDraft(numberDraft, min, max, step)
     if (committed === null) {
-      setNumberDraft(String(value))
+      setNumberDraft(formatNumericControlValue(value, min, max, step))
       return
     }
 
@@ -77,10 +93,10 @@ export function NumericControl({
       <div className="control-inputs">
         <input
           type="range"
-          min={min}
-          max={max}
+          min={bounds.min}
+          max={bounds.max}
           step={step}
-          value={value}
+          value={displayedValue}
           style={{ touchAction: 'pan-y' }}
           onPointerDown={(event) => {
             if (event.pointerType === 'mouse') {
@@ -94,7 +110,7 @@ export function NumericControl({
               pointerId: event.pointerId,
               startX: event.clientX,
               startY: event.clientY,
-              startValue: value,
+              startValue: displayedValue,
               trackWidth: event.currentTarget.getBoundingClientRect().width,
               intent: 'pending',
             }
@@ -116,12 +132,12 @@ export function NumericControl({
             }
 
             event.preventDefault()
-            onChange(valueFromTouchSliderDrag(
+            emitNormalizedChange(valueFromTouchSliderDrag(
               drag.startValue,
               deltaX,
               drag.trackWidth,
-              min,
-              max,
+              bounds.min,
+              bounds.max,
               TOUCH_FINE_DRAG_SCALE,
             ))
           }}
@@ -156,19 +172,19 @@ export function NumericControl({
           }}
           onChange={(event) => {
             if (touchDrag.current || suppressTouchClick.current) return
-            onChange(Number(event.target.value))
+            emitNormalizedChange(Number(event.target.value))
           }}
         />
         <input
           className="number-input"
           type="number"
-          min={min}
-          max={max}
+          min={bounds.min}
+          max={bounds.max}
           step={step}
           value={numberDraft}
           onFocus={() => {
             numberInputEditing.current = true
-            setNumberDraft(String(value))
+            setNumberDraft(formatNumericControlValue(value, min, max, step))
             continuousEdit.begin()
           }}
           onBlur={() => {
