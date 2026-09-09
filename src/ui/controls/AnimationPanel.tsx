@@ -4,6 +4,8 @@ import { expressionPresets, matchExpressionPreset } from '../../core/presets'
 import {
   EASING_IDS,
   PROGRAM_PLAYBACK_MODES,
+  SPRING_PRESET_IDS,
+  SPRING_PRESETS,
   builtInBehaviorProfiles,
   type AnimationProgram,
   type AnimationProgramStep,
@@ -14,6 +16,7 @@ import {
   type PresetAnimationDefaultsV1,
   type ProgramPlaybackMode,
   type RuntimeAnimationEvent,
+  type SpringPresetId,
 } from '../../animation'
 import { editableAnimationDefaults } from '../editor/animationPreview'
 import type { AnimationPlaybackSession } from '../editor/animationPlayback'
@@ -129,6 +132,17 @@ function numberValue(value: unknown, fallback: number): number {
 
 function boolValue(value: unknown, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback
+}
+
+function springPresetForStep(step: AnimationProgramStep): SpringPresetId | 'custom' {
+  const spring = step.spring
+  if (spring === undefined) return 'gentle'
+  return SPRING_PRESET_IDS.find((id) => {
+    const preset = SPRING_PRESETS[id]
+    return preset.stiffness === spring.stiffness &&
+      preset.damping === spring.damping &&
+      preset.mass === spring.mass
+  }) ?? 'custom'
 }
 
 function makeStep(model: FaceModel, index: number): AnimationProgramStep {
@@ -530,6 +544,8 @@ export function AnimationPanel({
               const expressionId = step.target.expression === undefined
                 ? ''
                 : matchExpressionPreset(step.target.expression)
+              const transitionMode = step.spring === undefined ? 'easing' : 'spring'
+              const springPresetId = springPresetForStep(step)
               return (
                 <fieldset className="sequence-step" key={step.id}>
                   <legend>Step {index + 1}</legend>
@@ -573,11 +589,48 @@ export function AnimationPanel({
                       <input className="number-input" type="number" min="0" step="50" value={step.holdDurationMs} onChange={(event) => updateProgram(updateStep(program, step.id, (current) => ({ ...current, holdDurationMs: Math.max(0, Number(event.target.value) || 0) })))} />
                     </label>
                     <label className="animation-field">
-                      <span>Easing</span>
-                      <select value={step.easing} onChange={(event) => updateProgram(updateStep(program, step.id, (current) => ({ ...current, easing: event.target.value as EasingId })))}>
-                        {EASING_IDS.map((easing) => <option key={easing} value={easing}>{easing}</option>)}
+                      <span>Transition type</span>
+                      <select
+                        value={transitionMode}
+                        onChange={(event) => updateProgram(updateStep(program, step.id, (current) => {
+                          if (event.target.value === 'spring') {
+                            return { ...current, spring: { ...SPRING_PRESETS.gentle } }
+                          }
+                          const next = { ...current }
+                          delete next.spring
+                          return next
+                        }))}
+                      >
+                        <option value="easing">Easing</option>
+                        <option value="spring">Spring</option>
                       </select>
                     </label>
+                    {transitionMode === 'easing' ? (
+                      <label className="animation-field">
+                        <span>Easing</span>
+                        <select value={step.easing} onChange={(event) => updateProgram(updateStep(program, step.id, (current) => ({ ...current, easing: event.target.value as EasingId })))}>
+                          {EASING_IDS.map((easing) => <option key={easing} value={easing}>{easing}</option>)}
+                        </select>
+                      </label>
+                    ) : (
+                      <label className="animation-field">
+                        <span>Spring preset</span>
+                        <select
+                          value={springPresetId}
+                          onChange={(event) => {
+                            const presetId = SPRING_PRESET_IDS.find((id) => id === event.target.value)
+                            if (presetId === undefined) return
+                            updateProgram(updateStep(program, step.id, (current) => ({
+                              ...current,
+                              spring: { ...SPRING_PRESETS[presetId] },
+                            })))
+                          }}
+                        >
+                          {springPresetId === 'custom' && <option value="custom">Custom parameters</option>}
+                          {SPRING_PRESET_IDS.map((id) => <option key={id} value={id}>{id}</option>)}
+                        </select>
+                      </label>
+                    )}
                   </div>
                 </fieldset>
               )
