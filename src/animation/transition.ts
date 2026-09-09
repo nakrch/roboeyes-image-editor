@@ -8,6 +8,7 @@ import {
   type ExpressionModel,
   type EyeExpression,
   type EyeGeometry,
+  type EyeVisibilityModel,
   type FaceModel,
   type Point,
 } from '../core/model'
@@ -27,8 +28,8 @@ export type EyeStateTarget = {
 }
 
 /**
- * Animatable Phase 1/2 surface. Canvas and colors are deliberately absent:
- * they remain discrete/static until a later issue explicitly adds semantics.
+ * Animatable Phase 1/2 surface. Canvas, colors, and eye visibility are deliberately absent:
+ * they remain discrete/static unless a later issue explicitly adds transition semantics.
  */
 export type FaceStateTarget = {
   gaze?: Partial<Point>
@@ -223,6 +224,14 @@ function parseGeometry(value: unknown, label: string): EyeGeometry {
   }
 }
 
+function parseEyeVisibility(value: unknown, label: string): EyeVisibilityModel {
+  if (!isRecord(value)) throw new TypeError(`${label} must be an object`)
+  if (typeof value.left !== 'boolean' || typeof value.right !== 'boolean') {
+    throw new TypeError(`${label} left/right must be boolean`)
+  }
+  return { left: value.left, right: value.right }
+}
+
 function parseFaceModel(value: unknown, label: string): FaceModel {
   if (!isRecord(value)) throw new TypeError(`${label} must be an object`)
   if (!isRecord(value.canvas)) throw new TypeError(`${label}.canvas must be an object`)
@@ -250,6 +259,9 @@ function parseFaceModel(value: unknown, label: string): FaceModel {
       background,
       ...(stroke === undefined ? {} : { stroke }),
     },
+    ...(value.eyeVisibility === undefined
+      ? {}
+      : { eyeVisibility: parseEyeVisibility(value.eyeVisibility, `${label}.eyeVisibility`) }),
   }
 
   assertTransitionModel(model, label)
@@ -348,6 +360,10 @@ function assertTransitionModel(model: FaceModel, label: string): void {
   assertFiniteGeometry(model.rightEye.geometry, `${label}.rightEye.geometry`)
   if (!Number.isFinite(model.gaze.x) || !Number.isFinite(model.gaze.y)) {
     throw new TypeError(`${label}.gaze must be finite`)
+  }
+  if (model.eyeVisibility !== undefined &&
+      (typeof model.eyeVisibility.left !== 'boolean' || typeof model.eyeVisibility.right !== 'boolean')) {
+    throw new TypeError(`${label}.eyeVisibility must contain boolean left/right values`)
   }
   assertExpression(model.expression, `${label}.expression`)
   if (!canFitEyesInCanvas(model)) {
@@ -513,8 +529,8 @@ export function interpolateExpressionModel(
 }
 
 /**
- * Interpolate the Phase 1/2 numeric animation surface. Canvas/colors stay from
- * the source model because they are explicitly discrete in Issue #99.
+ * Interpolate the Phase 1/2 numeric animation surface. Canvas/colors/visibility stay from
+ * the source model because they are explicitly discrete.
  */
 export function interpolateFaceModel(
   fromModel: FaceModel,
@@ -534,6 +550,7 @@ export function interpolateFaceModel(
     gaze: interpolatePoint(fromModel.gaze, toModel.gaze, t),
     expression: interpolateExpressionModel(fromModel.expression, toModel.expression, t),
     colors: { ...fromModel.colors },
+    ...(fromModel.eyeVisibility === undefined ? {} : { eyeVisibility: { ...fromModel.eyeVisibility } }),
   }
   result = clampTransitionGaze(result)
   assertTransitionModel(result, 'Interpolated transition frame')
