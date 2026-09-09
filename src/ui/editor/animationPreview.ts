@@ -1,4 +1,4 @@
-import type { FaceModel } from '../../core/model'
+import { canFitEyesInCanvas, clampGaze, isGazeCanvasSafe, type FaceModel } from '../../core/model'
 import { expressionPresets } from '../../core/presets'
 import {
   ANIMATION_DEFINITION_VERSION,
@@ -57,10 +57,18 @@ function previewBaseModel(
   recommendedExpressionPresetId: string | undefined,
 ): FaceModel {
   const result = structuredClone(baseModel)
-  if (recommendedExpressionPresetId === undefined) return result
-  const recommended = expressionPresets.find((preset) => preset.id === recommendedExpressionPresetId)
-  if (recommended !== undefined) result.expression = structuredClone(recommended.expression)
-  return result
+  if (recommendedExpressionPresetId !== undefined) {
+    const recommended = expressionPresets.find((preset) => preset.id === recommendedExpressionPresetId)
+    if (recommended !== undefined) result.expression = structuredClone(recommended.expression)
+  }
+
+  if (!canFitEyesInCanvas(result)) return result
+  const clamped = clampGaze(result)
+  return isGazeCanvasSafe(clamped) ? clamped : result
+}
+
+function canAnimatePreviewBase(model: FaceModel): boolean {
+  return canFitEyesInCanvas(model) && isGazeCanvasSafe(model)
 }
 
 /**
@@ -96,27 +104,43 @@ export function evaluateEditorAnimationFrame(
     baseModel,
     initialized.behaviorProfile?.recommendedExpressionPresetId,
   )
-  let stateModel = previewBase
-  let programEvents: readonly RuntimeAnimationEvent[] = []
-  if (initialized.program !== undefined) {
-    const sample = sampleAnimationProgram(initialized.program, previewBase, options.timeMs)
-    stateModel = sample.model
-    programEvents = sample.runtimeEvents
+
+  // Static editing deliberately permits transient/off-canvas geometry while the
+  // user is manipulating controls. The core animation transition contract is
+  // stricter. Never let that temporary mismatch tear down the React render tree;
+  // keep showing the authored/static preview until the model is animatable again.
+  if (!canAnimatePreviewBase(previewBase)) return previewBase
+
+  try {
+    let stateModel = previewBase
+    let programEvents: readonly RuntimeAnimationEvent[] = []
+    if (initialized.program !== undefined) {
+      const sample = sampleAnimationProgram(initialized.program, previewBase, options.timeMs)
+      stateModel = sample.model
+      programEvents = sample.runtimeEvents
+    }
+
+    const definition = mergeDefinitions(
+      initialized.behaviorProfile?.animation,
+      initialized.definition,
+      options.reducedMotion ?? false,
+    )
+
+    return evaluateAnimationFrame({
+      baseModel: stateModel,
+      definition,
+      context: { timeMs: options.timeMs, seed: initialized.seed },
+      runtimeEvents: [...programEvents, ...manualEvents],
+      channelResolvers: editorChannelResolvers,
+    }).model
+  } catch (error) {
+    // An otherwise valid authored program/profile can become temporarily
+    // incompatible with a newly edited base geometry. Preview is non-authoring
+    // state, so falling back to the current static model is safer than crashing
+    // the editor. Persisted data and the core runtime remain strict.
+    if (error instanceof RangeError || error instanceof TypeError) return previewBase
+    throw error
   }
-
-  const definition = mergeDefinitions(
-    initialized.behaviorProfile?.animation,
-    initialized.definition,
-    options.reducedMotion ?? false,
-  )
-
-  return evaluateAnimationFrame({
-    baseModel: stateModel,
-    definition,
-    context: { timeMs: options.timeMs, seed: initialized.seed },
-    runtimeEvents: [...programEvents, ...manualEvents],
-    channelResolvers: editorChannelResolvers,
-  }).model
 }
 
 export function nextRuntimeEvent(
