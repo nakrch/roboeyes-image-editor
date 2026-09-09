@@ -111,14 +111,21 @@ describe('editor animation preview composition', () => {
       },
     }
 
-    const afterOldResetTime = evaluateEditorAnimationPreviewFrame(
+    const visible = evaluateEditorAnimationPreviewFrame(
+      roboEyesPreset.model,
+      defaults,
+      { timeMs: 200 },
+    )
+    expect(visible.transientEffects.overlays).toHaveLength(3)
+    expect(visible.transientEffects.overlays.every((drop) => drop.id.includes('cycle-0'))).toBe(true)
+    expect(visible.transientEffects.overlays.every((drop) => drop.y > 2)).toBe(true)
+
+    const waiting = evaluateEditorAnimationPreviewFrame(
       roboEyesPreset.model,
       defaults,
       { timeMs: 400 },
     )
-    expect(afterOldResetTime.transientEffects.overlays).toHaveLength(3)
-    expect(afterOldResetTime.transientEffects.overlays.every((drop) => drop.id.includes('cycle-0'))).toBe(true)
-    expect(afterOldResetTime.transientEffects.overlays.every((drop) => drop.y > 2 && drop.y < 12)).toBe(true)
+    expect(waiting.transientEffects.overlays).toHaveLength(0)
 
     const reset = evaluateEditorAnimationPreviewFrame(
       roboEyesPreset.model,
