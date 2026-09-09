@@ -31,6 +31,8 @@ describe('resolveNumericDraft', () => {
   it('rounds decimal-capable drafts to at most two fractional digits', () => {
     expect(resolveNumericDraft('12.3456', -100, 100, 'any')).toBe(12.35)
     expect(resolveNumericDraft('-12.3456', -100, 100, 'any')).toBe(-12.35)
+    expect(resolveNumericDraft('1.005', -100, 100, 'any')).toBe(1.01)
+    expect(resolveNumericDraft('-1.005', -100, 100, 'any')).toBe(-1.01)
     expect(resolveNumericDraft('4.5', -100, 100, 0.05)).toBe(4.5)
     expect(resolveNumericDraft('-0.004', -100, 100, 'any')).toBe(0)
   })
