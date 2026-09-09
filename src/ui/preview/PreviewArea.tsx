@@ -1,10 +1,12 @@
 import { useMemo } from 'react'
+import type { TransientOverlay } from '../../animation'
 import type { FaceModel } from '../../core/model'
 import { renderFaceToSvg } from '../../renderers/svg'
 import { PreviewDisplayPanel } from '../controls/PreviewDisplayPanel'
 
 type PreviewAreaProps = {
   model: FaceModel
+  overlays?: readonly TransientOverlay[]
   transparentBackground: boolean
   pixelPerfect: boolean
   onTransparentBackgroundChange: (value: boolean) => void
@@ -13,14 +15,15 @@ type PreviewAreaProps = {
 
 export function PreviewArea({
   model,
+  overlays = [],
   transparentBackground,
   pixelPerfect,
   onTransparentBackgroundChange,
   onPixelPerfectChange,
 }: PreviewAreaProps) {
   const svg = useMemo(
-    () => renderFaceToSvg(model, { transparentBackground }),
-    [model, transparentBackground],
+    () => renderFaceToSvg(model, { transparentBackground, overlays }),
+    [model, overlays, transparentBackground],
   )
 
   return (
