@@ -2,8 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { roboEyesToFaceModel } from '../../core/adapters/roboeyes'
 import { defaultRoboEyesPreset } from '../../core/presets/roboeyes'
 import { canFitEyesInCanvas, isGazeCanvasSafe, visibleEyesOverlap } from '../../core/model'
-import { setIndependentEyePositionSafely } from './eyePositionSafety'
-import { resizeCanvasFromCenter } from './modelEditing'
+import {
+  independentEyePositionRange,
+  rigidEyePositionRange,
+  setIndependentEyePositionSafely,
+} from './eyePositionSafety'
+import { movePair, pairCenterX, resizeCanvasFromCenter } from './modelEditing'
 
 const createModel = () => roboEyesToFaceModel(defaultRoboEyesPreset)
 
@@ -12,6 +16,60 @@ function expectSafe(model: ReturnType<typeof createModel>) {
   expect(isGazeCanvasSafe(model)).toBe(true)
   expect(visibleEyesOverlap(model)).toBe(false)
 }
+
+function expectCurrentPositionUnsafe(model: ReturnType<typeof createModel>) {
+  expect(isGazeCanvasSafe(model) && !visibleEyesOverlap(model)).toBe(false)
+}
+
+describe('position range derivation', () => {
+  it('derives the rigid pair range from the current rendered canvas bounds', () => {
+    const model = createModel()
+    const centerX = pairCenterX(model)
+    const range = rigidEyePositionRange(model, 'x', centerX)
+
+    expect(range.min).toBeLessThan(centerX)
+    expect(range.max).toBeGreaterThan(centerX)
+    expectSafe(movePair(model, range.min, undefined))
+    expectSafe(movePair(model, range.max, undefined))
+
+    const beyondMin = movePair(model, range.min - 0.01, undefined)
+    const beyondMax = movePair(model, range.max + 0.01, undefined)
+    expect(isGazeCanvasSafe(beyondMin)).toBe(false)
+    expect(isGazeCanvasSafe(beyondMax)).toBe(false)
+  })
+
+  it('clips an independent range at canvas and overlap boundaries', () => {
+    const model = createModel()
+    const range = independentEyePositionRange(model, 'left', 'x')
+
+    const atMin = structuredClone(model)
+    atMin.leftEye.geometry.position.x = range.min
+    const atMax = structuredClone(model)
+    atMax.leftEye.geometry.position.x = range.max
+    expectSafe(atMin)
+    expectSafe(atMax)
+
+    const beyondMin = structuredClone(model)
+    beyondMin.leftEye.geometry.position.x = range.min - 0.01
+    const beyondMax = structuredClone(model)
+    beyondMax.leftEye.geometry.position.x = range.max + 0.01
+    expectCurrentPositionUnsafe(beyondMin)
+    expectCurrentPositionUnsafe(beyondMax)
+  })
+
+  it('tightens the independent range when the edited eye becomes wider', () => {
+    const base = createModel()
+    const baseRange = independentEyePositionRange(base, 'left', 'x')
+    const wider = createModel()
+    wider.leftEye.geometry.width = 50
+    expectSafe(wider)
+
+    const widerRange = independentEyePositionRange(wider, 'left', 'x')
+
+    expect(widerRange.min).toBeGreaterThan(baseRange.min)
+    expect(widerRange.max).toBeLessThan(baseRange.max)
+  })
+})
 
 describe('independent eye position safety', () => {
   it('prevents the left eye from overlapping the right eye when moving right', () => {
