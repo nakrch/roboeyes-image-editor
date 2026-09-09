@@ -34,6 +34,7 @@
 - exact canvas size
 - linked / independent eye editing
 - realtime SVG preview
+- basic Pixel perfect preview
 - Undo / Redo / Reset
 - face presets / JSON import-export
 - SVG / PNG export
@@ -108,6 +109,7 @@ Phase 1–3 の完了後、プロジェクトの基準機能は次の通りで�
 - behavior/profile/sequence authoring
 - static PNG/SVG export
 - animated WebP/GIF export
+- basic Pixel perfect preview
 - deterministic static/temporal regression
 
 今後の変更は、この baseline を壊さない個別 Issue として管理します。
@@ -117,7 +119,7 @@ Phase 1–3 の完了後、プロジェクトの基準機能は次の通りで�
 方向性と整合し、実際の利用価値が確認できるものだけを追加します。
 
 - static WebP export
-- pixel-perfect / nearest-neighbor inspection tools
+- advanced pixel-perfect / nearest-neighbor inspection tools beyond the existing basic Pixel perfect preview
 - safe-area overlays
 - additional adapters/styles
 - additional face/expression/behavior preset packages
