@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { clampGaze, type FaceModel } from '../../core/model'
 import {
   builtInPresets,
@@ -22,18 +22,39 @@ import {
   type FacePreset,
   type UserExpressionPreset,
 } from '../../core/presets'
+import {
+  normalizePresetAnimationDefaults,
+  type AnimationProgram,
+  type JsonObject,
+  type PresetAnimationDefaults,
+  type RuntimeAnimationEvent,
+} from '../../animation'
+import { AnimationPanel } from '../controls/AnimationPanel'
 import { ExpressionPresetPanel } from '../controls/ExpressionPresetPanel'
 import { ParameterPanel } from '../controls/ParameterPanel'
 import { PresetPanel } from '../controls/PresetPanel'
 import { ExportPanel } from '../export/ExportPanel'
 import { PreviewArea } from '../preview/PreviewArea'
 import { VisualRegressionGallery } from '../preview/VisualRegressionGallery'
+import {
+  advanceAnimationPlayback,
+  createAnimationPlaybackSession,
+  pauseAnimationPlayback,
+  playAnimationPlayback,
+  previewAnimationProgramStep,
+  restartAnimationPlayback,
+  setAnimationDocumentHidden,
+  setAnimationPlaybackRate,
+  stopAnimationPlayback,
+} from './animationPlayback'
+import { evaluateEditorAnimationFrame, nextRuntimeEvent } from './animationPreview'
 import { ContinuousEditProvider } from './continuousEdit'
 import { commitHistory, redoHistory, undoHistory, type HistoryState } from './history'
 
 type EditorSnapshot = {
   model: FaceModel
   transparentBackground: boolean
+  animationDefaults: PresetAnimationDefaults
 }
 
 type SelectableExpressionPreset = ExpressionPreset | UserExpressionPreset
@@ -45,6 +66,7 @@ function snapshotFromPreset(preset: FacePreset): EditorSnapshot {
   return {
     model: clampGaze(structuredClone(preset.model)),
     transparentBackground: preset.preview?.transparentBackground ?? false,
+    animationDefaults: normalizePresetAnimationDefaults(preset.animationDefaults),
   }
 }
 
@@ -77,8 +99,45 @@ export function EditorShell() {
   const [presetStatus, setPresetStatus] = useState('')
   const [expressionPresetError, setExpressionPresetError] = useState('')
   const [expressionPresetStatus, setExpressionPresetStatus] = useState('')
+  const [playback, setPlayback] = useState(createAnimationPlaybackSession)
+  const [runtimeEvents, setRuntimeEvents] = useState<RuntimeAnimationEvent[]>([])
+  const runtimeEventOrder = useRef(0)
+  const [reducedMotion, setReducedMotion] = useState(() =>
+    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
+  )
   const presets: FacePreset[] = [...builtInPresets.map(clonePreset), ...customPresets]
   const selectableExpressions: SelectableExpressionPreset[] = [...expressionPresets, ...customExpressionPresets]
+
+  useEffect(() => {
+    const query = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+    if (query === undefined) return
+    const update = () => setReducedMotion(query.matches)
+    update()
+    query.addEventListener?.('change', update)
+    return () => query.removeEventListener?.('change', update)
+  }, [])
+
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      setPlayback((current) => setAnimationDocumentHidden(current, document.hidden))
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
+  }, [])
+
+  useEffect(() => {
+    if (playback.clock.status !== 'playing') return
+    let animationFrame = 0
+    let previousTime = performance.now()
+    const tick = (now: number) => {
+      const elapsed = Math.max(0, now - previousTime)
+      previousTime = now
+      setPlayback((current) => advanceAnimationPlayback(current, elapsed))
+      animationFrame = requestAnimationFrame(tick)
+    }
+    animationFrame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(animationFrame)
+  }, [playback.clock.status])
 
   const beginContinuousEdit = () => {
     if (continuousEdit.current.active) return
@@ -99,6 +158,19 @@ export function EditorShell() {
     commit((current) => ({ ...current, model: clampGaze(updater(current.model)) }))
   }
 
+  const updateAnimationDefaults = (next: PresetAnimationDefaults) => {
+    commit((current) => ({
+      ...current,
+      animationDefaults: normalizePresetAnimationDefaults(next),
+    }))
+  }
+
+  const resetPlaybackRuntime = () => {
+    runtimeEventOrder.current = 0
+    setRuntimeEvents([])
+    setPlayback(createAnimationPlaybackSession())
+  }
+
   const undo = () => {
     endContinuousEdit()
     setHistory(undoHistory)
@@ -111,6 +183,7 @@ export function EditorShell() {
 
   const applyPreset = (preset: FacePreset) => {
     endContinuousEdit()
+    resetPlaybackRuntime()
     setActivePresetId(preset.id)
     setActiveExpressionPresetId(matchExpressionPreset(preset.model.expression))
     setLinkedEyes(true)
@@ -121,6 +194,7 @@ export function EditorShell() {
 
   const reset = () => {
     endContinuousEdit()
+    resetPlaybackRuntime()
     const preset = presets.find((item) => item.id === activePresetId) ?? initialPreset
     setActiveExpressionPresetId(matchExpressionPreset(preset.model.expression))
     setLinkedEyes(true)
@@ -138,6 +212,7 @@ export function EditorShell() {
       history.present.model,
       history.present.transparentBackground,
       presets,
+      history.present.animationDefaults,
     )
     persistCustomPresets([...customPresets, preset])
     setActivePresetId(preset.id)
@@ -237,7 +312,29 @@ export function EditorShell() {
     setExpressionPresetStatus(`Deleted “${preset.name}”.`)
   }
 
-  const { model, transparentBackground } = history.present
+  const triggerAnimation = (
+    action: string,
+    channel: RuntimeAnimationEvent['channel'],
+    payload?: JsonObject,
+  ) => {
+    const order = runtimeEventOrder.current++
+    const event = nextRuntimeEvent(action, channel, playback.clock.positionMs, order, payload)
+    setRuntimeEvents((current) => [...current, event])
+    setPlayback((current) => current.clock.status === 'playing' ? current : playAnimationPlayback(current))
+  }
+
+  const previewSequenceStep = (program: AnimationProgram, stepId: string) => {
+    runtimeEventOrder.current = 0
+    setRuntimeEvents([])
+    setPlayback((current) => previewAnimationProgramStep(current, program, stepId))
+  }
+
+  const { model, transparentBackground, animationDefaults } = history.present
+  const displayedModel = evaluateEditorAnimationFrame(model, animationDefaults, {
+    timeMs: playback.clock.positionMs,
+    runtimeEvents,
+    reducedMotion,
+  })
   const activePreset = presets.find((preset) => preset.id === activePresetId)
   const displayedPresetId = activePreset && snapshotEqual(snapshotFromPreset(activePreset), history.present)
     ? activePreset.id
@@ -254,14 +351,14 @@ export function EditorShell() {
           <p className="eyebrow">Parametric Robot Face Editor</p>
           <h1>RoboEyes Image Editor</h1>
         </div>
-        <span className="phase-badge">Realtime SVG Editor</span>
+        <span className="phase-badge">Realtime SVG + Animation</span>
       </header>
 
       <ContinuousEditProvider value={{ begin: beginContinuousEdit, end: endContinuousEdit }}>
         <section className="editor-workspace" aria-label="Editor workspace">
           <div className="editor-preview-column">
             <PreviewArea
-              model={model}
+              model={displayedModel}
               transparentBackground={transparentBackground}
               pixelPerfect={pixelPerfect}
               onTransparentBackgroundChange={(value) => commit((current) => ({ ...current, transparentBackground: value }))}
@@ -275,6 +372,28 @@ export function EditorShell() {
           </div>
 
           <div className="editor-sidebar">
+            <AnimationPanel
+              model={model}
+              animationDefaults={animationDefaults}
+              playback={playback}
+              reducedMotion={reducedMotion}
+              onAnimationDefaultsChange={updateAnimationDefaults}
+              onPlay={() => setPlayback(playAnimationPlayback)}
+              onPause={() => setPlayback(pauseAnimationPlayback)}
+              onStop={() => {
+                setRuntimeEvents([])
+                runtimeEventOrder.current = 0
+                setPlayback(stopAnimationPlayback)
+              }}
+              onRestart={() => {
+                setRuntimeEvents([])
+                runtimeEventOrder.current = 0
+                setPlayback(restartAnimationPlayback)
+              }}
+              onPlaybackRateChange={(rate) => setPlayback((current) => setAnimationPlaybackRate(current, rate))}
+              onTrigger={triggerAnimation}
+              onPreviewSequenceStep={previewSequenceStep}
+            />
             <PresetPanel
               presets={presets}
               activePresetId={displayedPresetId}

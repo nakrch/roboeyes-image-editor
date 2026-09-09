@@ -1,0 +1,36 @@
+.animation-panel { display: grid; gap: 16px; padding: 20px; }
+.animation-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 0; }
+.animation-status { border: 1px solid #334155; border-radius: 999px; padding: 4px 8px; color: #94a3b8; background: #111827; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; }
+.animation-status.playing { border-color: #14532d; color: #bbf7d0; background: #052e16; }
+.animation-status.paused { border-color: #854d0e; color: #fde68a; background: #422006; }
+.animation-section { display: grid; gap: 10px; border-top: 1px solid #263247; padding-top: 14px; color: #cbd5e1; }
+.animation-section:first-of-type { border-top: 0; padding-top: 0; }
+.animation-section h3, .animation-section summary { margin: 0; color: #f8fafc; font-size: 0.88rem; font-weight: 700; }
+.animation-section summary { cursor: pointer; }
+.animation-toolbar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.animation-inline-fields { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.animation-inline-fields label, .animation-field { display: grid; gap: 5px; color: #cbd5e1; font-size: 0.76rem; font-weight: 650; }
+.animation-inline-fields label { min-width: 94px; flex: 1; }
+.animation-inline-fields button { min-height: 32px; }
+.animation-time { margin: 0; color: #64748b; font-size: 0.72rem; font-variant-numeric: tabular-nums; }
+.animation-trigger-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.animation-note { margin: 0; border-left: 2px solid #334155; padding-left: 9px; color: #94a3b8; font-size: 0.72rem; line-height: 1.45; }
+.animation-fields-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 4px; }
+.animation-check { display: flex; align-items: center; gap: 7px; color: #cbd5e1; font-size: 0.76rem; font-weight: 650; min-height: 32px; }
+.animation-field select { width: 100%; }
+.sequence-editor { display: grid; gap: 10px; }
+.sequence-step { display: grid; gap: 10px; margin: 0; border: 1px solid #334155; border-radius: 10px; padding: 10px; min-width: 0; }
+.sequence-step legend { padding: 0 5px; color: #f8fafc; font-size: 0.76rem; font-weight: 700; }
+.sequence-step-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.sequence-step-actions button { font-size: 0.7rem; padding: 4px 7px; }
+
+@media (max-width: 820px) {
+  .animation-panel { padding: 16px; }
+}
+
+@media (max-width: 440px) {
+  .animation-toolbar, .animation-trigger-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .animation-fields-grid { grid-template-columns: 1fr; }
+  .animation-inline-fields { display: grid; grid-template-columns: 1fr 1fr; }
+  .animation-inline-fields label { min-width: 0; }
+}
