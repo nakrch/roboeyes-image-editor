@@ -1,32 +1,18 @@
-import { roboEyesToFaceModel } from '../../core/adapters/roboeyes'
-import type { ExpressionModel, FaceModel } from '../../core/model'
-import { defaultRoboEyesPreset, expressionPresets } from '../../core/presets'
+import { useEffect, useState } from 'react'
 import { renderFaceToSvg } from '../../renderers/svg'
 import {
   phase2ExpressionVisualFixtures,
   type Phase2ExpressionVisualFixture,
 } from '../../renderers/svg/__fixtures__/phase2Expressions'
-
-function expressionForFixture(fixture: Phase2ExpressionVisualFixture): ExpressionModel {
-  if (fixture.expression) return structuredClone(fixture.expression)
-  const preset = expressionPresets.find((candidate) => candidate.name === fixture.presetName)
-  if (!preset) throw new Error(`Missing expression preset for fixture ${fixture.id}`)
-  return structuredClone(preset.expression)
-}
-
-function modelForFixture(fixture: Phase2ExpressionVisualFixture): FaceModel {
-  const base = roboEyesToFaceModel({
-    ...defaultRoboEyesPreset,
-    canvasWidth: fixture.canvas.width,
-    canvasHeight: fixture.canvas.height,
-    gazeX: fixture.gaze.x,
-    gazeY: fixture.gaze.y,
-  })
-  return {
-    ...base,
-    expression: expressionForFixture(fixture),
-  }
-}
+import {
+  GALLERY_MOTION_PREVIEW_CYCLE_MS,
+  isGalleryVisibleFixture,
+  modelForFixture,
+  sampleFixtureMotionPreview,
+  selectionForFixture,
+  type GalleryExpressionSelection,
+} from './visualRegressionGalleryModel'
+import './visualRegressionGallery.css'
 
 function aperturePath(svg: string, side: 'left' | 'right'): string | undefined {
   return svg.match(new RegExp(`data-eye-aperture="${side}" d="([^"]+)"`))?.[1]
@@ -46,13 +32,42 @@ function matchesFixture(svg: string, fixture: Phase2ExpressionVisualFixture): bo
 function fixtureTitle(fixture: Phase2ExpressionVisualFixture): string {
   if (fixture.id === 'asymmetric-custom-128x64') return 'Asymmetric custom'
   if (fixture.id === 'curious-left-128x64') return 'Curious · Left'
-  if (fixture.id === 'curious-center-128x64') return 'Curious · Center'
   if (fixture.id === 'curious-right-128x64') return 'Curious · Right'
-  if (fixture.id === 'happy-240x240') return 'Happy · Square'
   return fixture.presetName ?? fixture.id
 }
 
-export function VisualRegressionGallery() {
+const galleryFixtures = phase2ExpressionVisualFixtures.filter(isGalleryVisibleFixture)
+
+type VisualRegressionGalleryProps = {
+  activeExpressionId: string
+  disabled?: boolean
+  onApplySelection: (selection: GalleryExpressionSelection) => void
+}
+
+export function VisualRegressionGallery({
+  activeExpressionId,
+  disabled = false,
+  onApplySelection,
+}: VisualRegressionGalleryProps) {
+  const [motionFixtureId, setMotionFixtureId] = useState<string | null>(null)
+  const [motionTimeMs, setMotionTimeMs] = useState(0)
+
+  useEffect(() => {
+    if (motionFixtureId === null) {
+      setMotionTimeMs(0)
+      return
+    }
+
+    let animationFrame = 0
+    const startTime = performance.now()
+    const tick = (now: number) => {
+      setMotionTimeMs((now - startTime) % GALLERY_MOTION_PREVIEW_CYCLE_MS)
+      animationFrame = requestAnimationFrame(tick)
+    }
+    animationFrame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(animationFrame)
+  }, [motionFixtureId])
+
   return (
     <details className="panel visual-regression-gallery">
       <summary className="visual-regression-summary">
@@ -61,25 +76,38 @@ export function VisualRegressionGallery() {
           <strong>Visual Regression Gallery</strong>
         </span>
         <span className="visual-regression-count">
-          {phase2ExpressionVisualFixtures.length} fixtures
+          {galleryFixtures.length} fixtures
         </span>
       </summary>
 
       <div className="visual-regression-intro">
         <p>
-          Live renderer output for the Phase 2 reference fixtures. A changed geometry signature is
-          flagged directly on the card in addition to the CI regression test.
+          The upper image on every card is the fixed regression fixture used for the status check.
+          Apply changes the editor through normal history; Motion preview is a separate opt-in Phase 3
+          transition and never changes the fixture comparison.
         </p>
       </div>
 
       <div className="visual-regression-grid">
-        {phase2ExpressionVisualFixtures.map((fixture) => {
+        {galleryFixtures.map((fixture) => {
           const model = modelForFixture(fixture)
           const svg = renderFaceToSvg(model, { idPrefix: `visual-regression-${fixture.id}` })
           const matches = matchesFixture(svg, fixture)
+          const selection = selectionForFixture(fixture)
+          const isSelected = selection.presetId !== 'custom' && selection.presetId === activeExpressionId
+          const isMotionActive = motionFixtureId === fixture.id
+          const motionSvg = isMotionActive
+            ? renderFaceToSvg(sampleFixtureMotionPreview(fixture, motionTimeMs), {
+                idPrefix: `visual-regression-motion-${fixture.id}`,
+              })
+            : undefined
+          const isCuriousFixture = fixture.presetName === 'Curious'
 
           return (
-            <article className="visual-regression-card" key={fixture.id}>
+            <article
+              className={`visual-regression-card${isSelected ? ' visual-regression-card-selected' : ''}`}
+              key={fixture.id}
+            >
               <div className="visual-regression-card-header">
                 <div>
                   <h3>{fixtureTitle(fixture)}</h3>
@@ -94,7 +122,7 @@ export function VisualRegressionGallery() {
                 className="visual-regression-card-preview"
                 style={{ aspectRatio: `${fixture.canvas.width} / ${fixture.canvas.height}` }}
                 role="img"
-                aria-label={`${fixtureTitle(fixture)} visual regression fixture`}
+                aria-label={`${fixtureTitle(fixture)} fixed visual regression fixture`}
                 dangerouslySetInnerHTML={{ __html: svg }}
               />
 
@@ -108,6 +136,50 @@ export function VisualRegressionGallery() {
                   <dd>{fixture.gaze.x}, {fixture.gaze.y}</dd>
                 </div>
               </dl>
+
+              <div className="visual-regression-actions" aria-label={`${fixtureTitle(fixture)} actions`}>
+                <button
+                  type="button"
+                  onClick={() => onApplySelection(selection)}
+                  disabled={disabled}
+                >
+                  Apply expression
+                </button>
+                {isCuriousFixture && (
+                  <button
+                    type="button"
+                    onClick={() => onApplySelection(selectionForFixture(fixture, true))}
+                    disabled={disabled}
+                    title="Apply Curious and this fixture's gaze explicitly"
+                  >
+                    Apply + gaze
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className={isMotionActive ? 'active' : undefined}
+                  aria-pressed={isMotionActive}
+                  onClick={() => setMotionFixtureId((current) => current === fixture.id ? null : fixture.id)}
+                >
+                  {isMotionActive ? 'Stop motion' : 'Preview motion'}
+                </button>
+              </div>
+
+              {motionSvg !== undefined && (
+                <div className="visual-regression-motion-block">
+                  <div className="visual-regression-motion-label">
+                    <span>Motion preview</span>
+                    <span>Phase 3 · runtime only</span>
+                  </div>
+                  <div
+                    className="visual-regression-card-preview visual-regression-motion-preview"
+                    style={{ aspectRatio: `${fixture.canvas.width} / ${fixture.canvas.height}` }}
+                    role="img"
+                    aria-label={`${fixtureTitle(fixture)} motion preview`}
+                    dangerouslySetInnerHTML={{ __html: motionSvg }}
+                  />
+                </div>
+              )}
             </article>
           )
         })}
