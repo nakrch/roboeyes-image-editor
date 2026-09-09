@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { EyeGeometry, FaceModel } from '../core/model'
 import { roboEyesPreset } from '../core/presets'
 import {
   normalizeTransientEffectLayerDefinition,
@@ -15,8 +16,8 @@ const fixedSweat: TransientEffectLayerDefinition = {
     enabled: true,
     startTimeMs: 0,
     dropCount: 3,
-    minTargetY: 12,
-    maxTargetY: 12,
+    minTargetY: 8,
+    maxTargetY: 8,
     fallSpeed: 0.025,
     radius: 3,
   }],
@@ -31,6 +32,19 @@ function event(
   return { id, channel: 'transient-effect', action, startTimeMs, order }
 }
 
+function verticalHalfExtent(geometry: EyeGeometry): number {
+  const radians = geometry.rotation * Math.PI / 180
+  return Math.abs(Math.sin(radians)) * geometry.width / 2 +
+    Math.abs(Math.cos(radians)) * geometry.height / 2
+}
+
+function topOfEyes(model: FaceModel): number {
+  return Math.min(
+    model.leftEye.geometry.position.y + model.gaze.y - verticalHalfExtent(model.leftEye.geometry),
+    model.rightEye.geometry.position.y + model.gaze.y - verticalHalfExtent(model.rightEye.geometry),
+  )
+}
+
 describe('transient effect definitions', () => {
   it('normalizes serializable generic effect-layer data and rejects unknown fields/kinds', () => {
     const normalized = normalizeTransientEffectLayerDefinition(fixedSweat)
@@ -41,8 +55,8 @@ describe('transient effect definitions', () => {
       id: 'sweat:test',
       enabled: true,
       dropCount: 3,
-      minTargetY: 12,
-      maxTargetY: 12,
+      minTargetY: 8,
+      maxTargetY: 8,
       fallSpeed: 0.025,
       radius: 3,
     })
@@ -60,40 +74,76 @@ describe('transient effect definitions', () => {
 })
 
 describe('deterministic animated sweat', () => {
-  it('samples recognizable teardrop start, mid, and reset frames from explicit time', () => {
+  it('samples compact teardrop start, mid, and reset frames from explicit time', () => {
     const base = roboEyesPreset.model
     const start = resolveTransientEffectFrame(fixedSweat, [], base, 0, 17)
-    const mid = resolveTransientEffectFrame(fixedSweat, [], base, 200, 17)
-    const reset = resolveTransientEffectFrame(fixedSweat, [], base, 400, 17)
+    const mid = resolveTransientEffectFrame(fixedSweat, [], base, 120, 17)
+    const reset = resolveTransientEffectFrame(fixedSweat, [], base, 240, 17)
 
     expect(start.overlays).toHaveLength(3)
     expect(start.overlays.every((drop) => drop.kind === 'teardrop')).toBe(true)
-    expect(start.overlays.every((drop) => drop.y === 2 && drop.width === 1.8 && drop.height === 3.2)).toBe(true)
+    expect(start.overlays.every((drop) => drop.y === 2 && drop.width === 0.9 && drop.height === 1.8)).toBe(true)
+
     expect(mid.overlays).toHaveLength(3)
-    expect(mid.overlays.every((drop) => drop.kind === 'teardrop' && drop.y === 7)).toBe(true)
-    expect(mid.overlays.every((drop) => drop.width > 5 && drop.height > 5)).toBe(true)
+    expect(mid.overlays.every((drop) => drop.kind === 'teardrop' && drop.y === 5)).toBe(true)
+    expect(mid.overlays.every((drop) => drop.width > 1.6 && drop.width < 1.8)).toBe(true)
+    expect(mid.overlays.every((drop) => drop.height > 3.2 && drop.height < 3.6)).toBe(true)
+
     expect(reset.overlays).toHaveLength(3)
-    expect(reset.overlays.every((drop) => drop.y === 2 && drop.width === 1.8 && drop.height === 3.2)).toBe(true)
+    expect(reset.overlays.every((drop) => drop.y === 2 && drop.width === 0.9 && drop.height === 1.8)).toBe(true)
     expect(reset.overlays.every((drop) => drop.id.includes('cycle-1'))).toBe(true)
   })
 
-  it('scales shape and distance on larger canvases while stretching cycle duration proportionally', () => {
-    const large = structuredClone(roboEyesPreset.model)
-    large.canvas = { width: 240, height: 240 }
-    const scale = 240 / 64
+  it('does not scale droplets with canvas alone and only weakly follows eye size', () => {
+    const base = roboEyesPreset.model
+    const baseStart = resolveTransientEffectFrame(fixedSweat, [], base, 0, 17)
 
-    const largeStart = resolveTransientEffectFrame(fixedSweat, [], large, 0, 17)
-    const largeAt400 = resolveTransientEffectFrame(fixedSweat, [], large, 400, 17)
-    const largeReset = resolveTransientEffectFrame(fixedSweat, [], large, 400 * scale, 17)
+    const largeCanvas = structuredClone(base)
+    largeCanvas.canvas = { width: 240, height: 240 }
+    const largeCanvasStart = resolveTransientEffectFrame(fixedSweat, [], largeCanvas, 0, 17)
+    expect(largeCanvasStart.overlays[0].width).toBeCloseTo(baseStart.overlays[0].width)
+    expect(largeCanvasStart.overlays[0].height).toBeCloseTo(baseStart.overlays[0].height)
+    expect(largeCanvasStart.overlays[0].y).toBeCloseTo(baseStart.overlays[0].y)
 
-    expect(largeStart.overlays).toHaveLength(3)
-    expect(largeStart.overlays[0].width).toBeCloseTo(1.8 * scale)
-    expect(largeStart.overlays[0].height).toBeCloseTo(3.2 * scale)
-    expect(largeStart.overlays[0].y).toBeCloseTo(2 * scale)
-    expect(largeAt400.overlays.every((drop) => drop.id.includes('cycle-0'))).toBe(true)
-    expect(largeAt400.overlays[0].y).toBeLessThan(12 * scale)
-    expect(largeReset.overlays.every((drop) => drop.id.includes('cycle-1'))).toBe(true)
-    expect(largeReset.overlays[0].y).toBeCloseTo(2 * scale)
+    const largeEyes = structuredClone(base)
+    largeEyes.canvas = { width: 256, height: 128 }
+    largeEyes.leftEye.geometry.width = 72
+    largeEyes.leftEye.geometry.height = 72
+    largeEyes.leftEye.geometry.position.y = 64
+    largeEyes.rightEye.geometry.width = 72
+    largeEyes.rightEye.geometry.height = 72
+    largeEyes.rightEye.geometry.position.y = 64
+    const largeEyesStart = resolveTransientEffectFrame(fixedSweat, [], largeEyes, 0, 17)
+
+    expect(largeEyesStart.overlays[0].width).toBeCloseTo(1.125)
+    expect(largeEyesStart.overlays[0].height).toBeCloseTo(2.25)
+    expect(largeEyesStart.overlays[0].y).toBeCloseTo(4)
+    expect(largeEyesStart.overlays[0].width).toBeLessThan(baseStart.overlays[0].width * 1.5)
+  })
+
+  it('keeps every droplet above the rendered eye bounds, including gaze and rotation', () => {
+    const variants: FaceModel[] = [structuredClone(roboEyesPreset.model)]
+
+    const gazed = structuredClone(roboEyesPreset.model)
+    gazed.gaze.y = -3
+    variants.push(gazed)
+
+    const rotated = structuredClone(roboEyesPreset.model)
+    rotated.leftEye.geometry.rotation = 10
+    rotated.rightEye.geometry.rotation = -10
+    variants.push(rotated)
+
+    for (const model of variants) {
+      let sampled = 0
+      for (let timeMs = 0; timeMs <= 2_000; timeMs += 29) {
+        const frame = resolveTransientEffectFrame(fixedSweat, [], model, timeMs, 17)
+        for (const drop of frame.overlays) {
+          sampled += 1
+          expect(drop.y + drop.height).toBeLessThan(topOfEyes(model))
+        }
+      }
+      expect(sampled).toBeGreaterThan(0)
+    }
   })
 
   it('is repeatable and sampling-order independent for the same time + seed', () => {
@@ -135,7 +185,7 @@ describe('deterministic animated sweat', () => {
           expect(drop.x).toBeGreaterThanOrEqual(0)
           expect(drop.y).toBeGreaterThanOrEqual(0)
           expect(drop.x + drop.width).toBeLessThanOrEqual(base.canvas.width + 1e-9)
-          expect(drop.y + drop.height).toBeLessThanOrEqual(base.canvas.height + 1e-9)
+          expect(drop.y + drop.height).toBeLessThan(topOfEyes(base))
           expect(drop.width).toBeGreaterThan(0)
           expect(drop.height).toBeGreaterThan(0)
         }
