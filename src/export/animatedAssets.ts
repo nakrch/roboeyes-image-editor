@@ -115,16 +115,20 @@ export async function encodeAnimatedGif(
   return new Blob([ownedBytes(bytes)], { type: 'image/gif' })
 }
 
-export function webpAnimationFrames(
-  frames: readonly RasterAnimationFrame[],
-): readonly { data: Uint8Array<ArrayBuffer>; duration: number; config: { lossless: number; quality: number } }[] {
+type WebpAnimationFrame = {
+  data: Uint8Array<ArrayBuffer>
+  duration: number
+  config: { lossless: number; quality: number }
+}
+
+export function webpAnimationFrames(frames: readonly RasterAnimationFrame[]): WebpAnimationFrame[] {
   // wasm-webp's wrapper calls WebPAnimEncoderAdd(frame, timestamp, ...), so its
   // `duration` field is actually consumed as the frame presentation timestamp.
   // Feed cumulative logical timestamps and append a duplicate terminal frame at
   // the requested end timestamp so libwebp can derive the final frame duration.
   let timestampMs = 0
-  const encoded = frames.map((frame) => {
-    const current = {
+  const encoded: WebpAnimationFrame[] = frames.map((frame) => {
+    const current: WebpAnimationFrame = {
       data: ownedBytes(frame.rgba),
       duration: Math.max(0, Math.round(timestampMs)),
       config: { lossless: 1, quality: 100 },
