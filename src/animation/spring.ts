@@ -14,6 +14,7 @@ import { cloneFaceModel, type AnimationChannelResolver } from './runtime'
 import {
   FACE_TRANSITION_KIND,
   normalizeFaceStateTarget,
+  normalizeFaceTransitionDefinition,
   resolveFaceStateTarget,
   interpolateFaceModel,
   sampleFaceTransition,
@@ -324,6 +325,13 @@ export function normalizeSpringFaceTransitionDefinition(value: unknown): SpringF
   }
 }
 
+export function normalizeGenericFaceTransitionDefinition(value: unknown): GenericFaceTransitionDefinition {
+  if (!isRecord(value)) throw new TypeError('Face transition definition must be an object')
+  return value.kind === SPRING_FACE_TRANSITION_KIND
+    ? normalizeSpringFaceTransitionDefinition(value)
+    : normalizeFaceTransitionDefinition(value)
+}
+
 export function createSpringFaceTransition(
   id: string,
   target: FaceStateTarget,
@@ -425,8 +433,6 @@ export const genericStateTransitionChannelResolver: AnimationChannelResolver = (
   context,
 }) => {
   if (channelDefinition === undefined) return model
-  if (!isRecord(channelDefinition)) throw new TypeError('State transition channel definition must be an object')
-  return channelDefinition.kind === SPRING_FACE_TRANSITION_KIND
-    ? sampleSpringFaceTransition(normalizeSpringFaceTransitionDefinition(channelDefinition), model, context.timeMs)
-    : sampleFaceTransition(channelDefinition as unknown as FaceTransitionDefinition, model, context.timeMs)
+  const transition = normalizeGenericFaceTransitionDefinition(channelDefinition)
+  return sampleGenericFaceTransition(transition, model, context.timeMs)
 }
