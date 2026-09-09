@@ -36,6 +36,26 @@ describe('preset system', () => {
     expect(parsed).toEqual(minimalPreset)
   })
 
+  it('round-trips optional single-eye visibility without changing legacy presets', () => {
+    const single = {
+      ...minimalPreset,
+      id: 'custom:single',
+      model: {
+        ...minimalPreset.model,
+        eyeVisibility: { left: true, right: false },
+      },
+    }
+    expect(parsePreset(serializePreset(single))).toEqual(single)
+    expect(parsePreset(serializePreset(minimalPreset)).model.eyeVisibility).toBeUndefined()
+  })
+
+  it('rejects malformed eye visibility in preset JSON', () => {
+    const malformed = structuredClone(minimalPreset) as unknown as Record<string, unknown>
+    const model = malformed.model as Record<string, unknown>
+    model.eyeVisibility = { left: true, right: 'no' }
+    expect(() => parsePreset(JSON.stringify(malformed))).toThrow('Invalid preset JSON')
+  })
+
   it('rejects JSON that does not match the preset schema', () => {
     expect(() => parsePreset('{"name":"not enough"}')).toThrow('Invalid preset JSON')
   })
