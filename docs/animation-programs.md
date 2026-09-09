@@ -130,6 +130,8 @@ Playback state is not stored in the authored program. The existing Phase 3 playb
 
 External interruption can switch to another program or runtime event set while keeping the authored document immutable. A restart is a clock-position reset, not a rewrite of the program.
 
-## Scope boundary
+## Integration boundary
 
-This is the document/runtime sequence layer only. Persistent preset/JSON integration is #105; visible player/authoring controls are #107. It does not introduce draggable keyframes, audio sync, executable callbacks, or per-frame authored data.
+This document/runtime sequence layer is persisted through the preset/JSON integration from #105 and edited/previewed through the browser controls from #107. Those layers consume the same immutable program document and runtime clock semantics.
+
+The program model intentionally does not introduce draggable keyframes, audio sync, executable callbacks, or per-frame authored data.

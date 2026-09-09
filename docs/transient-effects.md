@@ -21,7 +21,9 @@ Transient effects are deliberately **not** stored in `ExpressionModel` or eye ge
 
 ## Generic overlay contract
 
-The first overlay primitive is a renderer-independent rounded rectangle:
+The renderer currently supports two renderer-independent transient overlay primitives.
+
+Rounded rectangle:
 
 ```ts
 {
@@ -37,9 +39,25 @@ The first overlay primitive is a renderer-independent rounded rectangle:
 }
 ```
 
-The SVG renderer only understands this generic primitive. It contains no `sweat` mood/behavior branch, timer, or random reset logic.
+Teardrop:
 
-Future temporary effects can add reusable overlay primitives or effect definitions without adding fields to the static face model.
+```ts
+{
+  id: string
+  kind: 'teardrop'
+  x: number
+  y: number
+  width: number
+  height: number
+  roundness: number // 0..1
+  paint: { role: 'eye' | 'stroke' | 'background' } | { value: string }
+  opacity?: number
+}
+```
+
+The SVG renderer understands only these generic overlay primitives. It contains no `sweat` mood/behavior branch, timer, or random reset logic. Sweat is resolved into ordinary `teardrop` overlays before rendering.
+
+Future temporary effects can reuse these primitives or add additional generic overlay kinds without adding fields to the static face model.
 
 ## Sweat reference mapping
 
@@ -49,25 +67,29 @@ FluxGarage/RoboEyes V1.1.1 draws three animated sweat drops in the upper display
 - Y advances by `0.5` per reference render update
 - the drop grows during the first portion of the fall and shrinks afterward
 - after reaching its sampled target Y, X and target Y are randomized for the next drop
-- the rounded shape uses radius `3`
+- the rounded/drop shape uses radius `3` as its reference shape control
 
 This project preserves that behavioral intent but removes render-count dependence:
 
 - the established reference cadence is treated as 50 Hz (`20 ms` per update)
-- `0.5 / 20 ms = 0.025` canvas units per millisecond is the default fall speed
+- `0.5 / 20 ms = 0.025` canvas units per millisecond is the core reference/default fall speed
 - X position and target Y are sampled from named deterministic random streams
 - each drop/cycle is addressed by explicit drop/cycle indices
 - the same `FaceModel + definition + timeMs + seed + events` resolves to the same overlay frame regardless of prior browser frames
 
-For the reference-compatible three-drop default on canvases at least 60 units wide, horizontal regions are:
+For the three-drop layout, the reference 128-wide split points are scaled proportionally to the current canvas width:
 
 ```text
-left:   0 .. 30
-center: 30 .. width - 30
-right:  width - 30 .. width
+edge = width * (30 / 128)
+
+left:   0 .. edge
+center: edge .. width - edge
+right:  width - edge .. width
 ```
 
-Other droplet counts or narrow canvases use equal horizontal bands.
+Other droplet counts use equal horizontal bands.
+
+The core transient-effect definition retains `0.025` as the RoboEyes-reference fall speed. The editor-facing evaluation path deliberately maps an omitted/reference `0.025` Sweat speed to `0.008` for the editor preview and the current animated-export frame resolver, so the authored default is less visually aggressive in the browser workflow. An explicitly authored non-reference `fallSpeed` is preserved. This editor adjustment is temporary resolved behavior and does not rewrite the persisted definition.
 
 ## Persistence
 
@@ -105,7 +127,8 @@ The Animation panel exposes **Transient effects → Animated sweat** and droplet
 - playback/resolved overlay frames do not create history entries
 - disabling Sweat removes the authored transient-effect channel when no effect remains
 - no overlays means `renderFaceToSvg(model, { overlays: [] })` remains byte-identical to ordinary static rendering
-- the static Export panel continues to export the authored base face; animated output is tracked separately by #109
+- static SVG/PNG export continues to render the authored base face without transient overlays
+- animated WebP/GIF export samples resolved animation frames and transient overlays through the deterministic animation export resolver
 
 ## Reduced motion
 

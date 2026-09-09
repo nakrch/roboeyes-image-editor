@@ -1,6 +1,6 @@
 # Deterministic animation runtime
 
-This document defines the Phase 3 runtime contract introduced by Issue #98. Detailed behavior schemas for transitions, blink, idle, motion, sequences, and persistence remain owned by their respective Phase 3 issues.
+This document defines the Phase 3 runtime contract introduced by Issue #98. Detailed behavior schemas for transitions, blink, idle, motion, sequences, and persistence are owned by their respective companion specifications and issues.
 
 ## Reference basis
 
@@ -38,7 +38,7 @@ Sampling is side-effect free from the caller's perspective. The evaluator clones
 
 ## Authored definition vs runtime events
 
-`AnimationDefinition` is versioned JSON-safe authoring data. Issue #98 defines only the stable envelope and composition channels; channel-specific schemas are added by later issues.
+`AnimationDefinition` is versioned JSON-safe authoring data. Issue #98 defines the stable envelope and composition channels; channel-specific schemas are defined by the companion behavior modules/specifications.
 
 `RuntimeAnimationEvent` represents ephemeral ad-hoc triggers such as manual blink/wink/laugh/confused. Each event contains:
 
@@ -50,7 +50,7 @@ Sampling is side-effect free from the caller's perspective. The evaluator clones
 - optional integer `priority`
 - optional JSON-safe payload
 
-Runtime events are not automatically persisted as authored preset data. Authored sequence steps from #112 are a separate concept even when they eventually compile/resolve to equivalent scheduled actions.
+Runtime events are not automatically persisted as authored preset data. Authored sequence steps from #112 are a separate concept even when they compile/resolve to equivalent scheduled actions.
 
 Duplicate runtime-event IDs are invalid.
 
@@ -105,7 +105,7 @@ Random behavior uses stateless indexed sampling:
 sampleRandom(seed, streamName, eventIndex)
 ```
 
-A named stream derives its own deterministic 32-bit seed. Sampling `idle-gaze` therefore cannot consume or reorder samples from `auto-blink`. This isolation is intentional and required for later schedulers.
+A named stream derives its own deterministic 32-bit seed. Sampling `idle-gaze` therefore cannot consume or reorder samples from `auto-blink`. This keeps independent schedulers stable when other random behaviors are enabled or disabled.
 
 No core animation implementation should depend on `Math.random()`.
 
@@ -137,7 +137,7 @@ It does **not** read:
 - `performance.now()`
 - `requestAnimationFrame`
 
-The browser preview layer will later provide elapsed realtime to `advancePlaybackClock()`. This keeps realtime orchestration outside the pure evaluator and allows pause/resume/visibility policy to be implemented in #107 without changing animation semantics.
+The browser preview layer provides elapsed realtime to `advancePlaybackClock()`. Realtime orchestration, pause/resume, and document-visibility policy stay outside the pure evaluator, so browser timing does not change animation semantics.
 
 ## Static compatibility
 
@@ -145,7 +145,9 @@ With no authored channel data and no runtime events, `evaluateAnimationFrame()` 
 
 `renderFaceToSvg()` remains timer-free and random-free.
 
-## Follow-up ownership
+## Capability ownership
+
+The completed Phase 3 capability split remains:
 
 - #99: state/model interpolation and easing implementations
 - #100: eye openness, blink/wink/open/close/sleep
@@ -157,4 +159,4 @@ With no authored channel data and no runtime events, `evaluateAnimationFrame()` 
 - #105: persisted animation schema/preset integration
 - #107: realtime player/UI clock orchestration
 - #108: temporal regression and frame-rate independence
-- #106/#113: non-blocking transient-effect/spring extensions
+- #106/#113: transient-effect/spring extensions

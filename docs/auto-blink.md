@@ -107,7 +107,7 @@ If auto-blink is already enabled, another `auto-blink-enable` is treated as a de
 
 Re-enabling starts a new epoch, so its first blink is scheduled one complete delay after the new enable timestamp.
 
-This event model gives later behavior profiles (#104) a data-oriented way to change blink cadence without renderer mood branches.
+Behavior profiles (#104) use this event/data model to change blink cadence without renderer mood branches.
 
 ## Manual blink and wink interaction
 
@@ -149,8 +149,6 @@ Scheduling is reconstructed from authored config, runtime control events, explic
 
 Direct seek to 20 seconds and incremental playback to 20 seconds resolve the same scheduled blink history. Sampling 20 seconds before 5 seconds does not change the 5-second result.
 
-## Scope boundary
+## Layer boundary
 
-Issue #101 does not add UI controls for auto-blink. UI authoring/playback belongs to #107, while behavior/profile-specific blink cadence belongs to #104.
-
-The next Phase 3 behavior layer is deterministic idle gaze / bounded wander (#102).
+Auto-blink scheduling remains separate from the browser authoring/playback UI (#107), behavior-profile composition (#104), and idle-gaze scheduling (#102). Those completed layers consume the same deterministic channel/event contracts rather than changing auto-blink semantics.

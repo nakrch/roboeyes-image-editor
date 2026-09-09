@@ -29,7 +29,7 @@ No parallel face-preset format is introduced.
 The envelope may contain:
 
 - `seed` — stable authored/default uint32 seed for reproducible random behavior;
-- `definition` — generic ambient channel data such as auto-blink, idle gaze, authored state transition, or continuous profile motion;
+- `definition` — generic authored channel data such as auto-blink, idle gaze, authored state transition, continuous motion, or transient effects;
 - `behaviorProfile` — a reusable #104 temporal behavior profile with stable identity;
 - `program` — a reusable #112 ordered state/action program with stable program, step, and action identities.
 
@@ -51,7 +51,7 @@ The following are runtime-only and are deliberately absent from the persistence 
 
 `initializePresetAnimation()` creates fresh deterministic runtime inputs from authoring defaults and defaults the seed to `0` when no seed is authored. It does not create or serialize runtime progress.
 
-A UI reseed operation should update only `animationDefaults.seed`; it must not rewrite static geometry/expression fields.
+A UI reseed operation updates only `animationDefaults.seed`; it does not rewrite static geometry/expression fields.
 
 ## Strict validation
 
@@ -66,9 +66,9 @@ The persistence layer rejects:
 - unsupported channel schemas;
 - runtime `from` snapshots on persisted state transitions;
 - unknown nested state-target fields;
-- unsupported future `transient-effect` data until that channel receives its own persistence schema.
+- unsupported transient-effect kinds or unknown transient-effect fields.
 
-Known channel data is normalized by the owning Phase 3 module rather than merely checked for generic JSON compatibility.
+Known channel data is normalized by the owning Phase 3 module rather than merely checked for generic JSON compatibility. The persisted `transient-effect` channel is normalized through the transient-effect layer schema, so authored Sweat definitions and their deterministic defaults round-trip through the same preset envelope as other animation channels.
 
 This prevents executable data or hidden runtime state from being smuggled into authoring JSON.
 
@@ -90,7 +90,7 @@ As before, local storage loading skips an invalid individual preset instead of m
 
 `BehaviorProfile.id`, `AnimationProgram.id`, program step IDs, and program action IDs round-trip without regeneration. Reordering steps changes array order only; stable identities remain intact and do not depend on array indexes.
 
-This prepares animation data for later editor reorder/edit operations without introducing a full project-document system.
+This identity model is used by the editor's reorder/edit operations without introducing a full project-document system.
 
 ## Applying defaults
 
@@ -98,4 +98,4 @@ Applying a preset initializes animation behavior from the persisted definition/b
 
 If `animationDefaults` is `{}` or the persisted generic definition is disabled/absent, static preset behavior remains identical to Phase 1/2.
 
-Visible animation authoring and reseeding controls are intentionally deferred to #107.
+The visible animation authoring and reseeding controls consume this persisted authoring schema. Playback position, active one-shots, and other runtime-only state remain outside it.

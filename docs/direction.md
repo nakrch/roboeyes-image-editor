@@ -121,19 +121,23 @@ Preset は固定画像ではなく、再利用可能な authoring data として
 
 ## 7. Editor UX
 
-ブラウザ上で authoring state の変更を即座に preview へ反映します。
+ブラウザ上で確定した authoring state の変更を即座に preview へ反映します。
 
 重要な UX:
 
-- slider / direct numeric input の realtime 反映
+- slider / keyboard / touch slider は有効な値を realtime に反映する
+- direct numeric input は編集中の文字列を一時 draft として保持し、空欄・符号入力途中・小数入力途中を model へ早期反映しない
+- direct numeric input は Enter または blur で確定し、その時点で validation / clamp / precision normalization を適用して preview へ反映する
 - linked / independent eye editing
+- `Position X / Y` は UI 上では canvas 中心を `0, 0` とする相対座標で扱い、generic model の内部絶対座標とは UI boundary で変換する
+- Controls の先頭に `Display` を置き、resolution / canvas size / transparent background / Pixel perfect preview をまとめる
 - Undo / Redo / Reset
 - face / expression preset
-- preview resolution 切替
 - animation play / pause / stop / restart
 - manual blink/wink/motion trigger
 - behavior / sequence authoring
 - reduced-motion を尊重した preview
+- Apply / Delete の完了や export/download の browser handoff は共通 toast で即時 feedback を出し、ブラウザ管理 download を「保存完了」とは表現しない
 
 再生中に解決された frame は一時的な preview state であり、authoring model や Undo/Redo history を frame ごとに書き換えません。
 
@@ -174,7 +178,7 @@ renderer は deterministic で、timer・wall clock・randomness を持ちませ
 - transparent background
 - deterministic output
 - predictable rasterization
-- pixel-perfect / nearest-neighbor inspection を追加しやすい構造
+- basic Pixel perfect preview と、将来の nearest-neighbor / safe-area inspection workflow に拡張しやすい構造
 
 ## 10. Export
 

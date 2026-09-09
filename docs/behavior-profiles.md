@@ -101,8 +101,8 @@ Runtime one-shot motion events still override the continuous baseline. A `motion
 
 No renderer knows the profile name or `continuous-motion` kind; the animation resolver converts it into a resolved `FaceModel` before rendering.
 
-## Serialization and extensibility
+## Serialization and editor integration
 
 Profiles are versioned plain JSON-safe data. A new profile can be created by providing a new id/name plus an `AnimationDefinition` using existing generic channel schemas. No renderer modification is necessary.
 
-This is intentionally the basis for later preset/serialization integration (#105) and UI authoring (#107), not a UI feature by itself.
+Preset/serialization integration (#105) persists the profile through `animationDefaults`, and the browser authoring UI (#107) exposes the built-in profile selector. The optional recommended Expression remains a preview-layer recommendation: selecting or removing a profile does not overwrite the authored static Expression.
