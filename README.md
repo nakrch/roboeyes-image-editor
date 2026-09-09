@@ -1,75 +1,77 @@
 # RoboEyes Image Editor
 
-> 🚧 **Under active development**
->
-> **Phase 1–3 are complete.** The current baseline includes static editing, parametric expressions, deterministic animation authoring/playback, and static/animated image export.
+**RoboEyes Image Editor** is a browser-based **Parametric Robot Face Editor** for creating robot eye and face assets, with a strong focus on fixed-size and small-display workflows.
 
-**RoboEyes Image Editor** is a browser-based parametric editor for creating robot eye and face graphics for small displays.
+Instead of drawing and editing fixed images directly, the editor represents eye geometry, gaze, expressions, animation, and visual state as parameters. RoboEyes compatibility is provided through an adapter layer, while the renderer and animation runtime remain generic and deterministic.
 
-Instead of editing fixed images, eye shape, spacing, gaze, expression, canvas size, animation state, and other properties are represented as parameters and rendered dynamically.
+**Live editor:** https://nakrch.github.io/roboeyes-image-editor/
 
-このプロジェクトは RoboEyes の単純なブラウザ移植ではありません。目・表情・視線・状態を固定画像ではなく **パラメータで定義されたモデル** として扱い、RoboEyes はその上に載る互換レイヤー / プリセットの一つとして扱います。
+## What you can do
 
-## Live editor
+### Parametric eye / face editing
 
-The current editor is published with GitHub Pages:
-
-https://nakrch.github.io/roboeyes-image-editor/
-
-The site is rebuilt and redeployed automatically whenever changes are pushed or merged to `main`. Deployment status and failures are visible in GitHub Actions under the **Deploy GitHub Pages** workflow.
-
-## Current capabilities
-
-### Static editing
-
-- realtime SVG preview
-- independent / linked left and right eye editing
-- RoboEyes-compatible parameters through an adapter layer
-- eye geometry, spacing, gaze, rotation, canvas, color, and background controls
-- preset save/load and JSON import/export
-- SVG and PNG export
-- exact small-display resolution presets
-- single-eye / RoboEyes cyclops-compatible layout
+- edit left and right eye geometry in real time
+- switch between linked and independent eye controls
+- adjust width, height, corner radius, spacing, position, gaze, rotation, color, background, and canvas size
+- use fixed-size presets such as 128×64, 128×128, 240×240, 320×240, and 320×320
+- use a generic single-eye layout compatible with RoboEyes cyclops behavior
+- Undo / Redo / Reset editing operations
+- save custom face presets and import/export preset JSON
 
 ### Expressions
 
-- generic eyelid/mask authoring
-- RoboEyes-compatible core expressions
-- gaze-reactive Curious behavior
+Expressions are model parameters rather than fixed image assets.
+
+- RoboEyes-compatible Happy / Angry / Tired expressions
+- Neutral / Curious / Surprised and additional expression presets
+- generic upper/lower/directional eyelid controls
+- gaze-reactive Curious deformation
+- custom and asymmetric left/right expressions
 - reusable expression-only presets
-- asymmetric/custom expression parameters
-- deterministic visual-regression coverage
 
-### Animation
+### Deterministic animation
 
-- deterministic explicit-time animation runtime
-- state transitions and spring transitions
+Animation is built around **state + transition**, not a free-form video/keyframe timeline.
+
+- state and expression transitions
+- easing and deterministic spring transitions
 - blink / wink / open / close / sleep
-- deterministic auto-blink and idle gaze
-- motion primitives including Confused / Laugh style one-shots
-- composable temporal behavior profiles
-- transient effects
-- reusable ordered state programs with hold/transition timing
+- deterministic auto-blink
+- deterministic idle gaze / bounded wander
+- flicker, shiver, Confused, and Laugh-style motion primitives
+- composable behavior profiles
+- reusable ordered state programs
+- explicit transition and hold timing
 - once / loop / ping-pong playback
-- persistent animation defaults in preset JSON
-- browser preview/player with reduced-motion handling
-- deterministic temporal regression and frame-rate-independence tests
+- transient effects such as animated sweat
+- browser player controls with reduced-motion handling
 
-### Animated export
+The same authored data, logical time, runtime events, and seed resolve to the same frame regardless of browser refresh rate or previous sampling order.
 
-- deterministic frame sampling
-- animated WebP export
-- GIF export
+### Export
 
-## Project status
+#### Static
 
-Phase 1 established the static parametric editor and PNG/SVG workflow. Its completion audit is recorded in [Issue #78](https://github.com/nakrch/roboeyes-image-editor/issues/78).
+- **SVG**
+- **PNG**
 
-Phase 2 completed the parametric expression system and static regression coverage. The completed tracker is [Issue #86](https://github.com/nakrch/roboeyes-image-editor/issues/86).
+#### Animated
 
-Phase 3 completed the deterministic animation runtime, behavior system, authoring/player workflow, persistence, regression coverage, transient effects, spring transitions, and animated image export. The completed tracker is [Issue #97](https://github.com/nakrch/roboeyes-image-editor/issues/97).
+- **animated WebP**
+- **GIF**
 
-Future changes are tracked as ordinary Issues rather than being assigned to another numbered development phase.
+Animated output is generated by sampling the deterministic animation runtime at explicit timestamps. Export does not record `requestAnimationFrame` playback or depend on monitor refresh rate.
+
+## Quick start
+
+1. Open the [Live editor](https://nakrch.github.io/roboeyes-image-editor/).
+2. Choose a face preset and canvas size, or start from the current model.
+3. Adjust eye geometry, gaze, color, and expression in the editor controls.
+4. If needed, configure animation behavior, triggers, profiles, or an ordered state program.
+5. Preview the result in real time.
+6. Export a static SVG/PNG or an animated WebP/GIF.
+
+Preset JSON can be used to save and restore authored face, expression, and animation settings.
 
 ## Core concept
 
@@ -84,43 +86,30 @@ Animation
         ↓
 Renderer
         ↓
-Export
+Preview / Export
 ```
 
-RoboEyes-compatible input follows this boundary:
+RoboEyes-specific vocabulary is kept at the compatibility boundary:
 
 ```text
-RoboEyes Parameters
+RoboEyes / style parameters
         ↓
-RoboEyes Adapter
+adapter
         ↓
-Generic Face Model
+generic FaceModel + generic animation data
         ↓
-Renderer
+deterministic evaluator / renderer
+        ↓
+preview / export
 ```
 
-This separation keeps RoboEyes compatibility while allowing other parameterized styles and presets to be added without coupling the renderer to one source library.
-
-## Primary use cases
-
-- RoboEyes-style eye/face asset authoring
-- Codex Pet expression and animation assets
-- fixed-size / small-display graphics
-- PNG / SVG static assets
-- animated WebP / GIF assets
-
-## Design principles
-
-- edit a **parametric model**, not fixed source images
-- keep UI, model, adapter, renderer, animation, and export responsibilities separated
-- keep the renderer deterministic and free of timers/randomness
-- treat exact canvas dimensions and small-display workflows as first-class requirements
-- model animation as **state + transition** and reusable ordered state programs rather than a free-form video/keyframe timeline
-- preserve static assets as valid inputs independent of animation runtime state
+The SVG renderer does not contain RoboEyes-specific mood or animation branches. This keeps the editor extensible without coupling rendering to one source library.
 
 ## Small-display focus
 
-Preset resolutions include:
+The editor treats exact canvas size as a first-class requirement rather than an afterthought.
+
+Typical preset resolutions include:
 
 - 128×64
 - 128×128
@@ -129,30 +118,71 @@ Preset resolutions include:
 - 320×320
 - Custom
 
-The editor prioritizes exact canvas dimensions, transparent backgrounds, predictable rasterization, and deterministic output at these sizes.
+The rendering/export pipeline prioritizes:
 
-## Stack
+- exact fixed dimensions
+- transparent backgrounds
+- deterministic geometry
+- predictable rasterization
+- compatibility with pixel-perfect / nearest-neighbor inspection workflows
 
-- React
-- TypeScript
-- Vite
-- SVG-first renderer
+## Deterministic by design
+
+The project deliberately separates authored data, runtime state, and rendering.
+
+- `FaceModel` and animation authoring data are serializable plain data.
+- Random behavior is derived from explicit seeds and independent deterministic random streams.
+- Logical animation time is explicit.
+- The renderer contains no wall-clock timing or `Math.random()` behavior.
+- Preview playback state is not written back into the authored model frame by frame.
+- Static assets remain valid independently of animation playback state.
+
+This makes preview, testing, direct seeking, and animated export reproducible.
+
+## Run locally
+
+Requirements: Node.js and npm.
+
+```bash
+npm install
+npm run dev
+```
+
+Useful commands:
+
+```bash
+npm test
+npm run build
+npm run preview
+```
+
+The project uses React, TypeScript, Vite, an SVG-first renderer, `modern-gif` for GIF encoding, and `wasm-webp` for animated WebP encoding.
+
+## Project scope
+
+RoboEyes Image Editor is intentionally focused on **parametric robot eye/face authoring and deterministic asset generation**.
+
+It is not intended to become a general-purpose video editor, free-form keyframe timeline, 3D rigging system, or generic character studio. New capabilities should preserve the generic model/adapter/renderer separation and the small-display workflow.
 
 ## Documentation
 
-Start with [`docs/README.md`](docs/README.md).
+Detailed documentation is indexed in [`docs/README.md`](docs/README.md).
 
-- [`docs/direction.md`](docs/direction.md) — project direction and scope
-- [`docs/architecture.md`](docs/architecture.md) — layer responsibilities and data flow
-- [`docs/roadmap.md`](docs/roadmap.md) — completed Phase 0–3 history and future candidates
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) — contribution and PR workflow
+Key documents:
+
+- [`docs/direction.md`](docs/direction.md) — project intent, design principles, and scope
+- [`docs/architecture.md`](docs/architecture.md) — architecture, layer responsibilities, and data flow
+- [`docs/roadmap.md`](docs/roadmap.md) — completed development history and future candidates
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — development and pull-request workflow
 - [`AGENTS.md`](AGENTS.md) — repository-specific guidance for coding agents
+
+Feature-level specifications for expressions, animation runtime, transitions, behavior profiles, persistence, editor semantics, and regression policy are linked from the documentation index.
 
 ## Acknowledgements
 
 This project is inspired by [FluxGarage RoboEyes](https://github.com/FluxGarage/RoboEyes), created by Dennis Hoelscher / FluxGarage and licensed under GPL-3.0-or-later.
 
-`roboeyes-image-editor` is an independent implementation and is not an official FluxGarage project. RoboEyes compatibility and design concepts are implemented through a separate adapter/model architecture rather than by treating the original library as the renderer itself.
+`roboeyes-image-editor` is an independent implementation and is not an official FluxGarage project. RoboEyes-compatible behavior and design concepts are translated through the project's generic adapter/model architecture rather than using the original library as the renderer itself.
 
 ## License
 
