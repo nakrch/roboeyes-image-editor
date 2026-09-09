@@ -5,7 +5,7 @@ Phase 2 expression geometry is protected by textual SVG-signature fixtures in:
 - `src/renderers/svg/__fixtures__/phase2Expressions.ts`
 - `src/renderers/svg/phase2VisualRegression.test.ts`
 
-The same fixtures are also surfaced in the browser through `Visual Regression Gallery` at the bottom of the editor. The gallery is collapsed by default so it does not interfere with normal editing, but it can be expanded during PR review to compare all Phase 2 references at once.
+The browser also surfaces a review-oriented subset through `Visual Regression Gallery` at the bottom of the editor. The gallery is collapsed by default so it does not interfere with normal editing.
 
 The fixtures intentionally store the visible **aperture path** and **eye transform** rather than raster screenshots. This keeps changes deterministic and makes geometry diffs reviewable in Git while still detecting changes to:
 
@@ -37,28 +37,35 @@ The suite also checks that the SVG used by preview rendering and the SVG export 
 
 ## Browser gallery
 
-Each gallery card renders the current SVG from the normal renderer and compares its aperture paths and eye transforms with the stored fixture signature.
+Each visible gallery card renders the current SVG from the normal renderer and compares its aperture paths and eye transforms with the stored fixture signature.
 
 - **Matches fixture** means the live renderer output still matches the committed reference.
 - **Changed** means the current visible geometry differs from the reference and should be reviewed before the fixture is updated.
 
 Cards also show the fixture id, canvas size, and gaze coordinates. This makes the deterministic CI checks reviewable visually without replacing them with screenshots.
 
+Some fixtures remain in the regression suite but are deliberately omitted from the browser gallery because they are redundant for interactive browsing:
+
+- `neutral-128x64`
+- `curious-center-128x64`
+- `happy-240x240`
+
+They continue to protect deterministic renderer behavior in CI; hiding them affects only the browser gallery.
+
 ### Expression selection
 
-Issue #96 also makes the gallery an optional expression browser without changing its regression role.
+Issue #96 also makes the visible gallery cards an optional expression browser without changing their regression role.
 
 - **Apply expression** copies only the fixture expression into the authored editor model through the normal history path.
 - Built-in expression identity is preserved so the Expression Presets selector follows the applied card.
 - The asymmetric fixture applies as `Custom`; it is not automatically saved as a user expression preset.
-- The 240×240 Happy fixture applies only Happy. The editor's current canvas dimensions are not replaced by 240×240.
-- Curious left/center/right cards keep gaze explicit: **Apply expression** preserves the authored gaze, while **Apply + gaze** deliberately applies both Curious and that fixture's gaze.
+- Curious left/right cards keep gaze explicit: **Apply expression** preserves the authored gaze, while **Apply + gaze** deliberately applies both Curious and that fixture's gaze.
 
 The main editor preview uses a short deterministic Phase 3 state transition when a gallery selection is applied. Only the final authored expression/gaze is committed as one history entry. The interpolated frames are transient preview state and never produce frame-by-frame Undo/Redo entries.
 
 ### Motion preview boundary
 
-Each card can start an explicit **Preview motion** loop. This is intentionally separate from the regression fixture shown above it:
+Each visible card can start an explicit **Preview motion** loop. This is intentionally separate from the regression fixture shown above it:
 
 ```text
 fixed fixture model -> renderer -> Matches fixture / Changed
@@ -70,8 +77,10 @@ The motion preview uses `createFaceTransition()` / `sampleFaceTransition()` with
 
 This separation is important because the gallery now serves two purposes without conflating them:
 
-1. deterministic regression review of committed fixture geometry;
+1. deterministic regression review of the visible fixture subset;
 2. user-facing visual browsing and temporary animation inspection.
+
+The full regression suite remains CI-owned even when a fixture is omitted from the browser gallery.
 
 ## Reference orientation
 
@@ -89,7 +98,7 @@ A fixture change should be treated as a visible renderer/expression change, not 
 2. Update the expression/model implementation first.
 3. Inspect the changed textual paths/transforms.
 4. Run the full test/build suite.
-5. Expand the Visual Regression Gallery and inspect every affected card in the PR Preview.
+5. Expand the Visual Regression Gallery and inspect every affected visible card in the PR Preview.
 6. Confirm `Matches fixture` / `Changed` still reflects only the fixed card render, not Motion preview output.
 7. Validate expression apply, Curious explicit gaze behavior, and Motion preview in the PR Preview when those controls change.
 8. Validate the PR Preview before merge when the resulting output is user-visible.
