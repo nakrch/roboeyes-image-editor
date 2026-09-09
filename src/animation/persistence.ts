@@ -15,6 +15,7 @@ import {
   type AnimationRuntimeChannel,
   type JsonValue,
 } from './runtime'
+import { normalizeTransientEffectLayerDefinition } from './transientEffects'
 import { normalizeFaceTransitionDefinition } from './transition'
 
 export const PRESET_ANIMATION_DEFAULTS_VERSION = 1 as const
@@ -153,7 +154,8 @@ function assertAnimationChannelStrict(channel: string, value: JsonValue): void {
       )
       return
     case 'transient-effect':
-      throw new RangeError('Persisted transient-effect data is not supported until its schema is defined')
+      normalizeTransientEffectLayerDefinition(value)
+      return
     default:
       throw new RangeError(`Unsupported persisted animation channel: ${channel}`)
   }
@@ -171,7 +173,7 @@ function normalizeAnimationChannelDefinition(channel: string, value: JsonValue):
     case 'motion-offset':
       return normalizeContinuousMotionDefinition(value) as unknown as JsonValue
     case 'transient-effect':
-      throw new RangeError('Persisted transient-effect data is not supported until its schema is defined')
+      return normalizeTransientEffectLayerDefinition(value) as unknown as JsonValue
     default:
       throw new RangeError(`Unsupported persisted animation channel: ${channel}`)
   }
