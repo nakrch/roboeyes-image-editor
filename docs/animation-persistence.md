@@ -29,11 +29,11 @@ No parallel face-preset format is introduced.
 The envelope may contain:
 
 - `seed` — stable authored/default uint32 seed for reproducible random behavior;
-- `definition` — generic authored channel data such as auto-blink, idle gaze, authored state transition, continuous motion, or transient effects;
+- `definition` — generic authored channel data such as auto-blink, idle gaze, authored easing/Spring state transition, continuous motion, or transient effects;
 - `behaviorProfile` — a reusable #104 temporal behavior profile with stable identity;
-- `program` — a reusable #112 ordered state/action program with stable program, step, and action identities.
+- `program` — a reusable #112 ordered state/action program with stable program, step, and action identities, including optional deterministic Spring entry-transition parameters.
 
-Easing and playback behavior are stored as stable string IDs such as `ease-in-out`, `once`, `loop`, and `ping-pong`, never executable functions.
+Easing and playback behavior are stored as stable string IDs such as `ease-in-out`, `once`, `loop`, and `ping-pong`, never executable functions. Spring transitions store explicit finite JSON numeric parameters (`stiffness`, `damping`, `mass`) rather than solver/runtime objects.
 
 ## Seed ownership
 
@@ -47,6 +47,7 @@ The following are runtime-only and are deliberately absent from the persistence 
 - current blink/idle schedule progress;
 - PRNG cursor/sample cursor;
 - resolved in-flight transition rebase snapshots;
+- implicit Spring velocity/solver state;
 - requestAnimationFrame/frame count state.
 
 `initializePresetAnimation()` creates fresh deterministic runtime inputs from authoring defaults and defaults the seed to `0` when no seed is authored. It does not create or serialize runtime progress.
@@ -64,11 +65,14 @@ The persistence layer rejects:
 - non-finite/out-of-range seeds;
 - unknown authored channel fields;
 - unsupported channel schemas;
-- runtime `from` snapshots on persisted state transitions;
+- runtime `from` snapshots on persisted easing or Spring state transitions;
+- unknown fields inside persisted Spring parameter objects;
 - unknown nested state-target fields;
 - unsupported transient-effect kinds or unknown transient-effect fields.
 
-Known channel data is normalized by the owning Phase 3 module rather than merely checked for generic JSON compatibility. The persisted `transient-effect` channel is normalized through the transient-effect layer schema, so authored Sweat definitions and their deterministic defaults round-trip through the same preset envelope as other animation channels.
+Known channel data is normalized by the owning Phase 3 module rather than merely checked for generic JSON compatibility. The `state-transition` channel accepts either the established easing definition or the deterministic Spring definition from #113. The persisted `transient-effect` channel is normalized through the transient-effect layer schema, so authored Sweat definitions and their deterministic defaults round-trip through the same preset envelope as other animation channels.
+
+Program steps retain the existing required `easing` field for compatibility. An optional `spring` object selects Spring entry-transition semantics; programs without that field keep their original easing behavior and serialized shape.
 
 This prevents executable data or hidden runtime state from being smuggled into authoring JSON.
 
@@ -98,4 +102,4 @@ Applying a preset initializes animation behavior from the persisted definition/b
 
 If `animationDefaults` is `{}` or the persisted generic definition is disabled/absent, static preset behavior remains identical to Phase 1/2.
 
-The visible animation authoring and reseeding controls consume this persisted authoring schema. Playback position, active one-shots, and other runtime-only state remain outside it.
+The visible animation authoring and reseeding controls consume this persisted authoring schema. Playback position, active one-shots, Spring solver/runtime state, and other runtime-only state remain outside it.
