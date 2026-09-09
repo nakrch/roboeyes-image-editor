@@ -38,6 +38,12 @@ type AnimationPanelProps = {
   onPreviewSequenceStep: (program: AnimationProgram, stepId: string) => void
 }
 
+const SPRING_PRESET_DURATION_MS: Readonly<Record<SpringPresetId, number>> = {
+  gentle: 700,
+  snappy: 400,
+  bouncy: 700,
+}
+
 function editable(defaults: PresetAnimationDefaults): PresetAnimationDefaultsV1 {
   return editableAnimationDefaults(defaults)
 }
@@ -594,7 +600,11 @@ export function AnimationPanel({
                         value={transitionMode}
                         onChange={(event) => updateProgram(updateStep(program, step.id, (current) => {
                           if (event.target.value === 'spring') {
-                            return { ...current, spring: { ...SPRING_PRESETS.gentle } }
+                            return {
+                              ...current,
+                              transitionDurationMs: SPRING_PRESET_DURATION_MS.gentle,
+                              spring: { ...SPRING_PRESETS.gentle },
+                            }
                           }
                           const next = { ...current }
                           delete next.spring
@@ -622,6 +632,7 @@ export function AnimationPanel({
                             if (presetId === undefined) return
                             updateProgram(updateStep(program, step.id, (current) => ({
                               ...current,
+                              transitionDurationMs: SPRING_PRESET_DURATION_MS[presetId],
                               spring: { ...SPRING_PRESETS[presetId] },
                             })))
                           }}
@@ -632,6 +643,11 @@ export function AnimationPanel({
                       </label>
                     )}
                   </div>
+                  {transitionMode === 'spring' && springPresetId !== 'custom' && (
+                    <p className="animation-note">
+                      Spring presets choose a settling-friendly transition time automatically; you can still override Transition manually.
+                    </p>
+                  )}
                 </fieldset>
               )
             })}
