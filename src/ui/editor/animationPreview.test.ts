@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { expressionPresets, roboEyesPreset } from '../../core/presets'
-import { curiousBehaviorProfile, type PresetAnimationDefaults } from '../../animation'
+import {
+  angryBehaviorProfile,
+  curiousBehaviorProfile,
+  happyBehaviorProfile,
+  type PresetAnimationDefaults,
+} from '../../animation'
 import { editableAnimationDefaults, evaluateEditorAnimationFrame, nextRuntimeEvent } from './animationPreview'
 
 function expression(id: string) {
@@ -66,6 +71,32 @@ describe('editor animation preview composition', () => {
       periodMs: 60,
     })
     expect(event.payload).toEqual({ amplitude: 6, durationMs: 450, periodMs: 60 })
+  })
+
+  it('keeps behavior active when eye positions move beyond the authored idle wander window', () => {
+    const edge = structuredClone(roboEyesPreset.model)
+    edge.leftEye.geometry.position.x += 100
+    edge.rightEye.geometry.position.x += 100
+
+    const happyDefaults: PresetAnimationDefaults = {
+      version: 1,
+      seed: 11,
+      behaviorProfile: structuredClone(happyBehaviorProfile),
+    }
+    const happyFrame = evaluateEditorAnimationFrame(edge, happyDefaults, { timeMs: 175 })
+    expect(happyFrame.expression).toEqual(expression('expression:happy'))
+    expect(happyFrame.leftEye.geometry.position.y).not.toBeCloseTo(edge.leftEye.geometry.position.y)
+    expect(happyFrame.rightEye.geometry.position.y).not.toBeCloseTo(edge.rightEye.geometry.position.y)
+
+    const angryFrame = evaluateEditorAnimationFrame(edge, {
+      version: 1,
+      seed: 11,
+      behaviorProfile: structuredClone(angryBehaviorProfile),
+    }, { timeMs: 175 })
+    expect(angryFrame.expression).toEqual(expression('expression:angry'))
+
+    const centeredAgain = evaluateEditorAnimationFrame(roboEyesPreset.model, happyDefaults, { timeMs: 800 })
+    expect(centeredAgain.gaze).not.toEqual(roboEyesPreset.model.gaze)
   })
 
   it('falls back to a static profile preview instead of crashing when eye geometry is temporarily not animation-safe', () => {
