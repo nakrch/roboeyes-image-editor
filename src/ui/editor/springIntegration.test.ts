@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { roboEyesPreset } from '../../core/presets'
+import { gazeLimits, isGazeCanvasSafe, resolveEyeExpression } from '../../core/model'
+import { expressionPresets, roboEyesPreset } from '../../core/presets'
 import {
+  createSpringFaceTransition,
   evaluateAnimationFrame,
   genericStateTransitionChannelResolver,
   normalizePersistedAnimationDefinition,
   normalizePresetAnimationDefaults,
   sampleAnimationProgram,
+  sampleSpringFaceTransition,
   SPRING_PRESETS,
   type AnimationDefinition,
   type AnimationProgram,
@@ -67,6 +70,35 @@ describe('Spring integration', () => {
     expect(second).toEqual(first)
   })
 
+  it('keeps bouncy overshoot visible for safe expression motion and clamps only at model safety boundaries', () => {
+    const happy = expressionPresets.find((preset) => preset.id === 'expression:happy')
+    if (happy === undefined) throw new Error('Missing happy expression preset')
+
+    const expressionTransition = createSpringFaceTransition(
+      'spring:happy-bounce',
+      { expression: happy.expression },
+      0,
+      250,
+      SPRING_PRESETS.bouncy,
+    )
+    const bouncedExpression = sampleSpringFaceTransition(expressionTransition, roboEyesPreset.model, 175)
+    const happyLowerLid = resolveEyeExpression(happy.expression, 'left').lowerLid
+    expect(resolveEyeExpression(bouncedExpression.expression, 'left').lowerLid).toBeGreaterThan(happyLowerLid)
+
+    const maxSafeX = gazeLimits(roboEyesPreset.model).x.max
+    const edgeTransition = createSpringFaceTransition(
+      'spring:gaze-edge',
+      { gaze: { x: maxSafeX, y: 0 } },
+      0,
+      250,
+      SPRING_PRESETS.bouncy,
+    )
+    const bouncedEdge = sampleSpringFaceTransition(edgeTransition, roboEyesPreset.model, 175)
+    expect(isGazeCanvasSafe(bouncedEdge)).toBe(true)
+    expect(bouncedEdge.gaze.x).toBeLessThanOrEqual(maxSafeX)
+    expect(sampleSpringFaceTransition(edgeTransition, roboEyesPreset.model, 250).gaze.x).toBe(maxSafeX)
+  })
+
   it('round-trips persisted Spring state transitions and rejects runtime/unknown Spring fields', () => {
     const normalized = normalizePersistedAnimationDefinition(springDefinition)
     expect(normalized.channels?.['state-transition']).toEqual(springDefinition.channels?.['state-transition'])
@@ -105,8 +137,7 @@ describe('Spring integration', () => {
     const first = sampleAnimationProgram(defaults.program, roboEyesPreset.model, 300)
     const second = sampleAnimationProgram(defaults.program, roboEyesPreset.model, 300)
     expect(first.phase).toBe('transition')
-    expect(first.model.gaze.x).toBeGreaterThan(0)
-    expect(first.model.gaze.x).toBeLessThanOrEqual(12)
+    expect(first.model.gaze.x).toBeGreaterThan(12)
     expect(second).toEqual(first)
   })
 
