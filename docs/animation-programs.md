@@ -30,7 +30,7 @@ A program is versioned plain data:
     {
       id: 'happy',
       target: { expression: happyExpression },
-      transitionDurationMs: 500,
+      transitionDurationMs: 200,
       easing: 'ease-in-out',
       spring: { stiffness: 180, damping: 12, mass: 1 },
       holdDurationMs: 600,
@@ -41,7 +41,9 @@ A program is versioned plain data:
 
 `transitionDurationMs` is the **entry transition into that step** from the previous resolved state. The first step transitions from the caller-supplied base `FaceModel`; subsequent steps transition from the previous authored step target.
 
-`easing` remains required for compatibility and is the default entry-transition mode. If a step also contains `spring`, the entry transition uses those deterministic Spring parameters instead. Existing program JSON without `spring` therefore keeps its original easing behavior unchanged.
+`easing` remains required for compatibility and is used when `spring` is absent. When `spring` is present, the entry transition uses the deterministic Spring response instead. Existing program JSON therefore keeps its previous easing semantics unchanged.
+
+Spring program steps preserve safe physical overshoot before the hard `transitionDurationMs` completion boundary. A `bouncy` step can visibly move past its target and return; gaze/geometry/expression safety is enforced on the resolved FaceModel rather than by flattening Spring progress to `0..1`.
 
 Every partial `FaceStateTarget` is resolved against the same program base model before sampling. This prevents unspecified fields from accumulating drift across long loops.
 
@@ -61,20 +63,6 @@ Zero transition and zero hold durations are valid. If the entire program has zer
 - repeating modes collapse to the first authored step target.
 
 This avoids modulo-by-zero and hidden frame-order semantics.
-
-## Entry transition modes
-
-### Easing
-
-When `spring` is absent, the existing easing IDs are applied to normalized transition progress over `transitionDurationMs`.
-
-### Spring
-
-When `spring` is present, the step uses the deterministic closed-form Spring response documented in [`spring-transitions.md`](spring-transitions.md). The serialized values are explicit `stiffness`, `damping`, and `mass`; they are not browser/runtime objects.
-
-Program Spring sampling uses the same safe `interpolateFaceModel()` surface as ordinary transitions. Physical Spring response can overshoot mathematically, but resolved FaceModel interpolation remains clamped to the established model-safety boundary.
-
-The browser editor exposes `Transition type` (`Easing` / `Spring`). Spring mode provides the built-in `gentle`, `snappy`, and `bouncy` presets, which write their explicit parameters into the step. Imported custom Spring parameters are preserved and shown as custom rather than normalized to a preset.
 
 ## Playback modes
 
@@ -102,7 +90,7 @@ Endpoints are not duplicated as extra holds. With two steps, ping-pong is natura
 
 `sampleAnimationProgram(program, baseModel, timeMs)` computes the cycle, visit, transition progress, and resolved state directly from `timeMs`. It does not replay browser/render frames from time zero.
 
-Both easing and Spring steps obey this direct-seek rule. Sampling timestamps forward, backward, or randomly produces the same frame for the same inputs.
+Sampling timestamps forward, backward, or randomly produces the same frame for the same inputs.
 
 ## Generic actions
 
@@ -139,7 +127,7 @@ Therefore:
 - a program that needs exact authored gaze can include an explicit `idle-gaze-disable` action;
 - program blink/wink/motion actions are ordinary explicit runtime events;
 - auto-blink generated events keep their lower priority from #101, so an explicit program eye-openness action wins a simultaneous conflict;
-- no sequence or Spring logic exists in the renderer.
+- no sequence logic exists in the renderer.
 
 ## Pause, resume, restart, interruption
 
@@ -149,6 +137,6 @@ External interruption can switch to another program or runtime event set while k
 
 ## Integration boundary
 
-This document/runtime sequence layer is persisted through the preset/JSON integration from #105 and edited/previewed through the browser controls from #107/#113. Those layers consume the same immutable program document and runtime clock semantics.
+This document/runtime sequence layer is persisted through the preset/JSON integration from #105 and edited/previewed through the browser controls from #107. Those layers consume the same immutable program document and runtime clock semantics.
 
 The program model intentionally does not introduce draggable keyframes, audio sync, executable callbacks, or per-frame authored data.
