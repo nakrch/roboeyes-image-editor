@@ -6,6 +6,7 @@ import {
 } from '../../renderers/svg/__fixtures__/phase2Expressions'
 import {
   GALLERY_MOTION_PREVIEW_CYCLE_MS,
+  isInteractiveGalleryFixture,
   modelForFixture,
   sampleFixtureMotionPreview,
   selectionForFixture,
@@ -92,9 +93,12 @@ export function VisualRegressionGallery({
           const model = modelForFixture(fixture)
           const svg = renderFaceToSvg(model, { idPrefix: `visual-regression-${fixture.id}` })
           const matches = matchesFixture(svg, fixture)
+          const interactive = isInteractiveGalleryFixture(fixture)
           const selection = selectionForFixture(fixture)
-          const isSelected = selection.presetId !== 'custom' && selection.presetId === activeExpressionId
-          const isMotionActive = motionFixtureId === fixture.id
+          const isSelected = interactive
+            && selection.presetId !== 'custom'
+            && selection.presetId === activeExpressionId
+          const isMotionActive = interactive && motionFixtureId === fixture.id
           const motionSvg = isMotionActive
             ? renderFaceToSvg(sampleFixtureMotionPreview(fixture, motionTimeMs), {
                 idPrefix: `visual-regression-motion-${fixture.id}`,
@@ -136,33 +140,35 @@ export function VisualRegressionGallery({
                 </div>
               </dl>
 
-              <div className="visual-regression-actions" aria-label={`${fixtureTitle(fixture)} actions`}>
-                <button
-                  type="button"
-                  onClick={() => onApplySelection(selection)}
-                  disabled={disabled}
-                >
-                  Apply expression
-                </button>
-                {isCuriousFixture && (
+              {interactive && (
+                <div className="visual-regression-actions" aria-label={`${fixtureTitle(fixture)} actions`}>
                   <button
                     type="button"
-                    onClick={() => onApplySelection(selectionForFixture(fixture, true))}
+                    onClick={() => onApplySelection(selection)}
                     disabled={disabled}
-                    title="Apply Curious and this fixture's gaze explicitly"
                   >
-                    Apply + gaze
+                    Apply expression
                   </button>
-                )}
-                <button
-                  type="button"
-                  className={isMotionActive ? 'active' : undefined}
-                  aria-pressed={isMotionActive}
-                  onClick={() => setMotionFixtureId((current) => current === fixture.id ? null : fixture.id)}
-                >
-                  {isMotionActive ? 'Stop motion' : 'Preview motion'}
-                </button>
-              </div>
+                  {isCuriousFixture && (
+                    <button
+                      type="button"
+                      onClick={() => onApplySelection(selectionForFixture(fixture, true))}
+                      disabled={disabled}
+                      title="Apply Curious and this fixture's gaze explicitly"
+                    >
+                      Apply + gaze
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className={isMotionActive ? 'active' : undefined}
+                    aria-pressed={isMotionActive}
+                    onClick={() => setMotionFixtureId((current) => current === fixture.id ? null : fixture.id)}
+                  >
+                    {isMotionActive ? 'Stop motion' : 'Preview motion'}
+                  </button>
+                </div>
+              )}
 
               {motionSvg !== undefined && (
                 <div className="visual-regression-motion-block">
