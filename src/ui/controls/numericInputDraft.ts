@@ -8,7 +8,9 @@ export function numericPrecisionForStep(step: NumericStep): number {
 
 export function roundNumericValue(value: number, precision: number): number {
   const factor = 10 ** precision
-  const rounded = Math.round((value + Number.EPSILON) * factor) / factor
+  const magnitude = Math.abs(value) * factor
+  const roundedMagnitude = Math.round(magnitude + Number.EPSILON)
+  const rounded = Math.sign(value) * roundedMagnitude / factor
   return Object.is(rounded, -0) ? 0 : rounded
 }
 
