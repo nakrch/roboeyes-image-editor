@@ -70,26 +70,28 @@ Runtime retarget snapshots such as `from` remain non-persistent. Unknown fields 
 
 ## State-program authoring
 
-Ordered state programs keep the existing `easing` field as the compatibility/default transition mode. A step becomes a Spring entry transition only when it also contains serialized `spring` parameters:
+Ordered state programs keep the existing `easing` field for compatibility. A step becomes a Spring entry transition when it also contains serialized `spring` parameters:
 
 ```ts
 {
   id: 'happy'
   target: { expression: happyExpression }
-  transitionDurationMs: 500
+  transitionDurationMs: 700
   easing: 'ease-in-out' // retained for compatibility/fallback
-  spring: { stiffness: 180, damping: 12, mass: 1 }
+  spring: { stiffness: 120, damping: 22, mass: 1 }
   holdDurationMs: 600
 }
 ```
 
-Existing programs without `spring` are therefore unchanged and continue to use easing.
+Existing programs without `spring` are unchanged and continue to use easing.
 
 The browser State sequence editor exposes:
 
-- `Transition type`: `Easing` or `Spring`
-- `Easing`: existing easing IDs when Easing is selected
+- `Transition type`: `Spring` or `Easing`
 - `Spring preset`: `gentle`, `snappy`, or `bouncy` when Spring is selected
+- `Easing`: deterministic easing choices with short author-facing descriptions when Easing is selected
+
+New browser-authored sequence steps default to **Spring + `gentle`**. Subsequent steps start with a 700 ms transition; the initial step remains at 0 ms because it initially represents the current face state. Selecting a built-in Spring preset applies its settling-friendly authoring duration (`gentle` 700 ms, `snappy` 400 ms, `bouncy` 700 ms). Switching to Easing uses a 400 ms authoring default so curve differences are easier to inspect. These values remain manually editable and do not migrate existing persisted programs.
 
 Selecting a Spring preset writes its explicit `stiffness` / `damping` / `mass` values into the authored program. Imported custom Spring parameter sets remain valid; the editor labels them as custom rather than silently replacing them.
 
