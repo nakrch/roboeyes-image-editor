@@ -43,6 +43,9 @@ const editorChannelResolvers: AnimationChannelResolvers = {
   'state-transition': stateTransitionChannelResolver,
 }
 
+const ROBOEYES_REFERENCE_SWEAT_FALL_SPEED = 0.025
+const EDITOR_SWEAT_FALL_SPEED = 0.008
+
 function mergeDefinitions(
   profileDefinition: AnimationDefinition | undefined,
   authoredDefinition: AnimationDefinition,
@@ -70,6 +73,30 @@ function mergeDefinitions(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function editorTransientEffectDefinition(value: JsonValue | undefined): JsonValue | undefined {
+  if (!isRecord(value) || value.kind !== 'transient-effect-layer' || !Array.isArray(value.effects)) {
+    return value
+  }
+
+  let changed = false
+  const effects = value.effects.map((effect) => {
+    if (!isRecord(effect) || effect.kind !== 'sweat') return effect as JsonValue
+    const fallSpeed = effect.fallSpeed
+    if (fallSpeed !== undefined && fallSpeed !== ROBOEYES_REFERENCE_SWEAT_FALL_SPEED) {
+      return effect as JsonValue
+    }
+    changed = true
+    return {
+      ...effect,
+      fallSpeed: EDITOR_SWEAT_FALL_SPEED,
+    } as JsonValue
+  })
+
+  return changed
+    ? { ...value, effects } as JsonValue
+    : value
 }
 
 function fitRequestedRange(
@@ -208,7 +235,9 @@ export function evaluateEditorAnimationPreviewFrame(
       channelResolvers: editorChannelResolvers,
     })
     const transientEffects = resolveTransientEffectFrame(
-      definition.enabled ? definition.channels?.['transient-effect'] : undefined,
+      editorTransientEffectDefinition(
+        definition.enabled ? definition.channels?.['transient-effect'] : undefined,
+      ),
       allRuntimeEvents,
       resolved.model,
       options.timeMs,
