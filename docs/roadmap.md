@@ -11,7 +11,7 @@
 - React + TypeScript + Vite
 - generic model / adapter / renderer の責務分離
 - README / direction / architecture / contributing の整備
-- lint / test / build / GitHub Pages / PR Preview の開発導線
+- test / build / GitHub Pages / PR Preview の開発導線
 
 対応 Issue:
 
