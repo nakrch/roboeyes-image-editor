@@ -4,7 +4,7 @@ import {
   resolveGazeReactiveHeightScale,
 } from './expression'
 import type { EyeGeometry } from './eye'
-import type { FaceModel } from './face'
+import { isEyeVisible, type FaceModel } from './face'
 
 export type NumericRange = {
   min: number
@@ -107,8 +107,9 @@ function projectionRadius(rect: VisibleEyeRect, axis: { x: number; y: number }):
   return rect.halfWidth * dotX + rect.halfHeight * dotY
 }
 
-/** Whether the two currently visible, lid-clipped eye rectangles overlap. */
+/** Whether the two currently rendered eye rectangles overlap. Hidden eyes do not participate. */
 export function visibleEyesOverlap(model: FaceModel): boolean {
+  if (!isEyeVisible(model, 'left') || !isEyeVisible(model, 'right')) return false
   const left = visibleEyeRect(model, 'left', model.leftEye.geometry)
   const right = visibleEyeRect(model, 'right', model.rightEye.geometry)
   if (!left.hasVisibleArea || !right.hasVisibleArea) return false
@@ -129,6 +130,7 @@ export function visibleEyesOverlap(model: FaceModel): boolean {
 }
 
 function rawSafeRange(bounds: Bounds[], size: number, start: 'left' | 'top', end: 'right' | 'bottom'): NumericRange {
+  if (bounds.length === 0) return { min: 0, max: 0 }
   return {
     min: Math.max(...bounds.map((bound) => -bound[start])),
     max: Math.min(...bounds.map((bound) => size - bound[end])),
@@ -144,14 +146,15 @@ function safeRange(bounds: Bounds[], size: number, start: 'left' | 'top', end: '
 }
 
 function modelBounds(model: FaceModel): Bounds[] {
-  return [
-    eyeBounds(model, 'left', model.leftEye.geometry),
-    eyeBounds(model, 'right', model.rightEye.geometry),
-  ]
+  const bounds: Bounds[] = []
+  if (isEyeVisible(model, 'left')) bounds.push(eyeBounds(model, 'left', model.leftEye.geometry))
+  if (isEyeVisible(model, 'right')) bounds.push(eyeBounds(model, 'right', model.rightEye.geometry))
+  return bounds
 }
 
 export function canFitEyesInCanvas(model: FaceModel): boolean {
   const bounds = modelBounds(model)
+  if (bounds.length === 0) return true
   const x = rawSafeRange(bounds, Math.max(0, model.canvas.width), 'left', 'right')
   const y = rawSafeRange(bounds, Math.max(0, model.canvas.height), 'top', 'bottom')
 
@@ -160,7 +163,9 @@ export function canFitEyesInCanvas(model: FaceModel): boolean {
 }
 
 export function minimumCanvasSize(model: FaceModel): CanvasMinimumSize {
-  const bounds = modelBounds(model).map((bound) => ({
+  const visibleBounds = modelBounds(model)
+  if (visibleBounds.length === 0) return { width: 0, height: 0 }
+  const bounds = visibleBounds.map((bound) => ({
     left: bound.left + model.gaze.x,
     right: bound.right + model.gaze.x,
     top: bound.top + model.gaze.y,
@@ -187,7 +192,7 @@ export function gazeLimits(model: FaceModel): GazeLimits {
   }
 }
 
-/** Whether the model's current gaze keeps both rendered eyes fully inside the canvas. */
+/** Whether the model's current gaze keeps every rendered eye fully inside the canvas. */
 export function isGazeCanvasSafe(model: FaceModel): boolean {
   const limits = gazeLimits(model)
   return model.gaze.x >= limits.x.min && model.gaze.x <= limits.x.max &&
