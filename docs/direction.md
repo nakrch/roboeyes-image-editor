@@ -1,24 +1,23 @@
 # roboeyes-image-editor 方針
 
-この文書は、プロジェクトの設計思想・優先順位・方向性を定義する一次資料です。実装上の判断で迷った場合は、まずこの文書に立ち返ります。
+この文書は、プロジェクトの設計思想・優先順位・スコープを定義する一次資料です。実装上の判断で迷った場合は、まずこの文書に立ち返ります。
 
 ## 1. 目的
 
 `roboeyes-image-editor` は、単なる RoboEyes のブラウザ移植ではなく、
 
-> **RoboEyes の「目・表情をパラメータで定義し、状態をリアルタイムに生成する」という設計思想を抽象化した、汎用的なパラメトリック・フェイス / アイ・イメージエディタ**
+> **RoboEyes の「目・表情・動きをパラメータで定義し、状態をリアルタイムに生成する」という設計思想を抽象化した、汎用的なパラメトリック・フェイス / アイ・エディタ**
 
 として設計します。
 
-最初の主用途:
+主用途:
 
-- RoboEyes 系の目画像生成
-- Codex Pet 用の表情素材生成
-- M5Stack / 小型ディスプレイ向け画像生成
-- 組込み機器向けスプライト生成
-- PNG / SVG / WebP / sprite sheet 等への書き出し
+- RoboEyes 系の目画像・アニメーション生成
+- Codex Pet 用の表情 / animation asset 生成
+- 固定解像度・小型ディスプレイ向け画像生成
+- PNG / SVG / animated WebP / GIF への書き出し
 
-将来的には RoboEyes 以外のスタイルも扱える構造にします。
+将来的に RoboEyes 以外のスタイルも扱える構造を維持します。
 
 ## 2. 基本思想
 
@@ -38,7 +37,7 @@ Renderer
 Export
 ```
 
-RoboEyes は、このエンジン上の一つのプリセット / 互換レイヤーです。
+RoboEyes は、このエンジン上の一つの互換レイヤー / preset です。
 
 ## 3. RoboEyes から継承する思想
 
@@ -46,23 +45,22 @@ RoboEyes は、このエンジン上の一つのプリセット / 互換レイ�
 
 代表的な要素:
 
-- width
-- height
-- border radius
-- eye spacing
+- width / height / radius
+- eye spacing / position
 - gaze direction
-- mood
-- blink
-- idle
-- curiosity
+- mood / expression
+- blink / wink / sleep
+- idle / curiosity
 - cyclops
-- flicker
+- flicker / shake
 
 ただし、内部データモデルは RoboEyes 固有 API に依存しすぎないようにします。
 
 ## 4. 汎用内部モデル
 
-概念例:
+中心となる domain model は renderer / React / RoboEyes API から独立した plain data とします。
+
+概念:
 
 ```ts
 type Eye = {
@@ -75,110 +73,73 @@ type Eye = {
 }
 
 type FaceModel = {
-  canvas: {
-    width: number
-    height: number
-  }
-
+  canvas: { width: number; height: number }
   leftEye: Eye
   rightEye: Eye
-
-  gaze: {
-    x: number
-    y: number
-  }
-
-  expression: {
-    upperLid: number
-    lowerLid: number
-    tilt: number
-  }
+  gaze: { x: number; y: number }
+  expression: ExpressionModel
 }
 ```
 
-実装は将来以下を追加できる構造にします。
-
-- symmetry / asymmetry
-- eye spacing
-- eye scale
-- eyelid shape
-- pupil / highlight
-- transforms
-- color
-- stroke
-- background
-- animation state
-- easing / spring
-- timing
+実装では左右非対称 expression、eye visibility、color/background なども generic model として扱います。
 
 ## 5. RoboEyes 互換レイヤー
 
-RoboEyes のパラメータを内部モデルへ変換する adapter を持たせます。
+RoboEyes のパラメータや語彙は adapter で generic model / generic behavior に変換します。
 
 ```text
 RoboEyes Parameters
         ↓
 RoboEyes Adapter
         ↓
-Generic Face Model
+Generic Face Model / Animation Definition
         ↓
 Renderer
 ```
 
 目的:
 
-- RoboEyes API との互換性を保つ
-- UI を一般化する
-- RoboEyes 以外のスタイルを追加できるようにする
-- renderer の差し替えを容易にする
+- RoboEyes の見た目・挙動との互換性を保つ
+- UI と renderer を一般化する
+- RoboEyes 固有フラグを renderer に漏らさない
+- 他スタイルを追加できる構造を維持する
 
-## 6. プリセット
+## 6. Preset
 
-スタイルは固定画像ではなく、以下のようなパラメータ集合として扱います。
+Preset は固定画像ではなく、再利用可能な authoring data として扱います。
 
-- initial geometry
-- expression defaults
-- color
-- constraints
+対象:
+
+- face geometry / canvas / color
+- expression
 - animation defaults
+- deterministic seed
+- behavior profile
+- ordered state program
 
-想定例:
-
-```text
-Presets
-├─ RoboEyes
-├─ M5Stack style
-├─ Vector-style
-├─ Cute
-├─ Minimal
-└─ Custom
-```
+静的 preset と animation runtime state は分離します。再生位置や一時 trigger は永続化しません。
 
 ## 7. Editor UX
 
-ブラウザ上でパラメータ変更を即座に preview へ反映します。
+ブラウザ上で authoring state の変更を即座に preview へ反映します。
 
 重要な UX:
 
-- slider の変更を realtime 反映
-- 左右対称 / 個別編集の切替
-- 数値直接入力
-- Undo / Redo
-- Reset
-- Preset 保存
-- Preview 解像度切替
+- slider / direct numeric input の realtime 反映
+- linked / independent eye editing
+- Undo / Redo / Reset
+- face / expression preset
+- preview resolution 切替
+- animation play / pause / stop / restart
+- manual blink/wink/motion trigger
+- behavior / sequence authoring
+- reduced-motion を尊重した preview
+
+再生中に解決された frame は一時的な preview state であり、authoring model や Undo/Redo history を frame ごとに書き換えません。
 
 ## 8. Rendering
 
-初期実装は SVG を第一候補とします。
-
-理由:
-
-- parametric editing と相性が良い
-- 拡大縮小で劣化しない
-- PNG / WebP への変換が容易
-- rotation / radius / transform の処理が簡単
-- DOM 上で realtime 編集しやすい
+SVG renderer を中心にします。
 
 ```text
 Face Model
@@ -187,16 +148,16 @@ SVG Renderer
     ↓
 Live Preview
     ↓
-Rasterize
+Rasterize when needed
     ↓
-PNG / WebP
+PNG / animated image export
 ```
 
-必要になれば Canvas renderer を追加します。
+renderer は deterministic で、timer・wall clock・randomness を持ちません。animation/effect layer が explicit time と seed から resolved frame を生成して renderer に渡します。
 
-## 9. 小型ディスプレイ対応
+## 9. Small-display focus
 
-一般的なキャラクター制作ツールとの差別化として、**組込み機器・小型ディスプレイ向け出力** を重視します。
+一般的なキャラクター制作ツールとの差別化として、**固定サイズ・小型ディスプレイで扱いやすい画像生成**を first-class に扱います。
 
 想定プリセット解像度:
 
@@ -207,168 +168,106 @@ PNG / WebP
 - 320×320
 - Custom
 
-重点機能:
+重点:
 
-- pixel-perfect preview
-- nearest-neighbor preview
-- monochrome preview
-- 1-bit preview
+- exact fixed canvas
 - transparent background
-- fixed canvas
-- safe area
+- deterministic output
+- predictable rasterization
+- pixel-perfect / nearest-neighbor inspection を追加しやすい構造
 
 ## 10. Export
 
-最終的な対象:
+現在の主要出力:
 
-### Image
+### Static
 
-- PNG
-- WebP
 - SVG
+- PNG
 
 ### Animation
 
 - animated WebP
 - GIF
-- sprite sheet
 
-### Embedded
-
-- C/C++ bitmap array
-- RGB565
-- monochrome bitmap
-- XBM
-
-特に M5Stack / Arduino / ESP32 でそのまま使える形式を重視します。
+Animation export は realtime preview の frame cadence を録画するのではなく、deterministic runtime を explicit timestamp で sampling して生成します。
 
 ## 11. Animation
 
-静止画像エディタから開始しますが、モデル自体は animation を考慮して設計します。
-
-想定 state:
-
-- idle
-- blink
-- wink
-- look-left
-- look-right
-- look-up
-- look-down
-- happy
-- angry
-- sleep
-- surprised
-
-将来的には timeline 主体ではなく **state + transition** を中心にします。
+Animation は **state + transition** を中心にします。free-form video/keyframe timeline をプロジェクトの中心にはしません。
 
 ```text
-idle → blink → idle
-neutral → happy
+static FaceModel / Expression
+        +
+serializable animation definition / ordered state program
+        +
+explicit runtime events
+        +
+time / seed
+        ↓
+deterministic evaluator
+        ↓
+resolved frame state
+        ↓
+renderer
 ```
 
-状態間を補間して生成できる構造を目指します。
+対象には以下を含みます。
+
+- state / expression / gaze transitions
+- easing / spring
+- blink / wink / open / close / sleep
+- auto-blink
+- idle gaze
+- flicker / shiver / Confused / Laugh style motion
+- composable behavior profiles
+- transient effects
+- ordered programs with hold/transition timing
+- once / loop / ping-pong playback
+
+同じ authoring data、runtime events、time、seed からは同じ frame が得られることを原則とします。
 
 ## 12. Mote Studio との位置付け
 
-Mote Studio は設計思想が近い参考例ですが、本プロジェクトは **組込みディスプレイ・ロボットフェイス向けのパラメトリック画像 / スプライト生成ツール** に軸足を置きます。
+Mote Studio は animation document / state-program workflow の参考例ですが、本プロジェクトは **RoboEyes compatibility と小型表示向け parametric eye/face authoring** に軸足を置きます。
 
-重点:
-
-- RoboEyes compatibility
-- small display
-- pixel-perfect preview
-- static image export
-- sprite sheet
-- embedded bitmap export
+汎用的な動画編集、3D rig、音声 timeline などへ広げることは優先しません。
 
 ## 13. Architecture direction
 
 ```text
 src/
-├─ core/
-│  ├─ model/
-│  ├─ presets/
-│  └─ adapters/
-├─ renderers/
-│  ├─ svg/
-│  └─ canvas/
-├─ animation/
-├─ export/
-└─ ui/
-   ├─ editor/
-   ├─ controls/
-   └─ preview/
+├─ core/          # model / adapters / presets
+├─ renderers/     # deterministic visual rendering
+├─ animation/     # time/seed/event based frame resolution
+├─ export/        # static and animated image export
+└─ ui/            # editor / controls / preview
 ```
 
 詳細は [`architecture.md`](architecture.md) を参照してください。
 
-## 14. MVP phases
+## 14. Completed development phases
 
 ### Phase 1 — Static editor
 
-- left / right eye
-- width
-- height
-- radius
-- spacing
-- position
-- gaze
-- rotation
-- canvas size
-- realtime SVG preview
-- PNG export
-- SVG export
+Static FaceModel、RoboEyes adapter、realtime SVG preview、PNG/SVG export を完成。
 
-### Phase 2 — Expression
+### Phase 2 — Expressions
 
-- happy
-- angry
-- tired
-- surprised
-- custom
-- eyelid controls
+Generic eyelid/mask expression、RoboEyes-compatible expressions、Curious、expression preset、visual regression を完成。
 
 ### Phase 3 — Animation
 
-- blink
-- idle
-- gaze movement
-- state transitions
+Deterministic runtime、state/spring transitions、blink/idle/motion、behavior profiles、state programs、persistence、browser player、temporal regression、transient effects、animated WebP/GIF export を完成。
 
-### Phase 4 — Embedded export
+今後の改善は必要に応じて個別 Issue として扱い、新しい Phase 番号を前提にしません。
 
-- sprite sheet
-- RGB565
-- monochrome bitmap
-- C array
-
-## 15. 初期開発方針
-
-最初のゴール:
-
-> **RoboEyes の目をブラウザ上で自由に調整し、PNG / SVG として保存できる。**
-
-ただし、内部実装は最初から次のように分離します。
-
-```text
-RoboEyes
-   ↓
-adapter
-   ↓
-generic model
-   ↓
-renderer
-```
-
-MVP の実装量を抑えつつ、後から汎用エディタへ拡張できることを優先します。
-
-## 16. Project definition
+## 15. Project definition
 
 一言で表すなら、
 
-> **RoboEyes の思想を汎用化した、組込みディスプレイ向け Parametric Robot Face Editor**
+> **RoboEyes の思想を汎用化した、small-display oriented Parametric Robot Face Editor**
 
-を目指します。
+です。
 
-リポジトリ名 `roboeyes-image-editor` は現段階では維持します。将来、機能が拡大した場合はリブランドを検討できます。
+リポジトリ名 `roboeyes-image-editor` は維持します。機能が大きく拡張された場合のみ、必要性を確認してリブランドを検討します。

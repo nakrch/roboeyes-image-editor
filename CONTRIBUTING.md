@@ -2,6 +2,8 @@
 
 このプロジェクトは、設計思想を保ちながら Issue 単位で段階的に開発するオープンソースプロジェクトです。この文書は、実装・レビュー・コントリビューション時に設計方針を崩さないための基本ルールを定義します。
 
+Phase 1–3 は完了済みです。今後の変更は、完成済みの static model / expression / deterministic animation / static・animated image export を baseline として扱います。
+
 ## 1. Source of truth
 
 設計判断の優先順位:
@@ -9,8 +11,9 @@
 1. [`docs/direction.md`](docs/direction.md)
 2. [`docs/architecture.md`](docs/architecture.md)
 3. [`docs/roadmap.md`](docs/roadmap.md)
-4. 対応 GitHub Issue
-5. 実装詳細
+4. [`docs/README.md`](docs/README.md) から参照する機能別仕様書
+5. 対応 GitHub Issue
+6. 実装詳細
 
 Issue や実装都合が direction と矛盾する場合は、direction を無言で曲げず、先に設計判断を更新します。
 
@@ -25,9 +28,9 @@ style/API parameters
       ↓
 adapter
       ↓
-generic model
+generic model + generic animation data
       ↓
-renderer
+deterministic evaluator / renderer
       ↓
 preview/export
 ```
@@ -36,76 +39,80 @@ preview/export
 
 - React component 内に RoboEyes 描画ロジックを直書きする
 - SVG renderer が RoboEyes 固有パラメータを直接読む
-- export が UI state を直接参照する
-- renderer 内で random animation state を生成する
+- renderer 内で timer / random animation state を生成する
+- animation semantics を browser frame cadence に依存させる
+- export が UI の一時 runtime state を直接参照する
+- runtime playback state を preset JSON に永続化する
 
 ### Generic model first
 
 新しい機能を追加するときは、まず次を判断します。
 
 - generic face model の能力か
-- RoboEyes adapter 固有の変換か
+- RoboEyes/style adapter 固有の変換か
+- animation runtime / behavior の責務か
 - renderer 固有表現か
 - UI convenience か
+- export encoder / serialization の責務か
 
-## 3. MVP discipline
+## 3. Current scope discipline
 
-Phase 1 のゴールは静止画エディタです。
+このプロジェクトの中心は **Parametric Robot Face Editor** です。
 
-Phase 1 で優先:
+現在の baseline:
 
-- generic model
-- RoboEyes adapter
-- realtime SVG preview
-- editor controls
-- PNG / SVG export
+- static eye/face authoring
+- generic expression authoring
+- RoboEyes compatibility
+- deterministic state-based animation
+- behavior profile / ordered state program authoring
+- SVG / PNG export
+- animated WebP / GIF export
 
-後回し:
-
-- animation timeline
-- animated WebP
-- sprite sheet generator
-- embedded bitmap export
-- broad character-authoring features
-
-将来機能のための拡張余地は確保しますが、先回り実装は避けます。
+free-form video/keyframe timeline、3D rig、汎用 character studio へ無計画に拡張しないでください。方向性を変える必要がある場合は、先に `docs/direction.md` を更新する設計判断を行います。
 
 ## 4. Small-display first
 
-UI / renderer / export の変更では以下を確認してください。
+UI / renderer / animation / export の変更では以下を確認してください。
 
 - exact canvas size が維持されるか
 - small resolution で扱えるか
 - transparent background を壊さないか
-- pixel-perfect / nearest-neighbor preview の追加を妨げないか
-- embedded export のために model が過度に renderer 依存になっていないか
+- geometry / timing が deterministic か
+- predictable rasterization を壊していないか
+- pixel-perfect / nearest-neighbor inspection workflow の追加を妨げないか
 
 ## 5. Code organization
 
-想定責務:
+責務の目安:
 
 ```text
 src/core/model/        domain model
 src/core/adapters/     style/API compatibility mapping
-src/core/presets/      parameter presets
+src/core/presets/      parameter presets / persisted defaults
 src/renderers/         model → visual representation
-src/ui/                editor interaction/view
-src/animation/         state/transition/easing
-src/export/            image/embedded export
+src/animation/         explicit-time deterministic animation
+src/export/            static / animated image export
+src/ui/                editor interaction / view / playback orchestration
 ```
+
+ディレクトリ構造そのものより、責務境界を優先します。
 
 ## 6. Testing expectations
 
-最低限、次を優先して test します。
+変更内容に応じて、少なくとも次を優先します。
 
 - adapter conversion
 - model invariants / normalization
 - renderer determinism
 - exact output dimensions
-- preset serialization
+- preset / animation serialization
+- explicit-time animation determinism
+- frame-rate / seek independence
 - export correctness
+- static regression compatibility
 
-UI の細部より、domain と renderer の再現性を先に保証します。
+UI の細部だけでなく、domain・renderer・animation runtime の再現性を保証します。
 
 ## 7. Issue-first workflow
 
@@ -114,39 +121,34 @@ UI の細部より、domain と renderer の再現性を先に保証します。
 原則フロー:
 
 1. バグ・改善案・仕様変更を見つける
-2. 実装を始める前に GitHub Issue を作成、または既存 Issue を特定する
-3. Issue に必要に応じて再現手順、現状、期待動作、acceptance criteria を記録する
-4. その Issue を解決するための実装 PR を作る
+2. 実装前に GitHub Issue を作成、または既存 Issue を特定する
+3. 必要に応じて再現手順、現状、期待動作、acceptance criteria を記録する
+4. その Issue を解決する実装 PR を作る
 5. PR 本文から `Fixes #123` / `Closes #123` 等で Issue を紐付ける
 6. test/build/CI を通す
-7. 最新 PR head の自動 PR Preview が完了したら、**生成された Preview URL を merge 前にユーザーとのチャットへ直接提示する**
-8. **URL提示時に、そのPRが「ユーザー確認が必要な変更」か「内部変更」かを必ず明記する**
-9. UI/UX、操作、renderer、preview、animationの見た目/挙動、export出力など、Previewで意味のある確認ができる **ユーザー向け変更** では、その場で停止し、次のユーザーメッセージで `OK` / `問題ない` / `mergeして` 等の明示的なmerge承認を得る
-10. docs-only、test、CI/config、pure refactor、runtime/core内部変更など、Preview上の見た目に意味のある差分がない **内部変更** では、その旨を明記する。URL提示とCI/Preview成功後は、別の承認メッセージを待たずmergeしてよい
+7. 最新 PR head の自動 PR Preview が完了したら、生成された Preview URL を merge 前にユーザーとのチャットへ直接提示する
+8. URL提示時に、そのPRが **ユーザー向け変更** か **内部変更** かを必ず明記する
+9. ユーザー向け変更では、その場で停止し、次のユーザーメッセージで明示的な merge 承認を得る
+10. 内部変更では、Preview上の見た目に意味のある差分がない旨を明記する。CI/Preview 成功後は別の承認を待たず merge してよい
 11. merge により対象 Issue を close する
 
-内部変更なのに単に「Previewは同じです」とだけ書くのではなく、**「これは内部変更です。Preview上の見た目差分はありません」** と分類まで伝えます。
-
-原則として「先に PR を作り、後から Issue を作る」運用は避けます。
-
-例外として、明白な typo 修正や挙動・設計に影響しないごく小さなドキュメント修正は Issue なしでも構いません。
+明白な typo 修正や挙動・設計に影響しないごく小さな docs-only 修正は Issue なしでも構いません。
 
 ## 8. PR Preview before merge
 
-実装 PR では、**PR Preview URL のユーザーへの直接提示と、変更種別の明示**を merge 前の handoff gate とします。GitHub上のBotコメントだけで済ませず、現在のユーザーとのチャットに、すぐ開ける形でPreview URLを表示します。
+実装 PR では、**PR Preview URL のユーザーへの直接提示と、変更種別の明示**を merge 前の handoff gate とします。
 
 ### ユーザー向け変更
 
 対象例:
 
 - UI layout / style
-- slider、pointer、touch、keyboard などの interaction
-- editor の操作感や入力感度
+- slider、pointer、touch、keyboard 等の interaction
 - renderer / preview の見た目
 - animation の見た目や時間挙動
 - export 結果など、ユーザーが直接確認できる出力
 
-この場合は、Preview URLを提示した応答ではmergeしません。そこで停止し、ユーザーがPreviewを確認した後の新しいメッセージで明示的なmerge承認を得ます。
+この場合は Preview URL を提示した応答では merge しません。ユーザーが確認した後の新しいメッセージで明示的な承認を得ます。
 
 ### 内部変更
 
@@ -156,22 +158,22 @@ UI の細部より、domain と renderer の再現性を先に保証します。
 - test
 - CI/config
 - pure refactor
-- runtime/core内部ロジックで、Preview上の見た目に意味のある差分がないもの
+- runtime/core 内部変更で、Preview上の見た目に意味のある差分がないもの
 
-この場合もPreview URLはmerge前にチャットへ提示しますが、**同時に「内部変更であり、Preview上の見た目差分はない」ことを明示**します。CIとPreviewが成功していれば、別のユーザー承認メッセージを待たずmergeして構いません。
+この場合も Preview URL は merge 前に提示し、**内部変更であり Preview 上の見た目差分はない**ことを明示します。CI と Preview が成功していれば、別の承認メッセージを待たず merge して構いません。
 
 merge 前に確認すること:
 
 - PR Preview workflow が成功している
 - Preview が最新 PR head から生成されている
 - Preview URL が開ける
-- **Preview URL をユーザーとのチャットへ提示済み**
-- **そのPRがユーザー向け変更か内部変更かを明示済み**
-- ユーザー向け変更では、URL提示後に明示的なmerge承認を得ている
-- 視覚・操作感が関係する場合は、実機または適切なブラウザで手動確認済み
+- Preview URL をユーザーとのチャットへ提示済み
+- PR がユーザー向け変更か内部変更かを明示済み
+- ユーザー向け変更では URL 提示後に明示的な merge 承認を得ている
+- 視覚・操作感が関係する場合は適切なブラウザ / 実機で手動確認済み
 - test/build/CI も成功している
 
-PR Preview が failed / cancelled / stale / unavailable の状態では、ユーザー向け変更を merge しません。Preview は CI の代替ではなく、CI + Preview を merge gate とします。
+PR Preview が failed / cancelled / stale / unavailable の状態では、ユーザー向け変更を merge しません。Preview は CI の代替ではありません。
 
 ## 9. Pull request / commit scope
 
@@ -179,13 +181,14 @@ PR Preview が failed / cancelled / stale / unavailable の状態では、ユー
 
 良い例:
 
-- generic FaceModel だけを追加
-- SVG renderer だけを追加
-- PNG export だけを追加
+- generic model の変更と対応 test
+- animation behavior 1種類と temporal regression
+- export format の修正と encoder test
+- UI interaction の修正と必要な model/runtime change
 
 避ける例:
 
-- model + animation + export + UI redesign を一度に変更
+- model + unrelated animation + export + UI redesign を一度に変更
 
 ## 10. External projects and licensing
 
@@ -200,10 +203,10 @@ RoboEyes や類似プロジェクトの思想・API・実装を参考にする�
 - acceptance criteria を満たす
 - build/test が通る
 - layer boundary を壊していない
+- deterministic contract を壊していない
 - 必要な docs を更新する
-- Phase scope を不必要に広げていない
-- 実装 PR では、最新 PR Preview URL を merge 前にユーザーとのチャットへ提示している
-- **ユーザー向け変更か内部変更かを明示している**
-- ユーザー向け変更では、Preview URL提示後にユーザーから明示的なmerge承認を得ている
-- 内部変更では、Preview上の見た目差分がないことを明記している
-- ユーザー向け変更では、最新 PR Preview が成功し、必要な実機・目視確認が完了している
+- project scope を不必要に広げていない
+- 実装 PR では最新 PR Preview URL を merge 前にユーザーとのチャットへ提示している
+- ユーザー向け変更か内部変更かを明示している
+- ユーザー向け変更では Preview URL 提示後に明示的な merge 承認を得ている
+- 内部変更では Preview 上の見た目差分がないことを明記している

@@ -2,14 +2,17 @@
 
 ## Project intent
 
-`roboeyes-image-editor` is a **Parametric Robot Face Editor for embedded/small displays**. It generalizes the design philosophy of RoboEyes rather than implementing a browser-only clone.
+`roboeyes-image-editor` is a **small-display oriented Parametric Robot Face Editor**. It generalizes the design philosophy of RoboEyes rather than implementing a browser-only clone.
 
 Read these before making architectural changes:
 
 1. `docs/direction.md`
 2. `docs/architecture.md`
 3. `docs/roadmap.md`
-4. the active GitHub Issue
+4. `docs/README.md`
+5. the active GitHub Issue
+
+Phase 1–3 are complete. Treat the current static model, expression system, deterministic animation runtime, browser authoring/player workflow, and static/animated image export as the baseline to preserve.
 
 ## PR Preview handoff rule
 
@@ -19,22 +22,22 @@ Required handoff sequence:
 
 1. Open the PR.
 2. Wait for the automatic **PR Preview** deployment for the latest PR head.
-3. Retrieve the generated preview URL (normally posted to the PR by the preview workflow).
-4. **Present that URL to the user in the chat as an easy-to-open link before merge.**
-5. **At the same time, explicitly classify the PR as either:**
-   - **user-visible**: UI/UX, interaction, renderer, preview appearance, animation appearance/behavior, or output changes that the user can meaningfully inspect; or
+3. Retrieve the generated preview URL.
+4. Present that URL directly in the active user conversation before merge.
+5. Classify the PR as either:
+   - **user-visible**: UI/UX, interaction, renderer, preview appearance, animation appearance/behavior, or output changes that can be meaningfully inspected; or
    - **internal-only**: docs-only, tests, CI/config, pure refactor, or runtime/core changes with no meaningful visible Preview difference.
-6. For **user-visible** changes, **STOP after presenting the URL and wait for a new user message that explicitly approves merge** (for example `OK`, `問題ない`, `mergeして`). Do not merge in the same response/turn in which the Preview URL is first shown.
-7. For **internal-only** changes, tell the user that the Preview has no meaningful visible difference. Explicit post-Preview approval is not required; after URL handoff and successful CI/Preview gates, merge may proceed in the same turn.
+6. For **user-visible** changes, stop after presenting the URL and wait for a new user message that explicitly approves merge.
+7. For **internal-only** changes, state that the Preview has no meaningful visible difference. Separate post-Preview approval is not required; after successful CI/Preview gates, merge may proceed in the same turn.
 8. Merge only after the normal CI/build gates and the applicable Preview/user-approval gate are satisfied.
 
-Do not treat a GitHub PR comment alone as sufficient handoff: the preview URL must also be shown directly in the active user conversation. For internal-only changes, never omit the classification; say clearly that the change is internal and the Preview is expected to look unchanged. If a Preview is genuinely unavailable or not produced, state that explicitly instead of silently merging.
+Do not treat a GitHub PR comment alone as sufficient handoff. If a Preview is genuinely unavailable or not produced, state that explicitly instead of silently merging.
 
 ## Reference-first implementation rule
 
-Before designing or implementing behavior, geometry, expressions, animation, compatibility, rendering, controls, or export semantics that are related to RoboEyes, first inspect the current implementation in the original **FluxGarage/RoboEyes** repository.
+Before designing or implementing behavior, geometry, expressions, animation, compatibility, rendering, controls, or export semantics related to RoboEyes, first inspect the current implementation in the original **FluxGarage/RoboEyes** repository.
 
-Also inspect one or more representative derivative / port implementations when they are relevant and available (for example established MicroPython or other RoboEyes-derived libraries). Use them to understand how the behavior has been interpreted across implementations, not just how one codebase happens to encode it.
+Also inspect representative derivative / port implementations when relevant. Use them to understand how behavior has been interpreted across implementations, not merely how one codebase encodes it.
 
 Preferred decision order:
 
@@ -42,13 +45,11 @@ Preferred decision order:
 2. **Representative derivative/port implementations**
 3. **Common behavioral/geometric pattern inferred from those references**
 4. **Generic, renderer-independent abstraction for this editor**
-5. **Project-specific UX improvements**, only when they do not silently change the intended RoboEyes-compatible behavior
+5. **Project-specific UX improvements**, only when they do not silently change intended RoboEyes-compatible behavior
 
-Do not invent a new behavioral model first and compare it with RoboEyes afterward. Reference implementations should inform the design before implementation starts.
+Do not invent a new behavioral model first and compare it with RoboEyes afterward.
 
-The project does **not** need to copy upstream APIs or internal data structures literally. Preserve the architecture below: translate reference behavior into a generic model rather than leaking RoboEyes-specific flags or APIs into the renderer. When the generic abstraction intentionally differs from upstream internals, document the reason in the Issue or PR.
-
-For visual/expression work, prefer checking the actual drawing primitives, geometry calculations, interpolation/tweening, and edge-case handling in the reference implementations rather than relying only on README descriptions or screenshots.
+The project does **not** need to copy upstream APIs or internal data structures literally. Translate reference behavior into generic data and keep RoboEyes-specific flags out of the renderer. When the abstraction intentionally differs from upstream internals, document the reason in the Issue or PR.
 
 ## Non-negotiable architecture
 
@@ -57,57 +58,65 @@ RoboEyes/style parameters
         ↓
 adapter
         ↓
-generic FaceModel
+generic FaceModel + generic animation data
         ↓
-renderer
+deterministic evaluator / renderer
         ↓
 preview/export
 ```
 
-Do not let RoboEyes-specific APIs leak into the generic model, SVG renderer, or export layer.
+Do not let RoboEyes-specific APIs leak into the generic model, SVG renderer, animation runtime, or export layer.
 
-## MVP priority
+## Current baseline
 
-Phase 1 is a static editor:
+Preserve these completed capabilities unless the active Issue deliberately changes them:
 
-- generic left/right eye model
+- generic left/right eye model and single-eye visibility/layout
 - RoboEyes adapter
-- realtime SVG preview
-- geometry/gaze/rotation controls
-- PNG export
-- SVG export
+- deterministic SVG renderer
+- realtime static editor
+- generic expression model and presets
+- deterministic state/spring animation
+- blink/wink/open/close/sleep
+- auto-blink and idle gaze
+- motion primitives and behavior profiles
+- ordered state programs
+- animation persistence/player controls
+- transient effects
+- SVG / PNG / animated WebP / GIF export
+- static and temporal regression coverage
 
-Do not expand Phase 1 into animation timelines, sprite-sheet authoring, or embedded export unless the issue explicitly asks for it.
+Do not expand the project into a free-form video/keyframe timeline or generic character studio unless the project direction is deliberately revised.
 
 ## Small-display requirements
 
-Treat these as first-class future requirements:
+Treat these as first-class constraints:
 
 - exact/fixed canvas dimensions
 - 128x64, 128x128, 240x240, 320x240, 320x320, custom
-- pixel-perfect / nearest-neighbor preview
-- monochrome / 1-bit preview
 - transparent background
-- safe area
-- RGB565 / bitmap / C array export
-
-Avoid architectural choices that make these difficult later.
+- deterministic geometry and rasterization
+- architecture that remains compatible with pixel-perfect / nearest-neighbor inspection workflows
 
 ## Renderer rule
 
-The renderer should be deterministic: the same `FaceModel` must produce the same visual output.
+The renderer must be deterministic: the same `FaceModel` and overlay input must produce the same visual output.
 
-Random behaviors such as idle/flicker belong in animation/state logic, not inside the renderer.
+Random behaviors, scheduling, and logical time belong in animation/state logic, never inside the renderer.
 
-## Animation direction
+## Animation rule
 
-When animation work begins, prefer:
+Animation is based on explicit logical time, seed, runtime events, and serializable authoring data:
 
 ```text
-state + transition + easing/timing → interpolated FaceModel → renderer
+state + transition + behavior/program
+        ↓
+deterministic resolved frame
+        ↓
+renderer
 ```
 
-over a timeline-first design.
+Do not make semantics depend on browser frame cadence, hidden mutable renderer state, `Math.random()`, or wall-clock time.
 
 ## Development discipline
 
@@ -117,12 +126,10 @@ over a timeline-first design.
 - Create the implementation PR from that Issue and link it with a closing keyword such as `Fixes #123` or `Closes #123` when the PR should complete the Issue.
 - Do not normally create a PR first and backfill the Issue afterward. Trivial typo-only or clearly non-behavioral documentation fixes may be handled without an Issue.
 - Keep changes narrowly scoped.
-- Add tests around model/adapter/renderer/export behavior.
+- Add tests around model/adapter/renderer/animation/export behavior as appropriate.
 - Update docs when a design decision changes.
-- **Before any implementation PR is merged, surface the latest PR Preview URL directly to the user in the active chat and explicitly say whether the change is user-visible or internal-only.**
-- For user-visible UI/UX, interaction, renderer, preview, animation appearance/behavior, or output changes, validate the latest PR head through the automatic PR Preview, then stop and wait for explicit merge approval in a subsequent user message.
-- **Never call merge in the same response/turn in which the Preview URL for a user-visible change is first presented.**
-- For docs-only, tests, CI/config, pure refactor, or internal/runtime changes with no meaningful visible Preview difference, state that clearly; after URL handoff and successful CI/Preview, merge may proceed without a separate approval message.
+- Before any implementation PR is merged, surface the latest PR Preview URL directly to the user and classify the change as user-visible or internal-only.
+- Never merge a user-visible change in the same response/turn in which its Preview URL is first presented.
 - Do not merge a user-visible change while its PR Preview is failed, cancelled, stale, or unavailable.
-- When visual feel or interaction behavior matters, obtain manual confirmation from the PR Preview before merging. CI test/build is still required; Preview is an additional gate, not a replacement.
+- When visual feel or interaction behavior matters, obtain manual confirmation from the PR Preview before merging. CI test/build is still required.
 - If implementation pressure conflicts with `docs/direction.md`, do not silently change the architecture; surface the conflict and update the design deliberately.
