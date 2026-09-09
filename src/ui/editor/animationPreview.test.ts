@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { resolveEyeExpression } from '../../core/model'
 import { expressionPresets, roboEyesPreset } from '../../core/presets'
 import {
   angryBehaviorProfile,
@@ -12,6 +13,12 @@ function expression(id: string) {
   const found = expressionPresets.find((preset) => preset.id === id)
   if (found === undefined) throw new Error(`Missing expression preset ${id}`)
   return found.expression
+}
+
+function expectResolvedExpression(actual: ReturnType<typeof expression>, id: string) {
+  const expected = expression(id)
+  expect(resolveEyeExpression(actual, 'left')).toEqual(resolveEyeExpression(expected, 'left'))
+  expect(resolveEyeExpression(actual, 'right')).toEqual(resolveEyeExpression(expected, 'right'))
 }
 
 describe('editor animation preview composition', () => {
@@ -84,7 +91,7 @@ describe('editor animation preview composition', () => {
       behaviorProfile: structuredClone(happyBehaviorProfile),
     }
     const happyFrame = evaluateEditorAnimationFrame(edge, happyDefaults, { timeMs: 175 })
-    expect(happyFrame.expression).toEqual(expression('expression:happy'))
+    expectResolvedExpression(happyFrame.expression, 'expression:happy')
     expect(happyFrame.leftEye.geometry.position.y).not.toBeCloseTo(edge.leftEye.geometry.position.y)
     expect(happyFrame.rightEye.geometry.position.y).not.toBeCloseTo(edge.rightEye.geometry.position.y)
 
@@ -93,7 +100,7 @@ describe('editor animation preview composition', () => {
       seed: 11,
       behaviorProfile: structuredClone(angryBehaviorProfile),
     }, { timeMs: 175 })
-    expect(angryFrame.expression).toEqual(expression('expression:angry'))
+    expectResolvedExpression(angryFrame.expression, 'expression:angry')
 
     const centeredAgain = evaluateEditorAnimationFrame(roboEyesPreset.model, happyDefaults, { timeMs: 800 })
     expect(centeredAgain.gaze).not.toEqual(roboEyesPreset.model.gaze)
