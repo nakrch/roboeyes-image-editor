@@ -6,46 +6,8 @@
 
 .preview-panel { order: 1; }
 .preview-history-actions { order: 2; }
-.preview-display-panel {
-  order: 3;
-  display: grid;
-  gap: 12px;
-  margin-top: 12px;
-  padding: 16px 20px;
-}
 
-.preview-title-row { margin-bottom: 10px; }
-
-.preview-display-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 0;
-}
-
-.preview-display-size {
-  display: grid;
-  justify-items: end;
-  gap: 2px;
-  color: #cbd5e1;
-}
-
-.preview-display-size span {
-  color: #64748b;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.preview-display-size strong {
-  color: #f8fafc;
-  font-size: 0.9rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.preview-display-options {
+.display-control-options {
   display: flex;
   flex-wrap: wrap;
   gap: 10px 16px;
@@ -53,11 +15,13 @@
   font-size: 0.82rem;
 }
 
-.preview-display-options label {
+.display-control-options label {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
+
+.preview-title-row { margin-bottom: 10px; }
 
 /* Keep the main preview useful without letting it dominate vertically. */
 .preview-stage { min-height: 420px; }
@@ -102,10 +66,6 @@
     max-height: 252px;
   }
 
-  .preview-display-panel {
-    padding: 14px 16px;
-  }
-
   /*
    * The existing sidebar source order is already the desired semantic split:
    * Animation + presets first, then Parameters + Export. Multi-column layout
@@ -136,7 +96,7 @@
    * Flatten only the preview-column wrapper into the workspace grid. This keeps
    * the sticky Preview and history controls constrained by the full workspace
    * (including the long controls sidebar), rather than by the short preview
-   * column itself. The display options remain an ordinary scrolling row.
+   * column itself. Display settings now live at the top of Controls.
    */
   .editor-preview-column {
     --compact-preview-height: clamp(120px, 20vh, 180px);
@@ -182,16 +142,9 @@
     padding: 5px 8px;
   }
 
-  .preview-display-panel {
-    grid-column: 1;
-    grid-row: 3;
-    margin-top: 0;
-    padding: 14px 16px;
-  }
-
   .editor-sidebar {
     grid-column: 1;
-    grid-row: 4;
+    grid-row: 3;
   }
 }
 
@@ -200,11 +153,7 @@
     --compact-preview-height: clamp(105px, 18vh, 150px);
   }
 
-  .preview-display-heading {
-    align-items: flex-start;
-  }
-
-  .preview-display-options {
+  .display-control-options {
     gap: 8px 14px;
     font-size: 0.78rem;
   }
