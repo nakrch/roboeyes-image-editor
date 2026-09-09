@@ -30,6 +30,11 @@ import {
   type EyeSide,
   type GeometryKey,
 } from '../editor/modelEditing'
+import {
+  isSingleEyeLayout,
+  moveSingleEye,
+  preserveSingleEyeSpacing,
+} from '../editor/singleEyeLayout'
 import { NumericControl } from './NumericControl'
 
 type EyeControlsProps = {
@@ -37,6 +42,7 @@ type EyeControlsProps = {
   linkedEyes: boolean
   onChange: (updater: (current: FaceModel) => FaceModel) => void
   onLinkedEyesChange: (value: boolean) => void
+  onSingleEyeLayoutChange: (enabled: boolean) => void
 }
 
 export function EyeControls({
@@ -44,9 +50,11 @@ export function EyeControls({
   linkedEyes,
   onChange,
   onLinkedEyesChange,
+  onSingleEyeLayoutChange,
 }: EyeControlsProps) {
   const left = model.leftEye.geometry
   const right = model.rightEye.geometry
+  const singleEye = isSingleEyeLayout(model)
 
   // These helpers intentionally perform exhaustive canvas-safety scans. During
   // animation playback the parent editor re-renders at preview cadence, but the
@@ -58,7 +66,7 @@ export function EyeControls({
   }), [model])
 
   const independentDerived = useMemo(() => {
-    if (linkedEyes) return undefined
+    if (linkedEyes && !singleEye) return undefined
     return {
       left: {
         dimensionRanges: independentEyeDimensionRanges(model, 'left'),
@@ -69,7 +77,7 @@ export function EyeControls({
         rotationRange: independentEyeRotationRange(model, 'right'),
       },
     }
-  }, [linkedEyes, model])
+  }, [linkedEyes, model, singleEye])
 
   const spacingDerived = useMemo(() => ({
     spacing: anchoredPairSpacing(model),
@@ -100,7 +108,10 @@ export function EyeControls({
   const updateIndependentGeometry = (side: EyeSide, key: GeometryKey, value: number) => {
     onChange((current) => {
       if (key === 'width' || key === 'height') {
-        return setIndependentEyeDimensionSafely(current, side, key, value)
+        const next = setIndependentEyeDimensionSafely(current, side, key, value)
+        return singleEye && side === 'left' && key === 'width'
+          ? preserveSingleEyeSpacing(current, next)
+          : next
       }
       if (key === 'rotation') {
         return setIndependentEyeRotationSafely(current, side, value)
@@ -111,35 +122,78 @@ export function EyeControls({
   }
 
   const updateEyePosition = (side: EyeSide, axis: 'x' | 'y', value: number) => {
-    onChange((current) => setIndependentEyePositionSafely(current, side, axis, value))
+    onChange((current) => {
+      if (singleEye && side === 'left') {
+        return moveSingleEye(current, axis === 'x' ? value : undefined, axis === 'y' ? value : undefined)
+      }
+      return setIndependentEyePositionSafely(current, side, axis, value)
+    })
   }
+
+  const singleDerived = independentDerived?.left
 
   return (
     <details className="control-group collapsible-control-group" open>
       <summary className="control-group-summary">
         <span>Eyes</span>
-        <span className="segmented-control" aria-label="Eye editing mode" onClick={(event) => event.stopPropagation()}>
-          <button
-            type="button"
-            className={linkedEyes ? 'active' : ''}
-            aria-pressed={linkedEyes}
-            onClick={() => onLinkedEyesChange(true)}
-          >
-            Linked
-          </button>
-          <button
-            type="button"
-            className={!linkedEyes ? 'active' : ''}
-            aria-pressed={!linkedEyes}
-            onClick={() => onLinkedEyesChange(false)}
-          >
-            Independent
-          </button>
-        </span>
+        {!singleEye && (
+          <span className="segmented-control" aria-label="Eye editing mode" onClick={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              className={linkedEyes ? 'active' : ''}
+              aria-pressed={linkedEyes}
+              onClick={() => onLinkedEyesChange(true)}
+            >
+              Linked
+            </button>
+            <button
+              type="button"
+              className={!linkedEyes ? 'active' : ''}
+              aria-pressed={!linkedEyes}
+              onClick={() => onLinkedEyesChange(false)}
+            >
+              Independent
+            </button>
+          </span>
+        )}
       </summary>
 
       <div className="nested-controls control-group-body">
-        {linkedEyes ? (
+        <div className="control-row">
+          <span className="control-label">Layout</span>
+          <span className="segmented-control" aria-label="Eye layout">
+            <button
+              type="button"
+              className={!singleEye ? 'active' : ''}
+              aria-pressed={!singleEye}
+              onClick={() => onSingleEyeLayoutChange(false)}
+            >
+              Two eyes
+            </button>
+            <button
+              type="button"
+              className={singleEye ? 'active' : ''}
+              aria-pressed={singleEye}
+              onClick={() => onSingleEyeLayoutChange(true)}
+            >
+              Single eye
+            </button>
+          </span>
+        </div>
+
+        {singleEye ? (
+          <div className="nested-controls">
+            <p className="animation-note">
+              Single-eye mode edits the visible primary eye. The hidden eye is retained so switching back to two eyes restores the paired layout around the current center.
+            </p>
+            <NumericControl label="Eye width" value={left.width} min={singleDerived!.dimensionRanges.width.min} max={singleDerived!.dimensionRanges.width.max} step="any" onChange={(value) => updateIndependentGeometry('left', 'width', value)} />
+            <NumericControl label="Eye height" value={left.height} min={singleDerived!.dimensionRanges.height.min} max={singleDerived!.dimensionRanges.height.max} step="any" onChange={(value) => updateIndependentGeometry('left', 'height', value)} />
+            <NumericControl label="Corner radius" value={left.cornerRadius} min={0} max={80} onChange={(value) => updateIndependentGeometry('left', 'cornerRadius', value)} />
+            <NumericControl label="Position X" value={left.position.x} min={-320} max={640} onChange={(value) => updateEyePosition('left', 'x', value)} />
+            <NumericControl label="Position Y" value={left.position.y} min={-320} max={640} onChange={(value) => updateEyePosition('left', 'y', value)} />
+            <NumericControl label="Rotation" value={left.rotation} min={singleDerived!.rotationRange.min} max={singleDerived!.rotationRange.max} step="any" onChange={(value) => updateIndependentGeometry('left', 'rotation', value)} />
+          </div>
+        ) : linkedEyes ? (
           <div className="nested-controls">
             <NumericControl label="Eye width" value={(left.width + right.width) / 2} min={linkedDerived.dimensionRanges.width.min} max={linkedDerived.dimensionRanges.width.max} step="any" onChange={(value) => updateLinkedGeometry('width', value)} />
             <NumericControl label="Eye height" value={(left.height + right.height) / 2} min={linkedDerived.dimensionRanges.height.min} max={linkedDerived.dimensionRanges.height.max} step="any" onChange={(value) => updateLinkedGeometry('height', value)} />
@@ -175,14 +229,16 @@ export function EyeControls({
           </div>
         )}
 
-        <NumericControl
-          label="Eye spacing"
-          value={spacingDerived.spacing}
-          min={spacingDerived.min}
-          max={spacingDerived.max}
-          step="any"
-          onChange={(value) => onChange((current) => setCanvasSafeAnchoredPairSpacing(current, value))}
-        />
+        {!singleEye && (
+          <NumericControl
+            label="Eye spacing"
+            value={spacingDerived.spacing}
+            min={spacingDerived.min}
+            max={spacingDerived.max}
+            step="any"
+            onChange={(value) => onChange((current) => setCanvasSafeAnchoredPairSpacing(current, value))}
+          />
+        )}
       </div>
     </details>
   )

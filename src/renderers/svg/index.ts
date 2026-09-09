@@ -1,4 +1,5 @@
 import {
+  isEyeVisible,
   resolveEyeExpression,
   resolveEyeLidAperture,
   resolveGazeReactiveHeightScale,
@@ -133,8 +134,12 @@ export function renderFaceToSvg(
   const width = Math.max(0, model.canvas.width)
   const height = Math.max(0, model.canvas.height)
   const idPrefix = sanitizeIdPrefix(options.idPrefix)
-  const left = renderEye('left', model.leftEye.geometry, model, idPrefix)
-  const right = renderEye('right', model.rightEye.geometry, model, idPrefix)
+  const left = isEyeVisible(model, 'left')
+    ? renderEye('left', model.leftEye.geometry, model, idPrefix)
+    : undefined
+  const right = isEyeVisible(model, 'right')
+    ? renderEye('right', model.rightEye.geometry, model, idPrefix)
+    : undefined
   const background = options.transparentBackground
     ? ''
     : `<rect data-background="true" x="0" y="0" width="${number(width)}" height="${number(height)}" fill="${escapeAttribute(model.colors.background)}" />`
@@ -143,9 +148,9 @@ export function renderFaceToSvg(
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${number(width)}" height="${number(height)}" viewBox="0 0 ${number(width)} ${number(height)}">`,
     background,
-    `<defs>${left.clipPath}${right.clipPath}</defs>`,
-    left.shape,
-    right.shape,
+    `<defs>${left?.clipPath ?? ''}${right?.clipPath ?? ''}</defs>`,
+    left?.shape ?? '',
+    right?.shape ?? '',
     overlays,
     '</svg>',
   ].join('')

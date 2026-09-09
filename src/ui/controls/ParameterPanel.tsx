@@ -1,5 +1,6 @@
 import { gazeLimits, minimumCanvasSize, type FaceModel } from '../../core/model'
 import { setGazeSafely } from '../editor/gazeSafety'
+import { isSingleEyeLayout } from '../editor/singleEyeLayout'
 import { resizeCanvasFromCenter } from '../editor/modelEditing'
 import { EyeControls } from './EyeControls'
 import { ExpressionControls } from './ExpressionControls'
@@ -10,6 +11,7 @@ type ParameterPanelProps = {
   linkedEyes: boolean
   onChange: (updater: (current: FaceModel) => FaceModel) => void
   onLinkedEyesChange: (value: boolean) => void
+  onSingleEyeLayoutChange: (enabled: boolean) => void
 }
 
 const resolutionPresets = [
@@ -28,6 +30,7 @@ export function ParameterPanel({
   linkedEyes,
   onChange,
   onLinkedEyesChange,
+  onSingleEyeLayoutChange,
 }: ParameterPanelProps) {
   const currentResolution =
     resolutionPresets.find(
@@ -37,6 +40,7 @@ export function ParameterPanel({
   const requiredCanvas = minimumCanvasSize(model)
   const minCanvasWidth = Math.min(CANVAS_MAX, Math.max(CANVAS_MIN, Math.ceil(requiredCanvas.width)))
   const minCanvasHeight = Math.min(CANVAS_MAX, Math.max(CANVAS_MIN, Math.ceil(requiredCanvas.height)))
+  const singleEye = isSingleEyeLayout(model)
 
   const applyResolution = (key: string) => {
     const preset = resolutionPresets.find((candidate) => candidate.key === key)
@@ -112,9 +116,10 @@ export function ParameterPanel({
           linkedEyes={linkedEyes}
           onChange={onChange}
           onLinkedEyesChange={onLinkedEyesChange}
+          onSingleEyeLayoutChange={onSingleEyeLayoutChange}
         />
 
-        <ExpressionControls model={model} linkedEyes={linkedEyes} onChange={onChange} />
+        <ExpressionControls model={model} linkedEyes={linkedEyes} disabled={singleEye} onChange={onChange} />
 
         <details className="control-group collapsible-control-group" open>
           <summary className="control-group-summary">Gaze</summary>

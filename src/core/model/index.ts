@@ -8,4 +8,5 @@ export type { ExpressionModel, EyeExpression, EyeLidAperture } from './expressio
 export { canFitEyesInCanvas, clampGaze, gazeLimits, isGazeCanvasSafe, minimumCanvasSize, visibleEyesOverlap } from './gaze'
 export type { CanvasMinimumSize, GazeLimits, NumericRange } from './gaze'
 export type { EyeGeometry, EyeModel, Point } from './eye'
-export type { CanvasModel, ColorModel, FaceModel } from './face'
+export { isEyeVisible, visibleEyeSides } from './face'
+export type { CanvasModel, ColorModel, EyeVisibilityModel, FaceModel } from './face'

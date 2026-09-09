@@ -23,6 +23,14 @@ export type FacePreset = {
   }
 }
 
+function hasValidEyeVisibility(model: Partial<FaceModel>): boolean {
+  if (model.eyeVisibility === undefined) return true
+  return typeof model.eyeVisibility === 'object' &&
+    model.eyeVisibility !== null &&
+    typeof model.eyeVisibility.left === 'boolean' &&
+    typeof model.eyeVisibility.right === 'boolean'
+}
+
 export function isFacePreset(value: unknown): value is FacePreset {
   if (!value || typeof value !== 'object') return false
   const preset = value as Partial<FacePreset>
@@ -40,6 +48,7 @@ export function isFacePreset(value: unknown): value is FacePreset {
       model.gaze &&
       model.expression &&
       model.colors &&
+      hasValidEyeVisibility(model) &&
       preset.constraints &&
       typeof preset.constraints === 'object' &&
       preset.animationDefaults &&
