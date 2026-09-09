@@ -71,7 +71,7 @@
    * column itself. The display options remain an ordinary scrolling row.
    */
   .editor-preview-column {
-    --compact-preview-height: clamp(140px, 24vh, 220px);
+    --compact-preview-height: clamp(120px, 20vh, 180px);
     display: contents;
   }
 
@@ -129,7 +129,7 @@
 
 @media (max-width: 440px) {
   .editor-preview-column {
-    --compact-preview-height: clamp(120px, 22vh, 180px);
+    --compact-preview-height: clamp(105px, 18vh, 150px);
   }
 
   .preview-display-heading {
