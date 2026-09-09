@@ -52,7 +52,7 @@ export function PresetPanel({
   const exportPreset = (preset: FacePreset) => {
     try {
       onExport(preset)
-      notify('success', `Exported “${preset.name}”.`)
+      notify('success', `Downloading “${preset.name}” JSON…`)
     } catch {
       notify('error', `Could not export “${preset.name}”.`)
     }
