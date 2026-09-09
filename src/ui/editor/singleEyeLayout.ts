@@ -1,8 +1,24 @@
-import { isEyeVisible, type FaceModel } from '../../core/model'
+import { isEyeVisible, type ExpressionModel, type FaceModel } from '../../core/model'
 import { movePair, pairCenterX, pairCenterY, pairSpacing } from './modelEditing'
+
+export const SINGLE_EYE_NEUTRAL_EXPRESSION: Readonly<ExpressionModel> = {
+  upperLid: 0,
+  lowerLid: 0,
+  tilt: 0,
+}
+
+function cloneExpression(expression: ExpressionModel): ExpressionModel {
+  return structuredClone(expression)
+}
 
 export function isSingleEyeLayout(model: FaceModel): boolean {
   return isEyeVisible(model, 'left') && !isEyeVisible(model, 'right')
+}
+
+/** Keep authored single-eye mode visually neutral regardless of prior expression state. */
+export function enforceSingleEyeNeutralExpression(model: FaceModel): FaceModel {
+  if (!isSingleEyeLayout(model)) return model
+  return { ...model, expression: cloneExpression(SINGLE_EYE_NEUTRAL_EXPRESSION) }
 }
 
 /**
@@ -11,26 +27,37 @@ export function isSingleEyeLayout(model: FaceModel): boolean {
  * The left eye becomes the visible primary eye and is moved to the current pair
  * center. The hidden right eye is translated by the same delta so its relative
  * spacing is retained as reversible editor state without leaking a RoboEyes
- * `cyclops` flag into the generic model/renderer.
+ * `cyclops` flag into the generic model/renderer. Single-eye authoring is neutral
+ * by design; the editor shell may retain the prior two-eye expression separately
+ * so it can be restored when returning to a paired layout.
  */
 export function enableSingleEyeLayout(model: FaceModel): FaceModel {
-  if (isSingleEyeLayout(model)) return model
+  if (isSingleEyeLayout(model)) return enforceSingleEyeNeutralExpression(model)
   const centered = movePair(model, pairCenterX(model), pairCenterY(model))
   const deltaX = pairCenterX(centered) - centered.leftEye.geometry.position.x
   const deltaY = pairCenterY(centered) - centered.leftEye.geometry.position.y
   return {
     ...movePair(centered, pairCenterX(centered) + deltaX, pairCenterY(centered) + deltaY),
     eyeVisibility: { left: true, right: false },
+    expression: cloneExpression(SINGLE_EYE_NEUTRAL_EXPRESSION),
   }
 }
 
 /**
  * Return to a two-eye layout centered on the current single-eye position while
- * preserving the stored edge spacing and each eye's geometry.
+ * preserving the stored edge spacing and each eye's geometry. When supplied,
+ * `restoreExpression` restores the two-eye expression that was active before
+ * entering single-eye mode.
  */
-export function disableSingleEyeLayout(model: FaceModel): FaceModel {
+export function disableSingleEyeLayout(
+  model: FaceModel,
+  restoreExpression?: ExpressionModel,
+): FaceModel {
   if (!isSingleEyeLayout(model)) {
-    const next = { ...model }
+    const next: FaceModel = {
+      ...model,
+      ...(restoreExpression === undefined ? {} : { expression: cloneExpression(restoreExpression) }),
+    }
     delete next.eyeVisibility
     return next
   }
@@ -46,6 +73,7 @@ export function disableSingleEyeLayout(model: FaceModel): FaceModel {
 
   const next: FaceModel = {
     ...model,
+    ...(restoreExpression === undefined ? {} : { expression: cloneExpression(restoreExpression) }),
     leftEye: {
       ...model.leftEye,
       geometry: {
