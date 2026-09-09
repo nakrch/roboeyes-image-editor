@@ -21,6 +21,16 @@ import {
 import { editableAnimationDefaults } from '../editor/animationPreview'
 import type { AnimationPlaybackSession } from '../editor/animationPlayback'
 import { useToast } from '../feedback/ToastProvider'
+import {
+  DEFAULT_SPRING_PRESET,
+  EASING_OPTION_LABELS,
+  SPRING_PRESET_DURATION_MS,
+  commitSequenceTimingDraft,
+  defaultSequenceTransition,
+  springPresetDefaults,
+  transitionModeDefaults,
+  type TransitionAuthoringMode,
+} from './animationTransitionAuthoring'
 import { normalizeNumericControlValue } from './numericInputDraft'
 
 type AnimationPanelProps = {
@@ -38,10 +48,37 @@ type AnimationPanelProps = {
   onPreviewSequenceStep: (program: AnimationProgram, stepId: string) => void
 }
 
-const SPRING_PRESET_DURATION_MS: Readonly<Record<SpringPresetId, number>> = {
-  gentle: 700,
-  snappy: 400,
-  bouncy: 700,
+type SequenceTimingInputProps = {
+  value: number
+  step: number
+  onCommit: (value: number) => void
+}
+
+function SequenceTimingInput({ value, step, onCommit }: SequenceTimingInputProps) {
+  const [draft, setDraft] = useState<string | null>(null)
+
+  const commitDraft = () => {
+    if (draft === null) return
+    const next = commitSequenceTimingDraft(draft, value)
+    setDraft(null)
+    if (next !== value) onCommit(next)
+  }
+
+  return (
+    <input
+      className="number-input"
+      type="number"
+      min="0"
+      step={step}
+      value={draft ?? String(value)}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commitDraft}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.currentTarget.blur()
+        if (event.key === 'Escape') setDraft(null)
+      }}
+    />
+  )
 }
 
 function editable(defaults: PresetAnimationDefaults): PresetAnimationDefaultsV1 {
@@ -142,7 +179,7 @@ function boolValue(value: unknown, fallback: boolean): boolean {
 
 function springPresetForStep(step: AnimationProgramStep): SpringPresetId | 'custom' {
   const spring = step.spring
-  if (spring === undefined) return 'gentle'
+  if (spring === undefined) return DEFAULT_SPRING_PRESET
   return SPRING_PRESET_IDS.find((id) => {
     const preset = SPRING_PRESETS[id]
     return preset.stiffness === spring.stiffness &&
@@ -158,9 +195,7 @@ function makeStep(model: FaceModel, index: number): AnimationProgramStep {
       expression: structuredClone(model.expression),
       gaze: structuredClone(model.gaze),
     },
-    transitionDurationMs: index === 0 ? 0 : 200,
-    easing: 'ease-in-out',
-    holdDurationMs: 800,
+    ...defaultSequenceTransition(index),
   }
 }
 
@@ -550,7 +585,7 @@ export function AnimationPanel({
               const expressionId = step.target.expression === undefined
                 ? ''
                 : matchExpressionPreset(step.target.expression)
-              const transitionMode = step.spring === undefined ? 'easing' : 'spring'
+              const transitionMode: TransitionAuthoringMode = step.spring === undefined ? 'easing' : 'spring'
               const springPresetId = springPresetForStep(step)
               return (
                 <fieldset className="sequence-step" key={step.id}>
@@ -588,38 +623,54 @@ export function AnimationPanel({
                   <div className="animation-fields-grid">
                     <label className="animation-field">
                       <span>Transition (ms)</span>
-                      <input className="number-input" type="number" min="0" step="25" value={step.transitionDurationMs} onChange={(event) => updateProgram(updateStep(program, step.id, (current) => ({ ...current, transitionDurationMs: Math.max(0, Number(event.target.value) || 0) })))} />
+                      <SequenceTimingInput
+                        value={step.transitionDurationMs}
+                        step={25}
+                        onCommit={(value) => updateProgram(updateStep(program, step.id, (current) => ({
+                          ...current,
+                          transitionDurationMs: value,
+                        })))}
+                      />
                     </label>
                     <label className="animation-field">
                       <span>Hold (ms)</span>
-                      <input className="number-input" type="number" min="0" step="50" value={step.holdDurationMs} onChange={(event) => updateProgram(updateStep(program, step.id, (current) => ({ ...current, holdDurationMs: Math.max(0, Number(event.target.value) || 0) })))} />
+                      <SequenceTimingInput
+                        value={step.holdDurationMs}
+                        step={50}
+                        onCommit={(value) => updateProgram(updateStep(program, step.id, (current) => ({
+                          ...current,
+                          holdDurationMs: value,
+                        })))}
+                      />
                     </label>
                     <label className="animation-field">
                       <span>Transition type</span>
                       <select
                         value={transitionMode}
                         onChange={(event) => updateProgram(updateStep(program, step.id, (current) => {
-                          if (event.target.value === 'spring') {
-                            return {
-                              ...current,
-                              transitionDurationMs: SPRING_PRESET_DURATION_MS.gentle,
-                              spring: { ...SPRING_PRESETS.gentle },
-                            }
+                          const mode = event.target.value as TransitionAuthoringMode
+                          if (mode === 'spring') {
+                            return { ...current, ...transitionModeDefaults('spring', current.transitionDurationMs) }
                           }
-                          const next = { ...current }
+                          const next = {
+                            ...current,
+                            ...transitionModeDefaults('easing', current.transitionDurationMs),
+                          }
                           delete next.spring
                           return next
                         }))}
                       >
-                        <option value="easing">Easing</option>
                         <option value="spring">Spring</option>
+                        <option value="easing">Easing</option>
                       </select>
                     </label>
                     {transitionMode === 'easing' ? (
                       <label className="animation-field">
                         <span>Easing</span>
                         <select value={step.easing} onChange={(event) => updateProgram(updateStep(program, step.id, (current) => ({ ...current, easing: event.target.value as EasingId })))}>
-                          {EASING_IDS.map((easing) => <option key={easing} value={easing}>{easing}</option>)}
+                          {EASING_IDS.map((easing) => (
+                            <option key={easing} value={easing}>{EASING_OPTION_LABELS[easing]}</option>
+                          ))}
                         </select>
                       </label>
                     ) : (
@@ -632,8 +683,7 @@ export function AnimationPanel({
                             if (presetId === undefined) return
                             updateProgram(updateStep(program, step.id, (current) => ({
                               ...current,
-                              transitionDurationMs: SPRING_PRESET_DURATION_MS[presetId],
-                              spring: { ...SPRING_PRESETS[presetId] },
+                              ...springPresetDefaults(presetId, current.transitionDurationMs),
                             })))
                           }}
                         >
@@ -643,11 +693,15 @@ export function AnimationPanel({
                       </label>
                     )}
                   </div>
-                  {transitionMode === 'spring' && springPresetId !== 'custom' && (
+                  {transitionMode === 'spring' && springPresetId !== 'custom' ? (
                     <p className="animation-note">
                       Spring presets choose a settling-friendly transition time automatically; you can still override Transition manually.
                     </p>
-                  )}
+                  ) : transitionMode === 'easing' ? (
+                    <p className="animation-note">
+                      Easing uses a 400 ms authoring default so the curve differences are easier to see; Transition remains manually editable.
+                    </p>
+                  ) : null}
                 </fieldset>
               )
             })}
