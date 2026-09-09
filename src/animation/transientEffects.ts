@@ -101,6 +101,7 @@ const SWEAT_PEAK_HEIGHT = 7.5
 const SWEAT_FINAL_WIDTH = 1.425
 const SWEAT_FINAL_HEIGHT = 2.7
 const SWEAT_GROWTH_END_PROGRESS = 0.55
+const SWEAT_FADE_START_PROGRESS = 0.72
 const SWEAT_EYE_MARGIN = 1.5
 const SWEAT_REFERENCE_CYCLE_TRAVEL = 10
 const MAX_SWEAT_CYCLES = 10_000
@@ -368,11 +369,18 @@ function sweatOverlayAtTime(
   if (elapsedMs >= activeDurationMs) return undefined
 
   const progress = clamp(elapsedMs / activeDurationMs, 0, 1)
+  const fadeProgress = clamp(
+    (progress - SWEAT_FADE_START_PROGRESS) / (1 - SWEAT_FADE_START_PROGRESS),
+    0,
+    1,
+  )
+  const opacity = 1 - fadeProgress
+  const shrinkScale = 1 - fadeProgress * 0.25
   const y = interpolate(startY, targetY, progress)
   const size = sweatSizeAtProgress(progress, sizeScale)
-  const width = clamp(size.width, 0, model.canvas.width)
-  const height = clamp(size.height, 0, Math.max(0, safeBottom - y))
-  if (width <= 0 || height <= 0) return undefined
+  const width = clamp(size.width * shrinkScale, 0, model.canvas.width)
+  const height = clamp(size.height * shrinkScale, 0, Math.max(0, safeBottom - y))
+  if (width <= 0 || height <= 0 || opacity <= 0) return undefined
 
   const range = sweatXRange(model.canvas.width, dropIndex, definition.dropCount)
   const centerX = sampleRandomRange(
@@ -393,6 +401,7 @@ function sweatOverlayAtTime(
     height,
     roundness: clamp(definition.radius / 4, 0.35, 1),
     paint: { role: 'eye' },
+    opacity,
   }
 }
 
