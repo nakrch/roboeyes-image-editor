@@ -20,13 +20,17 @@ export type ValidStaticExportValues = {
 export type ValidAnimatedExportValues = ValidStaticExportValues & {
   durationMs: number
   fps: number
+}
+
+export type ValidGifExportValues = ValidAnimatedExportValues & {
   loopCount: number
 }
 
 export type ExportNumericValidation = {
   errors: ExportNumericErrors
   staticValues: ValidStaticExportValues | null
-  animatedValues: ValidAnimatedExportValues | null
+  webpValues: ValidAnimatedExportValues | null
+  gifValues: ValidGifExportValues | null
 }
 
 export function parseNumberDraft(value: string): NumberDraft {
@@ -85,27 +89,35 @@ export function validateExportNumericDrafts(drafts: ExportNumericDrafts): Export
     ? { width: drafts.width as number, height: drafts.height as number }
     : null
 
-  const animatedValues = staticValues !== null && durationError === null && fpsError === null && loopCountError === null
+  const webpValues = staticValues !== null && durationError === null && fpsError === null
     ? {
         ...staticValues,
         durationMs: drafts.durationMs as number,
         fps: drafts.fps as number,
-        loopCount: drafts.loopCount as number,
       }
     : null
 
-  return { errors, staticValues, animatedValues }
+  const gifValues = webpValues !== null && loopCountError === null
+    ? { ...webpValues, loopCount: drafts.loopCount as number }
+    : null
+
+  return { errors, staticValues, webpValues, gifValues }
 }
 
 export function firstStaticValidationError(validation: ExportNumericValidation): string {
   return validation.errors.width ?? validation.errors.height ?? 'Enter valid Width and Height before exporting.'
 }
 
-export function firstAnimatedValidationError(validation: ExportNumericValidation): string {
+export function firstWebpValidationError(validation: ExportNumericValidation): string {
   return validation.errors.width
     ?? validation.errors.height
     ?? validation.errors.durationMs
     ?? validation.errors.fps
-    ?? validation.errors.loopCount
     ?? 'Enter valid animation export settings before exporting.'
+}
+
+export function firstGifValidationError(validation: ExportNumericValidation): string {
+  return firstWebpValidationError(validation) === 'Enter valid animation export settings before exporting.'
+    ? validation.errors.loopCount ?? 'Enter valid GIF export settings before exporting.'
+    : firstWebpValidationError(validation)
 }
