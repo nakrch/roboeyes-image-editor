@@ -114,7 +114,7 @@ describe('deterministic animated sweat', () => {
     expect(shortReset.overlays.every((drop) => drop.id.includes('cycle-1'))).toBe(true)
   })
 
-  it('does not scale droplets with canvas alone and only weakly follows eye size', () => {
+  it('does not scale droplets with canvas alone and scales proportionally with eye size', () => {
     const base = roboEyesPreset.model
     const baseStart = resolveTransientEffectFrame(fixedSweat, [], base, 0, 17)
 
@@ -126,19 +126,27 @@ describe('deterministic animated sweat', () => {
     expect(largeCanvasStart.overlays[0].y).toBeCloseTo(baseStart.overlays[0].y)
 
     const largeEyes = structuredClone(base)
-    largeEyes.canvas = { width: 256, height: 128 }
+    largeEyes.canvas = { width: 256, height: 160 }
     largeEyes.leftEye.geometry.width = 72
     largeEyes.leftEye.geometry.height = 72
-    largeEyes.leftEye.geometry.position.y = 64
+    largeEyes.leftEye.geometry.position.y = 96
     largeEyes.rightEye.geometry.width = 72
     largeEyes.rightEye.geometry.height = 72
-    largeEyes.rightEye.geometry.position.y = 64
+    largeEyes.rightEye.geometry.position.y = 96
     const largeEyesStart = resolveTransientEffectFrame(fixedSweat, [], largeEyes, 0, 17)
 
-    expect(largeEyesStart.overlays[0].width).toBeCloseTo(2.4375)
-    expect(largeEyesStart.overlays[0].height).toBeCloseTo(4.5)
+    expect(largeEyesStart.overlays[0].width).toBeCloseTo(baseStart.overlays[0].width * 2)
+    expect(largeEyesStart.overlays[0].height).toBeCloseTo(baseStart.overlays[0].height * 2)
     expect(largeEyesStart.overlays[0].y).toBeCloseTo(4)
-    expect(largeEyesStart.overlays[0].width).toBeLessThan(baseStart.overlays[0].width * 1.5)
+
+    const tinyEyes = structuredClone(base)
+    tinyEyes.leftEye.geometry.width = 9
+    tinyEyes.leftEye.geometry.height = 9
+    tinyEyes.rightEye.geometry.width = 9
+    tinyEyes.rightEye.geometry.height = 9
+    const tinyStart = resolveTransientEffectFrame(fixedSweat, [], tinyEyes, 0, 17)
+    expect(tinyStart.overlays[0].width).toBeCloseTo(baseStart.overlays[0].width * 0.5)
+    expect(tinyStart.overlays[0].height).toBeCloseTo(baseStart.overlays[0].height * 0.5)
   })
 
   it('keeps every rendered droplet above the eye bounds, including gaze and rotation', () => {
