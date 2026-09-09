@@ -77,19 +77,23 @@ describe('deterministic animated sweat', () => {
     expect(reset.overlays.every((drop) => drop.id.includes('cycle-1'))).toBe(true)
   })
 
-  it('scales the 64px RoboEyes reference-space sweat on larger canvases without changing logical cycle timing', () => {
+  it('scales shape and distance on larger canvases while stretching cycle duration proportionally', () => {
     const large = structuredClone(roboEyesPreset.model)
     large.canvas = { width: 240, height: 240 }
+    const scale = 240 / 64
 
-    const smallMid = resolveTransientEffectFrame(fixedSweat, [], roboEyesPreset.model, 200, 17)
-    const largeMid = resolveTransientEffectFrame(fixedSweat, [], large, 200, 17)
-    const largeReset = resolveTransientEffectFrame(fixedSweat, [], large, 400, 17)
+    const largeStart = resolveTransientEffectFrame(fixedSweat, [], large, 0, 17)
+    const largeAt400 = resolveTransientEffectFrame(fixedSweat, [], large, 400, 17)
+    const largeReset = resolveTransientEffectFrame(fixedSweat, [], large, 400 * scale, 17)
 
-    expect(largeMid.overlays).toHaveLength(3)
-    expect(largeMid.overlays[0].width).toBeGreaterThan(smallMid.overlays[0].width * 3)
-    expect(largeMid.overlays[0].height).toBeGreaterThan(smallMid.overlays[0].height * 3)
-    expect(largeMid.overlays[0].y).toBeCloseTo(7 * (240 / 64))
+    expect(largeStart.overlays).toHaveLength(3)
+    expect(largeStart.overlays[0].width).toBeCloseTo(1.8 * scale)
+    expect(largeStart.overlays[0].height).toBeCloseTo(3.2 * scale)
+    expect(largeStart.overlays[0].y).toBeCloseTo(2 * scale)
+    expect(largeAt400.overlays.every((drop) => drop.id.includes('cycle-0'))).toBe(true)
+    expect(largeAt400.overlays[0].y).toBeLessThan(12 * scale)
     expect(largeReset.overlays.every((drop) => drop.id.includes('cycle-1'))).toBe(true)
+    expect(largeReset.overlays[0].y).toBeCloseTo(2 * scale)
   })
 
   it('is repeatable and sampling-order independent for the same time + seed', () => {
