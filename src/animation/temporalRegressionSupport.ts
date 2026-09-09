@@ -193,7 +193,7 @@ export const temporalSequenceProgram: AnimationProgram = {
       transitionDurationMs: 100,
       easing: 'linear',
       holdDurationMs: 150,
-      actions: [{ id: 'blink', channel: 'eye-openness', action: 'blink', offsetMs: 50 }],
+      actions: [{ id: 'blink', channel: 'eye-openness', action: 'blink', offsetMs: 50, priority: 0 }],
     },
     {
       id: 'angry',
