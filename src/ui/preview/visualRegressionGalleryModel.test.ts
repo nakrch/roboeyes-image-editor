@@ -5,6 +5,7 @@ import { phase2ExpressionVisualFixtures } from '../../renderers/svg/__fixtures__
 import {
   GALLERY_MOTION_PREVIEW_CYCLE_MS,
   applyGallerySelection,
+  isInteractiveGalleryFixture,
   sampleFixtureMotionPreview,
   selectionForFixture,
 } from './visualRegressionGalleryModel'
@@ -16,6 +17,13 @@ function fixture(id: string) {
 }
 
 describe('interactive visual regression gallery model', () => {
+  it('keeps regression-only fixtures visible but non-interactive', () => {
+    expect(isInteractiveGalleryFixture(fixture('curious-center-128x64'))).toBe(false)
+    expect(isInteractiveGalleryFixture(fixture('happy-240x240'))).toBe(false)
+    expect(isInteractiveGalleryFixture(fixture('curious-left-128x64'))).toBe(true)
+    expect(isInteractiveGalleryFixture(fixture('happy-128x64'))).toBe(true)
+  })
+
   it('applies a square fixture expression without changing the editor canvas', () => {
     const current = roboEyesToFaceModel({ ...defaultRoboEyesPreset, canvasWidth: 320, canvasHeight: 120 })
     const selected = applyGallerySelection(current, selectionForFixture(fixture('happy-240x240')))
