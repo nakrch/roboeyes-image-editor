@@ -7,13 +7,13 @@ function renderNotice(notice: ToastNotice | null): string {
 }
 
 describe('ToastViewport', () => {
-  it('renders successful completion feedback as a polite status', () => {
-    const html = renderNotice({ id: 1, tone: 'success', message: 'Download complete' })
+  it('renders non-error action feedback as a polite status', () => {
+    const html = renderNotice({ id: 1, tone: 'success', message: 'Downloading PNG…' })
 
     expect(html).toContain('toast-success')
     expect(html).toContain('role="status"')
     expect(html).toContain('aria-live="polite"')
-    expect(html).toContain('Download complete')
+    expect(html).toContain('Downloading PNG…')
   })
 
   it('renders failures as assertive alerts', () => {
