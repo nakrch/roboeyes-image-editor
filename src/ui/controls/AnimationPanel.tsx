@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { FaceModel } from '../../core/model'
 import { expressionPresets, matchExpressionPreset } from '../../core/presets'
 import {
@@ -194,6 +195,8 @@ export function AnimationPanel({
   const motion = motionDefinition(animationDefaults)
   const transient = transientDefinition(animationDefaults)
   const sweat = sweatDefinition(transient)
+  const dropletCount = Math.max(1, Math.min(8, Math.round(numberValue(sweat.dropCount, 3))))
+  const [dropletDraft, setDropletDraft] = useState<string | null>(null)
   const program = authored.program
 
   const commitAuthored = (updater: (current: PresetAnimationDefaultsV1) => PresetAnimationDefaultsV1) => {
@@ -433,9 +436,12 @@ export function AnimationPanel({
             <input
               type="checkbox"
               checked={boolValue(sweat.enabled, false)}
-              onChange={(event) => setSweat(event.target.checked
-                ? { ...sweat, kind: 'sweat', id: 'sweat', enabled: true }
-                : undefined)}
+              onChange={(event) => {
+                setDropletDraft(null)
+                setSweat(event.target.checked
+                  ? { ...sweat, kind: 'sweat', id: 'sweat', enabled: true }
+                  : undefined)
+              }}
             />
             Animated sweat
           </label>
@@ -448,19 +454,46 @@ export function AnimationPanel({
               max="8"
               step="1"
               disabled={!boolValue(sweat.enabled, false)}
-              value={Math.max(1, Math.min(8, Math.round(numberValue(sweat.dropCount, 3))))}
-              onChange={(event) => setSweat({
-                ...sweat,
-                kind: 'sweat',
-                id: 'sweat',
-                enabled: true,
-                dropCount: Math.max(1, Math.min(8, Math.round(Number(event.target.value) || 1))),
-              })}
+              value={dropletDraft ?? String(dropletCount)}
+              onChange={(event) => {
+                const draft = event.target.value
+                setDropletDraft(draft)
+                if (draft.trim() === '') return
+                const parsed = Number(draft)
+                if (!Number.isInteger(parsed) || parsed < 1 || parsed > 8) return
+                setSweat({
+                  ...sweat,
+                  kind: 'sweat',
+                  id: 'sweat',
+                  enabled: true,
+                  dropCount: parsed,
+                })
+              }}
+              onBlur={() => {
+                if (dropletDraft === null) return
+                const trimmed = dropletDraft.trim()
+                if (trimmed !== '') {
+                  const parsed = Number(trimmed)
+                  if (Number.isFinite(parsed)) {
+                    const nextCount = Math.max(1, Math.min(8, Math.round(parsed)))
+                    if (nextCount !== dropletCount) {
+                      setSweat({
+                        ...sweat,
+                        kind: 'sweat',
+                        id: 'sweat',
+                        enabled: true,
+                        dropCount: nextCount,
+                      })
+                    }
+                  }
+                }
+                setDropletDraft(null)
+              }}
             />
           </label>
         </div>
         <p className="animation-note">
-          Sweat is resolved as deterministic rounded overlays after the face state. It is stored separately from Expression/eye geometry and uses the current Seed for repeatable droplet resets.
+          Sweat is resolved as deterministic teardrop overlays after the face state. It is stored separately from Expression/eye geometry and uses the current Seed for repeatable droplet resets.
         </p>
       </details>
 
