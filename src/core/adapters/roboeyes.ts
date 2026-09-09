@@ -12,9 +12,11 @@ export type RoboEyesParameters = {
   eyeRadius: number
   /** Empty space between the inside edges of the two eyes. */
   eyeSpacing: number
-  /** Center point of the eye pair. Defaults to the canvas center. */
+  /** Center point of the eye pair, or the single visible eye in cyclops mode. Defaults to the canvas center. */
   centerX?: number
   centerY?: number
+  /** RoboEyes-compatible single-eye mode. The generic model represents this as visibility, not a renderer flag. */
+  cyclops?: boolean
   gazeX: number
   gazeY: number
   rotation: number
@@ -53,8 +55,13 @@ export function roboEyesToFaceModel(parameters: RoboEyesParameters): FaceModel {
   // eyeSpacing is edge-to-edge. Derive each center from the pair center so
   // asymmetric widths remain correctly separated around the requested center.
   const pairWidth = leftWidth + parameters.eyeSpacing + rightWidth
-  const leftX = centerX - pairWidth / 2 + leftWidth / 2
+  const pairLeftX = centerX - pairWidth / 2 + leftWidth / 2
   const rightX = centerX + pairWidth / 2 - rightWidth / 2
+  // Upstream RoboEyes makes the second eye zero-sized in cyclops mode, which
+  // causes the surviving left eye to use the full single-eye screen constraint.
+  // In the generic model we keep right-eye geometry intact but hide it, while
+  // placing the visible eye at the requested face center.
+  const leftX = parameters.cyclops ? centerX : pairLeftX
 
   return {
     canvas: {
@@ -81,5 +88,6 @@ export function roboEyesToFaceModel(parameters: RoboEyesParameters): FaceModel {
       stroke: parameters.eyeStrokeColor ?? parameters.eyeColor,
       background: parameters.backgroundColor,
     },
+    ...(parameters.cyclops ? { eyeVisibility: { left: true, right: false } } : {}),
   }
 }
