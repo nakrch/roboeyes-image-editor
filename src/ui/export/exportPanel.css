@@ -1,0 +1,22 @@
+.export-field-pair {
+  display: grid;
+  gap: 6px;
+}
+
+.export-validation-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.export-field-error {
+  margin: 0;
+  color: #fca5a5;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.export-panel .number-input[aria-invalid="true"] {
+  border-color: #b91c1c;
+}

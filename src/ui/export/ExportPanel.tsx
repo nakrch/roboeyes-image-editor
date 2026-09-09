@@ -14,14 +14,21 @@ import {
   svgToBlob,
 } from '../../export/staticAssets'
 import { useToast } from '../feedback/ToastProvider'
+import {
+  firstGifValidationError,
+  firstStaticValidationError,
+  firstWebpValidationError,
+  parseNumberDraft,
+  validateExportNumericDrafts,
+  type NumberDraft,
+} from './exportNumericValidation'
+import './exportPanel.css'
 
 type ExportPanelProps = {
   model: FaceModel
   transparentBackground: boolean
   resolveAnimationFrame: AnimatedExportFrameResolver
 }
-
-type NumberDraft = number | ''
 
 const sizePresets = [
   { key: 'current', label: 'Current canvas' },
@@ -33,18 +40,29 @@ const sizePresets = [
   { key: 'custom', label: 'Custom' },
 ] as const
 
-function parseNumberDraft(value: string): NumberDraft {
-  return value === '' ? '' : Number(value)
+function fieldError(id: string, message: string | undefined) {
+  if (message === undefined) return null
+  return <small className="export-field-error" id={id}>{message}</small>
 }
 
-function safeDimension(value: NumberDraft): number {
-  const numericValue = value === '' ? Number.NaN : value
-  if (!Number.isFinite(numericValue)) return 1
-  return Math.max(1, Math.round(numericValue))
-}
+function pairedFieldErrors(
+  firstId: string,
+  firstMessage: string | undefined,
+  secondId: string,
+  secondMessage: string | undefined,
+) {
+  if (firstMessage === undefined && secondMessage === undefined) return null
 
-function safePositive(value: NumberDraft, fallback: number): number {
-  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback
+  return (
+    <div className="export-validation-pair">
+      {firstMessage === undefined
+        ? <span aria-hidden="true" />
+        : fieldError(firstId, firstMessage)}
+      {secondMessage === undefined
+        ? <span aria-hidden="true" />
+        : fieldError(secondId, secondMessage)}
+    </div>
+  )
 }
 
 export function ExportPanel({ model, transparentBackground, resolveAnimationFrame }: ExportPanelProps) {
@@ -66,6 +84,7 @@ export function ExportPanel({ model, transparentBackground, resolveAnimationFram
   }, [model.canvas.width, model.canvas.height, sizeKey])
 
   const selectSize = (key: string) => {
+    setError('')
     setSizeKey(key)
     if (key === 'current') {
       setWidth(model.canvas.width)
@@ -80,22 +99,27 @@ export function ExportPanel({ model, transparentBackground, resolveAnimationFram
     }
   }
 
-  const dimensions = {
-    width: safeDimension(width),
-    height: safeDimension(height),
-  }
-  const baseName = `roboeyes-${dimensions.width}x${dimensions.height}`
-  const staticOptions = { dimensions, transparentBackground }
-  const animationOptions = {
-    dimensions,
-    transparentBackground,
-    durationMs: safePositive(durationMs, 2000),
-    fps: safePositive(fps, 20),
-    loopCount: Math.max(0, Math.round(typeof loopCount === 'number' && Number.isFinite(loopCount) ? loopCount : 0)),
+  const validation = validateExportNumericDrafts({ width, height, durationMs, fps, loopCount })
+  const dimensions = validation.staticValues
+  const staticDisabled = busy || dimensions === null
+  const webpDisabled = busy || validation.webpValues === null
+  const gifDisabled = busy || validation.gifValues === null
+
+  const reportValidationFailure = (message: string) => {
+    setError(message)
+    notify('error', message)
   }
 
   const exportSvg = () => {
     setError('')
+    const values = validation.staticValues
+    if (values === null) {
+      reportValidationFailure(firstStaticValidationError(validation))
+      return
+    }
+
+    const staticOptions = { dimensions: values, transparentBackground }
+    const baseName = `roboeyes-${values.width}x${values.height}`
     try {
       const svg = renderExportSvg(model, staticOptions)
       downloadBlob(svgToBlob(svg), `${baseName}.svg`)
@@ -108,8 +132,16 @@ export function ExportPanel({ model, transparentBackground, resolveAnimationFram
   }
 
   const exportPng = async () => {
-    setBusy(true)
     setError('')
+    const values = validation.staticValues
+    if (values === null) {
+      reportValidationFailure(firstStaticValidationError(validation))
+      return
+    }
+
+    setBusy(true)
+    const staticOptions = { dimensions: values, transparentBackground }
+    const baseName = `roboeyes-${values.width}x${values.height}`
     try {
       const png = await renderExportPng(model, staticOptions)
       downloadBlob(png, `${baseName}.png`)
@@ -124,8 +156,26 @@ export function ExportPanel({ model, transparentBackground, resolveAnimationFram
   }
 
   const exportAnimation = async (format: 'gif' | 'webp') => {
-    setBusy(true)
     setError('')
+    const values = format === 'gif' ? validation.gifValues : validation.webpValues
+    if (values === null) {
+      reportValidationFailure(format === 'gif'
+        ? firstGifValidationError(validation)
+        : firstWebpValidationError(validation))
+      return
+    }
+
+    setBusy(true)
+    const dimensions = { width: values.width, height: values.height }
+    const baseName = `roboeyes-${dimensions.width}x${dimensions.height}`
+    const animationOptions = {
+      dimensions,
+      transparentBackground,
+      durationMs: values.durationMs,
+      fps: values.fps,
+      ...(format === 'gif' ? { loopCount: validation.gifValues!.loopCount } : {}),
+    }
+
     try {
       const frames = await rasterizeAnimationExportFrames(animationOptions, resolveAnimationFrame)
       const blob = format === 'gif'
@@ -158,54 +208,131 @@ export function ExportPanel({ model, transparentBackground, resolveAnimationFram
         </select>
       </label>
 
-      <div className="export-dimensions">
-        <label className="control-field">
-          <span>Width</span>
-          <input className="number-input" type="number" min={1} value={width} onChange={(event) => {
-            setSizeKey('custom')
-            setWidth(parseNumberDraft(event.target.value))
-          }} />
-        </label>
-        <label className="control-field">
-          <span>Height</span>
-          <input className="number-input" type="number" min={1} value={height} onChange={(event) => {
-            setSizeKey('custom')
-            setHeight(parseNumberDraft(event.target.value))
-          }} />
-        </label>
+      <div className="export-field-pair">
+        <div className="export-dimensions">
+          <label className="control-field">
+            <span>Width</span>
+            <input
+              className="number-input"
+              type="number"
+              min={1}
+              step={1}
+              value={width}
+              aria-invalid={validation.errors.width !== undefined}
+              aria-describedby={validation.errors.width === undefined ? undefined : 'export-width-error'}
+              onChange={(event) => {
+                setError('')
+                setSizeKey('custom')
+                setWidth(parseNumberDraft(event.target.value))
+              }}
+            />
+          </label>
+          <label className="control-field">
+            <span>Height</span>
+            <input
+              className="number-input"
+              type="number"
+              min={1}
+              step={1}
+              value={height}
+              aria-invalid={validation.errors.height !== undefined}
+              aria-describedby={validation.errors.height === undefined ? undefined : 'export-height-error'}
+              onChange={(event) => {
+                setError('')
+                setSizeKey('custom')
+                setHeight(parseNumberDraft(event.target.value))
+              }}
+            />
+          </label>
+        </div>
+        {pairedFieldErrors(
+          'export-width-error',
+          validation.errors.width,
+          'export-height-error',
+          validation.errors.height,
+        )}
       </div>
 
       <p className="export-note">
-        {transparentBackground ? 'Transparent background' : 'Opaque background'} · exact {dimensions.width} × {dimensions.height}px output
+        {dimensions === null
+          ? 'Enter valid Width and Height to enable image export.'
+          : `${transparentBackground ? 'Transparent background' : 'Opaque background'} · exact ${dimensions.width} × ${dimensions.height}px output`}
       </p>
 
       <div className="export-actions">
-        <button type="button" onClick={exportSvg} disabled={busy}>Download SVG</button>
-        <button type="button" onClick={exportPng} disabled={busy}>Download PNG</button>
+        <button type="button" onClick={exportSvg} disabled={staticDisabled}>Download SVG</button>
+        <button type="button" onClick={exportPng} disabled={staticDisabled}>Download PNG</button>
       </div>
 
       <div className="panel-heading export-animation-heading">
         <p className="eyebrow">Animation</p>
         <h3>Deterministic frames</h3>
       </div>
-      <div className="export-dimensions">
-        <label className="control-field">
-          <span>Duration (ms)</span>
-          <input className="number-input" type="number" min={1} step={100} value={durationMs} onChange={(event) => setDurationMs(parseNumberDraft(event.target.value))} />
-        </label>
-        <label className="control-field">
-          <span>FPS</span>
-          <input className="number-input" type="number" min={1} max={60} step={1} value={fps} onChange={(event) => setFps(parseNumberDraft(event.target.value))} />
-        </label>
+      <div className="export-field-pair">
+        <div className="export-dimensions">
+          <label className="control-field">
+            <span>Duration (ms)</span>
+            <input
+              className="number-input"
+              type="number"
+              min={1}
+              step={100}
+              value={durationMs}
+              aria-invalid={validation.errors.durationMs !== undefined}
+              aria-describedby={validation.errors.durationMs === undefined ? undefined : 'export-duration-error'}
+              onChange={(event) => {
+                setError('')
+                setDurationMs(parseNumberDraft(event.target.value))
+              }}
+            />
+          </label>
+          <label className="control-field">
+            <span>FPS</span>
+            <input
+              className="number-input"
+              type="number"
+              min={1}
+              max={60}
+              step={1}
+              value={fps}
+              aria-invalid={validation.errors.fps !== undefined}
+              aria-describedby={validation.errors.fps === undefined ? undefined : 'export-fps-error'}
+              onChange={(event) => {
+                setError('')
+                setFps(parseNumberDraft(event.target.value))
+              }}
+            />
+          </label>
+        </div>
+        {pairedFieldErrors(
+          'export-duration-error',
+          validation.errors.durationMs,
+          'export-fps-error',
+          validation.errors.fps,
+        )}
       </div>
       <label className="control-field">
         <span>GIF loop count <small>(0 = forever)</small></span>
-        <input className="number-input" type="number" min={0} max={65535} step={1} value={loopCount} onChange={(event) => setLoopCount(parseNumberDraft(event.target.value))} />
+        <input
+          className="number-input"
+          type="number"
+          min={0}
+          max={65535}
+          step={1}
+          value={loopCount}
+          aria-invalid={validation.errors.loopCount !== undefined}
+          aria-describedby={validation.errors.loopCount === undefined ? undefined : 'export-loop-count-error'}
+          onChange={(event) => {
+            setError('')
+            setLoopCount(parseNumberDraft(event.target.value))
+          }}
+        />
+        {fieldError('export-loop-count-error', validation.errors.loopCount)}
       </label>
       <p className="export-note">Frames are sampled from authored animation time, not screen refresh timing.</p>
       <div className="export-actions">
-        <button type="button" onClick={() => exportAnimation('webp')} disabled={busy}>{busy ? 'Exporting…' : 'Download WebP'}</button>
-        <button type="button" onClick={() => exportAnimation('gif')} disabled={busy}>{busy ? 'Exporting…' : 'Download GIF'}</button>
+        <button type="button" onClick={() => exportAnimation('webp')} disabled={webpDisabled}>{busy ? 'Exporting…' : 'Download WebP'}</button>
+        <button type="button" onClick={() => exportAnimation('gif')} disabled={gifDisabled}>{busy ? 'Exporting…' : 'Download GIF'}</button>
       </div>
       <details className="export-limitations">
         <summary>Animated format notes</summary>
