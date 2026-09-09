@@ -5,6 +5,7 @@ import {
   normalizeFaceStateTarget,
   resolveFaceStateTarget,
   interpolateFaceModel,
+  normalizeFaceTransitionDefinition,
   sampleFaceTransition,
   type FaceStateTarget,
   type FaceTransitionDefinition,
@@ -148,6 +149,14 @@ export function normalizeSpringFaceTransitionDefinition(value: unknown): SpringF
   }
 }
 
+/** Normalize either supported serialized state-transition definition. */
+export function normalizeGenericFaceTransitionDefinition(value: unknown): GenericFaceTransitionDefinition {
+  if (!isRecord(value)) throw new TypeError('Face transition must be an object')
+  if (value.kind === FACE_TRANSITION_KIND) return normalizeFaceTransitionDefinition(value)
+  if (value.kind === SPRING_FACE_TRANSITION_KIND) return normalizeSpringFaceTransitionDefinition(value)
+  throw new RangeError(`Unsupported face transition kind: ${String(value.kind)}`)
+}
+
 export function createSpringFaceTransition(
   id: string,
   target: FaceStateTarget,
@@ -230,11 +239,28 @@ export function retargetSpringFaceTransition(
 
 /** Runtime channel resolver for serialized spring transition authoring data. */
 export const springStateTransitionChannelResolver: AnimationChannelResolver = ({
-  definition,
+  channelDefinition,
   model,
   context,
-}) => sampleSpringFaceTransition(
-  normalizeSpringFaceTransitionDefinition(definition),
+}) => {
+  if (channelDefinition === undefined) return model
+  return sampleSpringFaceTransition(
+    normalizeSpringFaceTransitionDefinition(channelDefinition),
+    model,
+    context.timeMs,
+  )
+}
+
+/** Runtime channel resolver accepting either easing or Spring authored transition data. */
+export const genericStateTransitionChannelResolver: AnimationChannelResolver = ({
+  channelDefinition,
   model,
-  context.timeMs,
-)
+  context,
+}) => {
+  if (channelDefinition === undefined) return model
+  return sampleGenericFaceTransition(
+    normalizeGenericFaceTransitionDefinition(channelDefinition),
+    model,
+    context.timeMs,
+  )
+}
