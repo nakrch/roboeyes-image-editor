@@ -30,22 +30,102 @@ They are conveniences, not renderer behavior names.
 
 Existing easing transitions remain valid as `FaceTransitionDefinition`. Spring transitions use `SpringFaceTransitionDefinition`; both are accepted by `GenericFaceTransitionDefinition` and sampled through `sampleGenericFaceTransition()`.
 
-Both target the same generic `FaceStateTarget` surface and therefore support gaze, eye geometry/pose, spacing, rotation, and expression numeric fields without expression-name branches.
+`genericStateTransitionChannelResolver` is the normal runtime adapter for the `state-transition` channel. It reads the channel-specific serialized definition and dispatches to easing or Spring sampling by `kind`.
+
+Both transition kinds target the same generic `FaceStateTarget` surface and therefore support gaze, eye geometry/pose, spacing, rotation, and expression numeric fields without expression-name branches.
+
+## Persistence
+
+Persisted `state-transition` channel data accepts either:
+
+```ts
+{
+  kind: 'face-model-transition'
+  id: string
+  startTimeMs: number
+  durationMs: number
+  easing: EasingId
+  target: FaceStateTarget
+}
+```
+
+or:
+
+```ts
+{
+  kind: 'spring-face-model-transition'
+  id: string
+  startTimeMs: number
+  durationMs: number
+  spring: {
+    stiffness: number
+    damping: number
+    mass: number
+  }
+  target: FaceStateTarget
+}
+```
+
+Runtime retarget snapshots such as `from` remain non-persistent. Unknown fields inside the Spring parameter object are rejected by the strict preset validator.
+
+## State-program authoring
+
+Ordered state programs keep the existing `easing` field for compatibility. A step becomes a Spring entry transition when it also contains serialized `spring` parameters:
+
+```ts
+{
+  id: 'happy'
+  target: { expression: happyExpression }
+  transitionDurationMs: 700
+  easing: 'ease-in-out' // retained for compatibility/fallback
+  spring: { stiffness: 120, damping: 22, mass: 1 }
+  holdDurationMs: 600
+}
+```
+
+Existing programs without `spring` are unchanged and continue to use easing.
+
+The browser State sequence editor exposes:
+
+- `Transition type`: `Spring` or `Easing`
+- `Spring preset`: `gentle`, `snappy`, or `bouncy` when Spring is selected
+- `Easing`: deterministic easing choices with short author-facing descriptions when Easing is selected
+
+New browser-authored sequence steps default to **Spring + `gentle`**. Subsequent steps start with a 700 ms transition; the initial step remains at 0 ms because it initially represents the current face state. Selecting a built-in Spring preset applies its settling-friendly authoring duration (`gentle` 700 ms, `snappy` 400 ms, `bouncy` 700 ms). Switching to Easing uses a 400 ms authoring default so curve differences are easier to inspect. These values remain manually editable and do not migrate existing persisted programs.
+
+Selecting a Spring preset writes its explicit `stiffness` / `damping` / `mass` values into the authored program. Imported custom Spring parameter sets remain valid; the editor labels them as custom rather than silently replacing them.
+
+## Preview and animated export
+
+The editor preview resolves Spring program steps through `sampleAnimationProgram()` and serialized `state-transition` channels through `genericStateTransitionChannelResolver`.
+
+Animated WebP/GIF export uses the same deterministic editor frame resolver at explicit timestamps, so authored Spring behavior is shared by preview and animated export rather than being reimplemented in an encoder-specific path.
 
 ## Seeking and retargeting
 
-A spring transition is sampled directly from `startTimeMs`, the requested logical `timeMs`, and its serialized spring parameters. Sampling time 420 ms directly is therefore equivalent to sampling many earlier timestamps and then 420 ms.
+A Spring transition is sampled directly from `startTimeMs`, the requested logical `timeMs`, and its serialized Spring parameters. Sampling time 420 ms directly is therefore equivalent to sampling many earlier timestamps and then 420 ms.
 
 `retargetSpringFaceTransition()` first resolves the exact in-flight model at the retarget timestamp and stores that model as the new transition's explicit `from` state. Sampling the replacement transition at the retarget timestamp is byte/geometry-equivalent to the state immediately before retargeting, so there is no position snap.
 
-The new spring begins with zero implicit velocity. Position continuity is guaranteed; velocity continuity is deliberately not hidden as mutable runtime state.
+The new Spring begins with zero implicit velocity. Position continuity is guaranteed; velocity continuity is deliberately not hidden as mutable runtime state.
 
 ## Duration and safety
 
-`durationMs` remains the authored hard completion boundary. Before that boundary the physical spring response determines progress; at the boundary the exact target state is returned.
+`durationMs` remains the authored hard completion boundary. Before that boundary the physical Spring response determines progress; at the boundary the exact target state is returned.
 
-Underdamped spring math may overshoot above 1. The physical response remains observable through `springResponse()`, but FaceModel sampling clamps interpolation progress to the established `0..1` model boundary. This deliberately prevents spring overshoot from bypassing gaze/canvas and eyelid-aperture safety constraints. Renderer code remains timer-free and physics-free.
+Underdamped Spring math may overshoot above 1. That overshoot is intentionally preserved in the resolved face motion, so `bouncy` can move past an expression, gaze, pose, or geometry target and then return. Safety is enforced on the resulting `FaceModel`, not by flattening the Spring response to `0..1`.
+
+The safety boundary is deterministic:
+
+- gaze overshoot is clamped to the canvas-safe gaze range;
+- geometry overshoot is allowed while eye dimensions remain non-negative and the eyes can still fit the canvas;
+- expression overshoot is allowed while eyelid aperture constraints remain valid;
+- if an overshoot would cross a geometry/expression safety boundary, the evaluator deterministically bisects back to the furthest safe point toward the target endpoint.
+
+This keeps the visible character of `bouncy` without allowing Spring motion to bypass the established FaceModel invariants. State-program Spring sampling uses the same safe overshoot interpolation as direct/runtime Spring transitions. Renderer code remains timer-free and physics-free.
 
 ## Reduced motion
 
-Spring definitions are authoring data and are not rewritten by OS accessibility preferences. Preview/UI code may suppress automatic motion under `prefers-reduced-motion`, consistent with the existing Phase 3 policy. Deterministic export and direct logical-time sampling do not silently change serialized spring definitions.
+Spring definitions are authoring data and are never rewritten by OS accessibility preferences.
+
+The editor's existing reduced-motion policy suppresses automatic authored definition/profile motion in preview while leaving serialized data untouched. Ordered state-program authoring remains explicit user-authored playback data and continues to use its selected easing/Spring semantics. Deterministic export and direct logical-time sampling never mutate the serialized Spring definition.

@@ -24,14 +24,16 @@ A program is versioned plain data:
       target: { expression: neutralExpression },
       transitionDurationMs: 0,
       easing: 'ease-in-out',
+      spring: { stiffness: 120, damping: 22, mass: 1 },
       holdDurationMs: 800,
       actions: [],
     },
     {
       id: 'happy',
       target: { expression: happyExpression },
-      transitionDurationMs: 200,
+      transitionDurationMs: 700,
       easing: 'ease-in-out',
+      spring: { stiffness: 120, damping: 22, mass: 1 },
       holdDurationMs: 600,
     },
   ],
@@ -39,6 +41,26 @@ A program is versioned plain data:
 ```
 
 `transitionDurationMs` is the **entry transition into that step** from the previous resolved state. The first step transitions from the caller-supplied base `FaceModel`; subsequent steps transition from the previous authored step target.
+
+`easing` remains required for compatibility and is used when `spring` is absent. When `spring` is present, the entry transition uses the deterministic Spring response instead. Existing program JSON without `spring` therefore keeps its previous easing semantics unchanged.
+
+Spring program steps preserve safe physical overshoot before the hard `transitionDurationMs` completion boundary. A `bouncy` step can visibly move past its target and return; gaze/geometry/expression safety is enforced on the resolved FaceModel rather than by flattening Spring progress to `0..1`.
+
+## Browser authoring defaults
+
+New State sequence steps created in the browser use **Spring + `gentle`** by default. The first step keeps a zero-duration entry transition because it initially represents the current face state; subsequent new steps use the `gentle` recommended 700 ms transition.
+
+Built-in Spring presets use settling-friendly authoring durations when selected:
+
+- `gentle`: 700 ms
+- `snappy`: 400 ms
+- `bouncy`: 700 ms
+
+Switching to Easing uses a 400 ms authoring default, which makes the differences between the deterministic easing curves easier to inspect than the previous 200 ms editor default. The Easing dropdown describes the curve intent (`constant speed`, `slow start`, `slow finish`, and related variants). `Transition (ms)` remains manually editable after any default is applied.
+
+These are editor defaults, not runtime constraints. Existing persisted programs are not migrated or rewritten when loaded.
+
+`Transition (ms)` and `Hold (ms)` use draft/commit editing: the input may be temporarily empty while typing, and the authored program is updated only on Enter or blur with a valid non-negative integer. An empty or invalid draft restores the previous committed value rather than prematurely writing `0`.
 
 Every partial `FaceStateTarget` is resolved against the same program base model before sampling. This prevents unspecified fields from accumulating drift across long loops.
 

@@ -199,6 +199,9 @@ export type {
 
 export {
   createSpringFaceTransition,
+  genericStateTransitionChannelResolver,
+  interpolateSpringFaceModel,
+  normalizeGenericFaceTransitionDefinition,
   normalizeSpringFaceTransitionDefinition,
   normalizeSpringParameters,
   retargetSpringFaceTransition,

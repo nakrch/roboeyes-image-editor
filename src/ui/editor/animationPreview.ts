@@ -13,10 +13,10 @@ import {
   PRESET_ANIMATION_DEFAULTS_VERSION,
   behaviorProfileChannelResolvers,
   evaluateAnimationFrame,
+  genericStateTransitionChannelResolver,
   initializePresetAnimation,
   resolveTransientEffectFrame,
   sampleAnimationProgram,
-  stateTransitionChannelResolver,
   type AnimationChannelResolvers,
   type AnimationDefinition,
   type JsonObject,
@@ -40,7 +40,7 @@ export type EditorAnimationPreviewFrame = {
 
 const editorChannelResolvers: AnimationChannelResolvers = {
   ...behaviorProfileChannelResolvers,
-  'state-transition': stateTransitionChannelResolver,
+  'state-transition': genericStateTransitionChannelResolver,
 }
 
 const ROBOEYES_REFERENCE_SWEAT_FALL_SPEED = 0.025

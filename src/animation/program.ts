@@ -11,6 +11,12 @@ import {
   type RuntimeAnimationEvent,
 } from './runtime'
 import {
+  interpolateSpringFaceModel,
+  normalizeSpringParameters,
+  springResponse,
+  type SpringParameters,
+} from './spring'
+import {
   interpolateFaceModel,
   normalizeFaceStateTarget,
   resolveFaceStateTarget,
@@ -36,7 +42,10 @@ export type AnimationProgramStep = {
   target: FaceStateTarget
   /** Entry transition from the previous resolved state into this step target. */
   transitionDurationMs: number
+  /** Existing easing remains the compatibility/default transition mode. */
   easing: EasingId
+  /** When present, the entry transition uses these deterministic Spring parameters instead of easing. */
+  spring?: SpringParameters
   holdDurationMs: number
   actions?: readonly ProgramAction[]
 }
@@ -131,6 +140,7 @@ function normalizeStep(value: unknown, stepIndex: number): AnimationProgramStep 
   if (typeof value.easing !== 'string' || !isEasingId(value.easing)) {
     throw new RangeError(`Program step ${id} easing must be a supported easing id`)
   }
+  const spring = value.spring === undefined ? undefined : normalizeSpringParameters(value.spring)
   if (!Array.isArray(value.actions ?? [])) throw new TypeError(`Program step ${id} actions must be an array`)
   const actions = (value.actions as unknown[] | undefined ?? []).map((action, index) =>
     normalizeAction(action, id, index, holdDurationMs))
@@ -142,6 +152,7 @@ function normalizeStep(value: unknown, stepIndex: number): AnimationProgramStep 
     target: normalizeFaceStateTarget(value.target ?? {}),
     transitionDurationMs,
     easing: value.easing,
+    ...(spring === undefined ? {} : { spring }),
     holdDurationMs,
     ...(actions.length === 0 ? {} : { actions }),
   }
@@ -352,9 +363,16 @@ export function sampleAnimationProgram(
     if (localTimeMs < transitionEnd && step.transitionDurationMs > 0) {
       const source = sourceModelForVisit(program, targets, traversal, cycleIndex, visitIndex, baseModel)
       const rawProgress = Math.max(0, Math.min(1, (localTimeMs - start) / step.transitionDurationMs))
-      const progress = applyEasing(step.easing, rawProgress)
+      const springProgress = step.spring === undefined
+        ? undefined
+        : springResponse(step.spring, localTimeMs - start)
+      const progress = springProgress === undefined
+        ? applyEasing(step.easing, rawProgress)
+        : Math.min(1, Math.max(0, springProgress))
       return {
-        model: interpolateFaceModel(source, target, progress),
+        model: springProgress === undefined
+          ? interpolateFaceModel(source, target, progress)
+          : interpolateSpringFaceModel(source, target, springProgress),
         programTimeMs: localTimeMs,
         cycleIndex,
         stepIndex: visit.stepIndex,
