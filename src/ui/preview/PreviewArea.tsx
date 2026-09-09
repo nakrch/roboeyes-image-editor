@@ -2,15 +2,12 @@ import { useMemo } from 'react'
 import type { TransientOverlay } from '../../animation'
 import type { FaceModel } from '../../core/model'
 import { renderFaceToSvg } from '../../renderers/svg'
-import { PreviewDisplayPanel } from '../controls/PreviewDisplayPanel'
 
 type PreviewAreaProps = {
   model: FaceModel
   overlays?: readonly TransientOverlay[]
   transparentBackground: boolean
   pixelPerfect: boolean
-  onTransparentBackgroundChange: (value: boolean) => void
-  onPixelPerfectChange: (value: boolean) => void
 }
 
 export function PreviewArea({
@@ -18,8 +15,6 @@ export function PreviewArea({
   overlays = [],
   transparentBackground,
   pixelPerfect,
-  onTransparentBackgroundChange,
-  onPixelPerfectChange,
 }: PreviewAreaProps) {
   const svg = useMemo(
     () => renderFaceToSvg(model, { transparentBackground, overlays }),
@@ -27,39 +22,29 @@ export function PreviewArea({
   )
 
   return (
-    <>
-      <section className="panel preview-panel" aria-label="Preview">
-        <div className="preview-title-row" aria-hidden="true">
-          <p className="eyebrow">Preview</p>
-        </div>
+    <section className="panel preview-panel" aria-label="Preview">
+      <div className="preview-title-row" aria-hidden="true">
+        <p className="eyebrow">Preview</p>
+      </div>
 
-        <div className="preview-stage">
-          <div
-            className={`svg-preview ${pixelPerfect ? 'pixel-perfect' : 'scaled'}`}
-            style={
-              pixelPerfect
-                ? { width: model.canvas.width, height: model.canvas.height }
-                : { aspectRatio: `${model.canvas.width} / ${model.canvas.height}` }
-            }
-            role="img"
-            aria-label="Robot face SVG preview"
-            dangerouslySetInnerHTML={{ __html: svg }}
-          />
-        </div>
+      <div className="preview-stage">
+        <div
+          className={`svg-preview ${pixelPerfect ? 'pixel-perfect' : 'scaled'}`}
+          style={
+            pixelPerfect
+              ? { width: model.canvas.width, height: model.canvas.height }
+              : { aspectRatio: `${model.canvas.width} / ${model.canvas.height}` }
+          }
+          role="img"
+          aria-label="Robot face SVG preview"
+          dangerouslySetInnerHTML={{ __html: svg }}
+        />
+      </div>
 
-        <details className="svg-source">
-          <summary>Standalone SVG source</summary>
-          <textarea readOnly value={svg} aria-label="Standalone SVG source" />
-        </details>
-      </section>
-
-      <PreviewDisplayPanel
-        model={model}
-        transparentBackground={transparentBackground}
-        pixelPerfect={pixelPerfect}
-        onTransparentBackgroundChange={onTransparentBackgroundChange}
-        onPixelPerfectChange={onPixelPerfectChange}
-      />
-    </>
+      <details className="svg-source">
+        <summary>Standalone SVG source</summary>
+        <textarea readOnly value={svg} aria-label="Standalone SVG source" />
+      </details>
+    </section>
   )
 }
