@@ -99,7 +99,7 @@ export function ExportPanel({ model, transparentBackground, resolveAnimationFram
     try {
       const svg = renderExportSvg(model, staticOptions)
       downloadBlob(svgToBlob(svg), `${baseName}.svg`)
-      notify('success', 'SVG download complete.')
+      notify('success', 'Downloading SVG…')
     } catch {
       const message = 'Could not export SVG in this browser.'
       setError(message)
@@ -113,7 +113,7 @@ export function ExportPanel({ model, transparentBackground, resolveAnimationFram
     try {
       const png = await renderExportPng(model, staticOptions)
       downloadBlob(png, `${baseName}.png`)
-      notify('success', 'PNG download complete.')
+      notify('success', 'Downloading PNG…')
     } catch {
       const message = 'Could not export PNG in this browser.'
       setError(message)
@@ -132,7 +132,7 @@ export function ExportPanel({ model, transparentBackground, resolveAnimationFram
         ? await encodeAnimatedGif(frames, animationOptions)
         : await encodeAnimatedWebp(frames, animationOptions)
       downloadBlob(blob, `${baseName}.${format}`)
-      notify('success', `${format.toUpperCase()} download complete.`)
+      notify('success', `Downloading ${format.toUpperCase()}…`)
     } catch {
       const message = `Could not export animated ${format.toUpperCase()} in this browser.`
       setError(message)
