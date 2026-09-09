@@ -1,4 +1,11 @@
-import { canFitEyesInCanvas, clampGaze, isGazeCanvasSafe, type FaceModel } from '../../core/model'
+import {
+  canFitEyesInCanvas,
+  clampGaze,
+  gazeLimits,
+  isGazeCanvasSafe,
+  type FaceModel,
+  type NumericRange,
+} from '../../core/model'
 import { expressionPresets } from '../../core/presets'
 import {
   ANIMATION_DEFINITION_VERSION,
@@ -11,6 +18,7 @@ import {
   type AnimationChannelResolvers,
   type AnimationDefinition,
   type JsonObject,
+  type JsonValue,
   type PresetAnimationDefaults,
   type PresetAnimationDefaultsV1,
   type RuntimeAnimationEvent,
@@ -49,6 +57,59 @@ function mergeDefinitions(
     version: ANIMATION_DEFINITION_VERSION,
     enabled: Boolean(profileDefinition?.enabled || authoredDefinition.enabled),
     ...(Object.keys(channels).length === 0 ? {} : { channels }),
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function fitRequestedRange(
+  value: unknown,
+  safe: NumericRange,
+  current: number,
+): { min: number; max: number } | undefined {
+  if (!isRecord(value) ||
+      typeof value.min !== 'number' || !Number.isFinite(value.min) ||
+      typeof value.max !== 'number' || !Number.isFinite(value.max)) {
+    return undefined
+  }
+
+  const min = Math.max(value.min, safe.min)
+  const max = Math.min(value.max, safe.max)
+  if (min <= max) return { min, max }
+
+  // The authored/profile wander window can become completely unreachable when
+  // the eye pair is moved near a canvas edge. Keep the behavior channel alive by
+  // temporarily pinning this axis to the current safe gaze instead of allowing
+  // idle-gaze to throw. This is preview-only and never rewrites persisted data.
+  const pinned = Math.min(safe.max, Math.max(safe.min, current))
+  return { min: pinned, max: pinned }
+}
+
+function fitIdleGazeToPreviewModel(
+  definition: AnimationDefinition,
+  model: FaceModel,
+): AnimationDefinition {
+  const channels = definition.enabled ? definition.channels : undefined
+  const gazeChannel = channels?.['gaze-pose']
+  if (!isRecord(gazeChannel) || gazeChannel.kind !== 'idle-gaze') return definition
+
+  const limits = gazeLimits(model)
+  const xRange = fitRequestedRange(gazeChannel.xRange, limits.x, model.gaze.x)
+  const yRange = fitRequestedRange(gazeChannel.yRange, limits.y, model.gaze.y)
+  const nextGazeChannel: Record<string, JsonValue> = {
+    ...(gazeChannel as Record<string, JsonValue>),
+    ...(xRange === undefined ? {} : { xRange }),
+    ...(yRange === undefined ? {} : { yRange }),
+  }
+
+  return {
+    ...definition,
+    channels: {
+      ...channels,
+      'gaze-pose': nextGazeChannel,
+    },
   }
 }
 
@@ -120,10 +181,13 @@ export function evaluateEditorAnimationFrame(
       programEvents = sample.runtimeEvents
     }
 
-    const definition = mergeDefinitions(
-      initialized.behaviorProfile?.animation,
-      initialized.definition,
-      options.reducedMotion ?? false,
+    const definition = fitIdleGazeToPreviewModel(
+      mergeDefinitions(
+        initialized.behaviorProfile?.animation,
+        initialized.definition,
+        options.reducedMotion ?? false,
+      ),
+      stateModel,
     )
 
     return evaluateAnimationFrame({
