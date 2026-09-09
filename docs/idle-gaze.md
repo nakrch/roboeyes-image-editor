@@ -109,14 +109,8 @@ idle evaluation returns the same target schedule, target positions, and resolved
 
 There is no `Date.now()`, `performance.now()`, `Math.random()`, frame counter, or mutable renderer state in idle evaluation.
 
-## Scope boundary
+## Layer boundary
 
-Issue #102 does not add:
+Idle gaze owns deterministic bounded-wander scheduling and gaze resolution. Browser authoring/playback controls (#107), behavior profiles (#104), Confused/Laugh motion primitives (#103), and reusable state programs (#112) are separate completed layers that compose with it through the generic animation channels.
 
-- UI controls or live playback authoring (#107)
-- behavior-profile presets such as slow/fast wander (#104)
-- Confused/Laugh motion primitives (#103)
-- reusable state programs (#112)
-- a RoboEyes 9-position-only idle mode; the generic bounded target model is the core abstraction, and adapter/preset data can add compatibility-oriented target modes later if needed
-
-Those features can reuse the deterministic gaze-pose runtime added here.
+The core idle abstraction remains generic bounded targeting rather than a RoboEyes 9-position-only idle mode; compatibility-oriented fixed/directional targeting can be provided by adapter or preset data without changing this scheduler.
