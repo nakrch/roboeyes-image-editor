@@ -23,7 +23,9 @@ import {
   type UserExpressionPreset,
 } from '../../core/presets'
 import {
+  createFaceTransition,
   normalizePresetAnimationDefaults,
+  sampleFaceTransition,
   type AnimationProgram,
   type JsonObject,
   type PresetAnimationDefaults,
@@ -36,6 +38,10 @@ import { PresetPanel } from '../controls/PresetPanel'
 import { ExportPanel } from '../export/ExportPanel'
 import { PreviewArea } from '../preview/PreviewArea'
 import { VisualRegressionGallery } from '../preview/VisualRegressionGallery'
+import {
+  applyGallerySelection,
+  type GalleryExpressionSelection,
+} from '../preview/visualRegressionGalleryModel'
 import {
   advanceAnimationPlayback,
   createAnimationPlaybackSession,
@@ -66,7 +72,14 @@ type EditorSnapshot = {
 
 type SelectableExpressionPreset = ExpressionPreset | UserExpressionPreset
 
+type GalleryApplyPreview = {
+  id: string
+  baseModel: FaceModel
+  selection: GalleryExpressionSelection
+}
+
 const HISTORY_LIMIT = 100
+const GALLERY_APPLY_TRANSITION_MS = 280
 const initialPreset = builtInPresets[0]
 
 function snapshotFromPreset(preset: FacePreset): EditorSnapshot {
@@ -110,6 +123,9 @@ export function EditorShell() {
   const [playback, setPlayback] = useState(createAnimationPlaybackSession)
   const [runtimeEvents, setRuntimeEvents] = useState<RuntimeAnimationEvent[]>([])
   const runtimeEventOrder = useRef(0)
+  const [galleryApplyPreview, setGalleryApplyPreview] = useState<GalleryApplyPreview | null>(null)
+  const [galleryApplyTimeMs, setGalleryApplyTimeMs] = useState(0)
+  const galleryApplyOrder = useRef(0)
   const [reducedMotion, setReducedMotion] = useState(() =>
     window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
   )
@@ -148,6 +164,27 @@ export function EditorShell() {
   }, [playback.clock.status])
 
   useEffect(() => {
+    if (galleryApplyPreview === null) {
+      setGalleryApplyTimeMs(0)
+      return
+    }
+
+    let animationFrame = 0
+    const startTime = performance.now()
+    const tick = (now: number) => {
+      const elapsed = Math.min(GALLERY_APPLY_TRANSITION_MS, Math.max(0, now - startTime))
+      setGalleryApplyTimeMs(elapsed)
+      if (elapsed < GALLERY_APPLY_TRANSITION_MS) {
+        animationFrame = requestAnimationFrame(tick)
+      } else {
+        setGalleryApplyPreview(null)
+      }
+    }
+    animationFrame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(animationFrame)
+  }, [galleryApplyPreview?.id])
+
+  useEffect(() => {
     if (!isSingleEyeLayout(history.present.model)) {
       twoEyeExpression.current = structuredClone(history.present.model.expression)
     }
@@ -183,15 +220,18 @@ export function EditorShell() {
     runtimeEventOrder.current = 0
     setRuntimeEvents([])
     setPlayback(createAnimationPlaybackSession())
+    setGalleryApplyPreview(null)
   }
 
   const undo = () => {
     endContinuousEdit()
+    setGalleryApplyPreview(null)
     setHistory(undoHistory)
   }
 
   const redo = () => {
     endContinuousEdit()
+    setGalleryApplyPreview(null)
     setHistory((current) => redoHistory(current, HISTORY_LIMIT))
   }
 
@@ -225,6 +265,7 @@ export function EditorShell() {
 
   const setSingleEyeLayout = (enabled: boolean) => {
     endContinuousEdit()
+    setGalleryApplyPreview(null)
     const currentModel = history.present.model
     if (enabled) {
       if (isSingleEyeLayout(currentModel)) return
@@ -304,6 +345,7 @@ export function EditorShell() {
   const applyExpressionPreset = (preset: SelectableExpressionPreset) => {
     if (isSingleEyeLayout(history.present.model)) return
     endContinuousEdit()
+    setGalleryApplyPreview(null)
     setActiveExpressionPresetId(preset.id)
     setExpressionPresetError('')
     setExpressionPresetStatus('')
@@ -369,7 +411,24 @@ export function EditorShell() {
     })
     return { model: frame.model, overlays: frame.transientEffects.overlays }
   }
-  const displayedModel = displayedFrame.model
+  const displayedModel = galleryApplyPreview === null
+    ? displayedFrame.model
+    : sampleFaceTransition(
+        createFaceTransition(
+          galleryApplyPreview.id,
+          {
+            expression: galleryApplyPreview.selection.expression,
+            ...(galleryApplyPreview.selection.gaze === undefined
+              ? {}
+              : { gaze: galleryApplyPreview.selection.gaze }),
+          },
+          0,
+          GALLERY_APPLY_TRANSITION_MS,
+          'ease-in-out',
+        ),
+        galleryApplyPreview.baseModel,
+        galleryApplyTimeMs,
+      )
   const activePreset = presets.find((preset) => preset.id === activePresetId)
   const displayedPresetId = activePreset && snapshotEqual(snapshotFromPreset(activePreset), history.present) ? activePreset.id : 'custom'
   const activeExpressionPreset = selectableExpressions.find((preset) => preset.id === activeExpressionPresetId)
@@ -378,6 +437,25 @@ export function EditorShell() {
     : activeExpressionPreset && expressionEqual(activeExpressionPreset.expression, model.expression)
       ? activeExpressionPreset.id
       : matchExpressionPreset(model.expression)
+
+  const applyGallerySelectionToEditor = (selection: GalleryExpressionSelection) => {
+    if (singleEye) return
+    endContinuousEdit()
+    const previewSelection = structuredClone(selection)
+    setGalleryApplyTimeMs(0)
+    setGalleryApplyPreview({
+      id: `gallery-apply:${galleryApplyOrder.current++}`,
+      baseModel: structuredClone(displayedFrame.model),
+      selection: previewSelection,
+    })
+    setActiveExpressionPresetId(selection.presetId)
+    setExpressionPresetError('')
+    setExpressionPresetStatus('')
+    commit((current) => ({
+      ...current,
+      model: applyGallerySelection(current.model, selection),
+    }))
+  }
 
   return (
     <main className="editor-shell">
@@ -409,7 +487,11 @@ export function EditorShell() {
         </section>
       </ContinuousEditProvider>
 
-      <VisualRegressionGallery />
+      <VisualRegressionGallery
+        activeExpressionId={activeExpressionId}
+        disabled={singleEye}
+        onApplySelection={applyGallerySelectionToEditor}
+      />
     </main>
   )
 }
