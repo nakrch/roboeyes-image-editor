@@ -9,9 +9,13 @@ import { NumericControl } from './NumericControl'
 type ParameterPanelProps = {
   model: FaceModel
   linkedEyes: boolean
+  transparentBackground: boolean
+  pixelPerfect: boolean
   onChange: (updater: (current: FaceModel) => FaceModel) => void
   onLinkedEyesChange: (value: boolean) => void
   onSingleEyeLayoutChange: (enabled: boolean) => void
+  onTransparentBackgroundChange: (value: boolean) => void
+  onPixelPerfectChange: (value: boolean) => void
 }
 
 const resolutionPresets = [
@@ -25,12 +29,20 @@ const resolutionPresets = [
 const CANVAS_MIN = 16
 const CANVAS_MAX = 640
 
+export function normalizeCanvasDimension(value: number, minimum: number): number {
+  return Math.min(CANVAS_MAX, Math.max(minimum, Math.round(value)))
+}
+
 export function ParameterPanel({
   model,
   linkedEyes,
+  transparentBackground,
+  pixelPerfect,
   onChange,
   onLinkedEyesChange,
   onSingleEyeLayoutChange,
+  onTransparentBackgroundChange,
+  onPixelPerfectChange,
 }: ParameterPanelProps) {
   const currentResolution =
     resolutionPresets.find(
@@ -68,7 +80,7 @@ export function ParameterPanel({
       <div className="control-list">
         <details className="control-group collapsible-control-group" open>
           <summary className="control-group-summary">
-            <span>Canvas</span>
+            <span>Display</span>
             <select
               aria-label="Preview resolution preset"
               value={currentResolution}
@@ -89,10 +101,15 @@ export function ParameterPanel({
               value={model.canvas.width}
               min={minCanvasWidth}
               max={CANVAS_MAX}
+              step={1}
               onChange={(value) =>
                 onChange((current) => {
                   const minimum = Math.max(CANVAS_MIN, Math.ceil(minimumCanvasSize(current).width))
-                  return resizeCanvasFromCenter(current, Math.max(value, minimum), current.canvas.height)
+                  return resizeCanvasFromCenter(
+                    current,
+                    normalizeCanvasDimension(value, minimum),
+                    current.canvas.height,
+                  )
                 })
               }
             />
@@ -101,13 +118,36 @@ export function ParameterPanel({
               value={model.canvas.height}
               min={minCanvasHeight}
               max={CANVAS_MAX}
+              step={1}
               onChange={(value) =>
                 onChange((current) => {
                   const minimum = Math.max(CANVAS_MIN, Math.ceil(minimumCanvasSize(current).height))
-                  return resizeCanvasFromCenter(current, current.canvas.width, Math.max(value, minimum))
+                  return resizeCanvasFromCenter(
+                    current,
+                    current.canvas.width,
+                    normalizeCanvasDimension(value, minimum),
+                  )
                 })
               }
             />
+            <div className="display-control-options" aria-label="Preview display options">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={transparentBackground}
+                  onChange={(event) => onTransparentBackgroundChange(event.target.checked)}
+                />
+                Transparent
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={pixelPerfect}
+                  onChange={(event) => onPixelPerfectChange(event.target.checked)}
+                />
+                Pixel perfect
+              </label>
+            </div>
           </div>
         </details>
 
