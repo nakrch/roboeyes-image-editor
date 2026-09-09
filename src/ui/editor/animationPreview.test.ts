@@ -70,8 +70,8 @@ describe('editor animation preview composition', () => {
 
   it('falls back to the authored model instead of crashing when an eye edit is temporarily not animation-safe', () => {
     const base = structuredClone(roboEyesPreset.model)
-    base.leftEye.geometry.position.x -= 500
-    base.rightEye.geometry.position.x -= 500
+    base.leftEye.geometry.width = 1_000
+    base.rightEye.geometry.width = 1_000
 
     const defaults: PresetAnimationDefaults = {
       version: 1,
