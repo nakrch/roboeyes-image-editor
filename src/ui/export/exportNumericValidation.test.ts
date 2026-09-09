@@ -30,7 +30,13 @@ describe('export numeric validation', () => {
 
     expect(validation.errors).toEqual({})
     expect(validation.staticValues).toEqual({ width: 321, height: 123 })
-    expect(validation.animatedValues).toEqual({
+    expect(validation.webpValues).toEqual({
+      width: 321,
+      height: 123,
+      durationMs: 1750.5,
+      fps: 24,
+    })
+    expect(validation.gifValues).toEqual({
       width: 321,
       height: 123,
       durationMs: 1750.5,
@@ -39,16 +45,33 @@ describe('export numeric validation', () => {
     })
   })
 
-  it('rejects empty required values without substituting defaults', () => {
-    for (const field of Object.keys(validDrafts) as Array<keyof ExportNumericDrafts>) {
+  it('rejects empty dimensions for every export format', () => {
+    for (const field of ['width', 'height'] as const) {
       const validation = validateExportNumericDrafts({ ...validDrafts, [field]: '' })
       expect(validation.errors[field]).toBeDefined()
-
-      if (field === 'width' || field === 'height') {
-        expect(validation.staticValues).toBeNull()
-      }
-      expect(validation.animatedValues).toBeNull()
+      expect(validation.staticValues).toBeNull()
+      expect(validation.webpValues).toBeNull()
+      expect(validation.gifValues).toBeNull()
     }
+  })
+
+  it('rejects empty duration or fps for animated formats without affecting static export', () => {
+    for (const field of ['durationMs', 'fps'] as const) {
+      const validation = validateExportNumericDrafts({ ...validDrafts, [field]: '' })
+      expect(validation.errors[field]).toBeDefined()
+      expect(validation.staticValues).toEqual({ width: 128, height: 64 })
+      expect(validation.webpValues).toBeNull()
+      expect(validation.gifValues).toBeNull()
+    }
+  })
+
+  it('requires an explicit GIF loop count without unnecessarily blocking WebP', () => {
+    const validation = validateExportNumericDrafts({ ...validDrafts, loopCount: '' })
+
+    expect(validation.errors.loopCount).toBe('GIF loop count is required.')
+    expect(validation.staticValues).toEqual({ width: 128, height: 64 })
+    expect(validation.webpValues).toEqual({ width: 128, height: 64, durationMs: 2000, fps: 20 })
+    expect(validation.gifValues).toBeNull()
   })
 
   it('rejects non-finite and out-of-range values', () => {
@@ -77,6 +100,7 @@ describe('export numeric validation', () => {
 
     expect(validation.errors).toEqual({})
     expect(validation.staticValues).not.toBeNull()
-    expect(validation.animatedValues).not.toBeNull()
+    expect(validation.webpValues).not.toBeNull()
+    expect(validation.gifValues).not.toBeNull()
   })
 })
