@@ -32,6 +32,7 @@ renderer・UI・RoboEyes API に依存しない内部表現を定義します。
 
 - canvas
 - left/right eye geometry
+- optional eye visibility / single-eye layout state
 - position
 - size
 - radius
@@ -199,6 +200,29 @@ SVG Renderer
    ├─→ SVG export
    └─→ rasterize → PNG export
 ```
+
+### Single-eye / RoboEyes cyclops compatibility
+
+RoboEyes の `cyclops` は adapter 入力に限定し、generic model / renderer へ同名フラグを持ち込みません。
+
+```text
+RoboEyes cyclops = ON
+        ↓
+RoboEyes Adapter
+        ↓
+FaceModel.eyeVisibility = { left: true, right: false }
+        + visible left eye centered
+        ↓
+visibility-aware safety / animation
+        ↓
+SVG renderer / preview / export
+```
+
+`FaceModel.eyeVisibility` は optional とし、省略時は従来どおり両眼を表示します。これにより既存 preset / JSON / two-eye model をそのまま互換に保ちます。
+
+元の RoboEyes は cyclops 時に右眼の current width/height と eye spacing を 0 にし、残る左眼が single-eye の画面制約を使う実装です。本プロジェクトでは同じ見た目・位置挙動を保ちつつ、右眼 geometry を破壊せず hidden state として保持します。editor で Single eye へ切り替えた場合は左眼を現在の pair center に置き、Two eyes に戻すと現在の single-eye center を中心に保存済み spacing / geometry から両眼レイアウトを再構成します。
+
+visibility は現時点では **static/discrete layout state** です。Phase 3 の transition / spring / runtime はこの状態をそのまま保持し、renderer 側で `cyclops` や animation 名に分岐しません。
 
 ## 5. State ownership
 
