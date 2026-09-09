@@ -22,6 +22,7 @@ import {
   validateExportNumericDrafts,
   type NumberDraft,
 } from './exportNumericValidation'
+import './exportPanel.css'
 
 type ExportPanelProps = {
   model: FaceModel
@@ -42,6 +43,26 @@ const sizePresets = [
 function fieldError(id: string, message: string | undefined) {
   if (message === undefined) return null
   return <small className="export-field-error" id={id}>{message}</small>
+}
+
+function pairedFieldErrors(
+  firstId: string,
+  firstMessage: string | undefined,
+  secondId: string,
+  secondMessage: string | undefined,
+) {
+  if (firstMessage === undefined && secondMessage === undefined) return null
+
+  return (
+    <div className="export-validation-pair">
+      {firstMessage === undefined
+        ? <span aria-hidden="true" />
+        : fieldError(firstId, firstMessage)}
+      {secondMessage === undefined
+        ? <span aria-hidden="true" />
+        : fieldError(secondId, secondMessage)}
+    </div>
+  )
 }
 
 export function ExportPanel({ model, transparentBackground, resolveAnimationFrame }: ExportPanelProps) {
@@ -187,43 +208,49 @@ export function ExportPanel({ model, transparentBackground, resolveAnimationFram
         </select>
       </label>
 
-      <div className="export-dimensions">
-        <label className="control-field">
-          <span>Width</span>
-          <input
-            className="number-input"
-            type="number"
-            min={1}
-            step={1}
-            value={width}
-            aria-invalid={validation.errors.width !== undefined}
-            aria-describedby={validation.errors.width === undefined ? undefined : 'export-width-error'}
-            onChange={(event) => {
-              setError('')
-              setSizeKey('custom')
-              setWidth(parseNumberDraft(event.target.value))
-            }}
-          />
-          {fieldError('export-width-error', validation.errors.width)}
-        </label>
-        <label className="control-field">
-          <span>Height</span>
-          <input
-            className="number-input"
-            type="number"
-            min={1}
-            step={1}
-            value={height}
-            aria-invalid={validation.errors.height !== undefined}
-            aria-describedby={validation.errors.height === undefined ? undefined : 'export-height-error'}
-            onChange={(event) => {
-              setError('')
-              setSizeKey('custom')
-              setHeight(parseNumberDraft(event.target.value))
-            }}
-          />
-          {fieldError('export-height-error', validation.errors.height)}
-        </label>
+      <div className="export-field-pair">
+        <div className="export-dimensions">
+          <label className="control-field">
+            <span>Width</span>
+            <input
+              className="number-input"
+              type="number"
+              min={1}
+              step={1}
+              value={width}
+              aria-invalid={validation.errors.width !== undefined}
+              aria-describedby={validation.errors.width === undefined ? undefined : 'export-width-error'}
+              onChange={(event) => {
+                setError('')
+                setSizeKey('custom')
+                setWidth(parseNumberDraft(event.target.value))
+              }}
+            />
+          </label>
+          <label className="control-field">
+            <span>Height</span>
+            <input
+              className="number-input"
+              type="number"
+              min={1}
+              step={1}
+              value={height}
+              aria-invalid={validation.errors.height !== undefined}
+              aria-describedby={validation.errors.height === undefined ? undefined : 'export-height-error'}
+              onChange={(event) => {
+                setError('')
+                setSizeKey('custom')
+                setHeight(parseNumberDraft(event.target.value))
+              }}
+            />
+          </label>
+        </div>
+        {pairedFieldErrors(
+          'export-width-error',
+          validation.errors.width,
+          'export-height-error',
+          validation.errors.height,
+        )}
       </div>
 
       <p className="export-note">
@@ -241,42 +268,48 @@ export function ExportPanel({ model, transparentBackground, resolveAnimationFram
         <p className="eyebrow">Animation</p>
         <h3>Deterministic frames</h3>
       </div>
-      <div className="export-dimensions">
-        <label className="control-field">
-          <span>Duration (ms)</span>
-          <input
-            className="number-input"
-            type="number"
-            min={1}
-            step={100}
-            value={durationMs}
-            aria-invalid={validation.errors.durationMs !== undefined}
-            aria-describedby={validation.errors.durationMs === undefined ? undefined : 'export-duration-error'}
-            onChange={(event) => {
-              setError('')
-              setDurationMs(parseNumberDraft(event.target.value))
-            }}
-          />
-          {fieldError('export-duration-error', validation.errors.durationMs)}
-        </label>
-        <label className="control-field">
-          <span>FPS</span>
-          <input
-            className="number-input"
-            type="number"
-            min={1}
-            max={60}
-            step={1}
-            value={fps}
-            aria-invalid={validation.errors.fps !== undefined}
-            aria-describedby={validation.errors.fps === undefined ? undefined : 'export-fps-error'}
-            onChange={(event) => {
-              setError('')
-              setFps(parseNumberDraft(event.target.value))
-            }}
-          />
-          {fieldError('export-fps-error', validation.errors.fps)}
-        </label>
+      <div className="export-field-pair">
+        <div className="export-dimensions">
+          <label className="control-field">
+            <span>Duration (ms)</span>
+            <input
+              className="number-input"
+              type="number"
+              min={1}
+              step={100}
+              value={durationMs}
+              aria-invalid={validation.errors.durationMs !== undefined}
+              aria-describedby={validation.errors.durationMs === undefined ? undefined : 'export-duration-error'}
+              onChange={(event) => {
+                setError('')
+                setDurationMs(parseNumberDraft(event.target.value))
+              }}
+            />
+          </label>
+          <label className="control-field">
+            <span>FPS</span>
+            <input
+              className="number-input"
+              type="number"
+              min={1}
+              max={60}
+              step={1}
+              value={fps}
+              aria-invalid={validation.errors.fps !== undefined}
+              aria-describedby={validation.errors.fps === undefined ? undefined : 'export-fps-error'}
+              onChange={(event) => {
+                setError('')
+                setFps(parseNumberDraft(event.target.value))
+              }}
+            />
+          </label>
+        </div>
+        {pairedFieldErrors(
+          'export-duration-error',
+          validation.errors.durationMs,
+          'export-fps-error',
+          validation.errors.fps,
+        )}
       </div>
       <label className="control-field">
         <span>GIF loop count <small>(0 = forever)</small></span>
