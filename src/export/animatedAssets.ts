@@ -35,9 +35,10 @@ function gifDelay(durationMs: number): number {
   return Math.max(10, Math.round(durationMs / 10) * 10)
 }
 
-function ownedBytes(source: Uint8Array | Uint8ClampedArray): Uint8Array<ArrayBuffer> {
-  const copy = new Uint8Array(source.byteLength)
-  copy.set(source)
+function ownedBytes(source: ArrayBuffer | Uint8Array | Uint8ClampedArray): Uint8Array<ArrayBuffer> {
+  const view = source instanceof ArrayBuffer ? new Uint8Array(source) : source
+  const copy = new Uint8Array(view.byteLength)
+  copy.set(view)
   return copy
 }
 
