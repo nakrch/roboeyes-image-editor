@@ -111,9 +111,16 @@ The new Spring begins with zero implicit velocity. Position continuity is guaran
 
 `durationMs` remains the authored hard completion boundary. Before that boundary the physical Spring response determines progress; at the boundary the exact target state is returned.
 
-Underdamped Spring math may overshoot above 1. The physical response remains observable through `springResponse()`, but FaceModel sampling clamps interpolation progress to the established `0..1` model boundary. This deliberately prevents Spring overshoot from bypassing gaze/canvas and eyelid-aperture safety constraints. Renderer code remains timer-free and physics-free.
+Underdamped Spring math may overshoot above 1. That overshoot is intentionally preserved in the resolved face motion, so `bouncy` can move past an expression, gaze, pose, or geometry target and then return. Safety is enforced on the resulting `FaceModel`, not by flattening the Spring response to `0..1`.
 
-State-program Spring sampling uses the same response and safe `interpolateFaceModel()` boundary, so program transitions cannot bypass the established model invariants either.
+The safety boundary is deterministic:
+
+- gaze overshoot is clamped to the canvas-safe gaze range;
+- geometry overshoot is allowed while eye dimensions remain non-negative and the eyes can still fit the canvas;
+- expression overshoot is allowed while eyelid aperture constraints remain valid;
+- if an overshoot would cross a geometry/expression safety boundary, the evaluator deterministically bisects back to the furthest safe point toward the target endpoint.
+
+This keeps the visible character of `bouncy` without allowing Spring motion to bypass the established FaceModel invariants. State-program Spring sampling uses the same safe overshoot interpolation as direct/runtime Spring transitions. Renderer code remains timer-free and physics-free.
 
 ## Reduced motion
 
