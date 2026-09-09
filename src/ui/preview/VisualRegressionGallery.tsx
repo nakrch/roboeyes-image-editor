@@ -4,6 +4,7 @@ import {
   phase2ExpressionVisualFixtures,
   type Phase2ExpressionVisualFixture,
 } from '../../renderers/svg/__fixtures__/phase2Expressions'
+import { useToast } from '../feedback/ToastProvider'
 import {
   GALLERY_MOTION_PREVIEW_CYCLE_MS,
   isGalleryVisibleFixture,
@@ -51,6 +52,7 @@ export function VisualRegressionGallery({
 }: VisualRegressionGalleryProps) {
   const [motionFixtureId, setMotionFixtureId] = useState<string | null>(null)
   const [motionTimeMs, setMotionTimeMs] = useState(0)
+  const { notify } = useToast()
 
   useEffect(() => {
     if (motionFixtureId === null) {
@@ -67,6 +69,15 @@ export function VisualRegressionGallery({
     animationFrame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(animationFrame)
   }, [motionFixtureId])
+
+  const applySelection = (selection: GalleryExpressionSelection, title: string) => {
+    try {
+      onApplySelection(selection)
+      notify('success', `Applied ${title}.`)
+    } catch {
+      notify('error', `Could not apply ${title}.`)
+    }
+  }
 
   return (
     <details className="panel visual-regression-gallery">
@@ -94,6 +105,7 @@ export function VisualRegressionGallery({
           const svg = renderFaceToSvg(model, { idPrefix: `visual-regression-${fixture.id}` })
           const matches = matchesFixture(svg, fixture)
           const selection = selectionForFixture(fixture)
+          const title = fixtureTitle(fixture)
           const isSelected = selection.presetId !== 'custom' && selection.presetId === activeExpressionId
           const isMotionActive = motionFixtureId === fixture.id
           const motionSvg = isMotionActive
@@ -110,7 +122,7 @@ export function VisualRegressionGallery({
             >
               <div className="visual-regression-card-header">
                 <div>
-                  <h3>{fixtureTitle(fixture)}</h3>
+                  <h3>{title}</h3>
                   <p>{fixture.id}</p>
                 </div>
                 <span className={`fixture-status ${matches ? 'fixture-status-match' : 'fixture-status-changed'}`}>
@@ -122,7 +134,7 @@ export function VisualRegressionGallery({
                 className="visual-regression-card-preview"
                 style={{ aspectRatio: `${fixture.canvas.width} / ${fixture.canvas.height}` }}
                 role="img"
-                aria-label={`${fixtureTitle(fixture)} fixed visual regression fixture`}
+                aria-label={`${title} fixed visual regression fixture`}
                 dangerouslySetInnerHTML={{ __html: svg }}
               />
 
@@ -137,10 +149,10 @@ export function VisualRegressionGallery({
                 </div>
               </dl>
 
-              <div className="visual-regression-actions" aria-label={`${fixtureTitle(fixture)} actions`}>
+              <div className="visual-regression-actions" aria-label={`${title} actions`}>
                 <button
                   type="button"
-                  onClick={() => onApplySelection(selection)}
+                  onClick={() => applySelection(selection, title)}
                   disabled={disabled}
                 >
                   Apply expression
@@ -148,7 +160,7 @@ export function VisualRegressionGallery({
                 {isCuriousFixture && (
                   <button
                     type="button"
-                    onClick={() => onApplySelection(selectionForFixture(fixture, true))}
+                    onClick={() => applySelection(selectionForFixture(fixture, true), `${title} + gaze`)}
                     disabled={disabled}
                     title="Apply Curious and this fixture's gaze explicitly"
                   >
@@ -175,7 +187,7 @@ export function VisualRegressionGallery({
                     className="visual-regression-card-preview visual-regression-motion-preview"
                     style={{ aspectRatio: `${fixture.canvas.width} / ${fixture.canvas.height}` }}
                     role="img"
-                    aria-label={`${fixtureTitle(fixture)} motion preview`}
+                    aria-label={`${title} motion preview`}
                     dangerouslySetInnerHTML={{ __html: motionSvg }}
                   />
                 </div>
