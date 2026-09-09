@@ -26,7 +26,7 @@ describe('generic transient overlay svg rendering', () => {
   })
 
   it('renders resolved teardrops without sweat-specific renderer branches', () => {
-    const frame = resolveTransientEffectFrame(sweat, [], roboEyesPreset.model, 200, 17)
+    const frame = resolveTransientEffectFrame(sweat, [], roboEyesPreset.model, 60, 17)
     const svg = renderFaceToSvg(roboEyesPreset.model, { overlays: frame.overlays })
 
     expect(frame.overlays).toHaveLength(3)
