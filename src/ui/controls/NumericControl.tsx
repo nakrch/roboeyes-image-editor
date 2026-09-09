@@ -1,5 +1,6 @@
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useContinuousEdit } from '../editor/continuousEdit'
+import { resolveNumericDraft } from './numericInputDraft'
 import {
   classifyTouchSliderIntent,
   TOUCH_FINE_DRAG_SCALE,
@@ -47,10 +48,27 @@ export function NumericControl({
   const continuousEdit = useContinuousEdit()
   const touchDrag = useRef<TouchDragState | null>(null)
   const suppressTouchClick = useRef(false)
+  const numberInputEditing = useRef(false)
+  const [numberDraft, setNumberDraft] = useState(() => String(value))
+
+  useEffect(() => {
+    if (!numberInputEditing.current) setNumberDraft(String(value))
+  }, [value])
 
   const endTouchDrag = () => {
     if (touchDrag.current?.intent === 'horizontal') continuousEdit.end()
     touchDrag.current = null
+  }
+
+  const commitNumberDraft = () => {
+    const committed = resolveNumericDraft(numberDraft, min, max)
+    if (committed === null) {
+      setNumberDraft(String(value))
+      return
+    }
+
+    setNumberDraft(String(committed))
+    if (committed !== value) onChange(committed)
   }
 
   return (
@@ -147,13 +165,21 @@ export function NumericControl({
           min={min}
           max={max}
           step={step}
-          value={value}
-          onFocus={continuousEdit.begin}
-          onBlur={continuousEdit.end}
+          value={numberDraft}
+          onFocus={() => {
+            numberInputEditing.current = true
+            setNumberDraft(String(value))
+            continuousEdit.begin()
+          }}
+          onBlur={() => {
+            commitNumberDraft()
+            numberInputEditing.current = false
+            continuousEdit.end()
+          }}
           onKeyDown={(event) => {
             if (event.key === 'Enter') event.currentTarget.blur()
           }}
-          onChange={(event) => onChange(Number(event.target.value))}
+          onChange={(event) => setNumberDraft(event.currentTarget.value)}
         />
       </div>
     </label>
