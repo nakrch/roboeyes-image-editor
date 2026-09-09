@@ -60,20 +60,36 @@ describe('transient effect definitions', () => {
 })
 
 describe('deterministic animated sweat', () => {
-  it('samples reference-like start, mid, and reset frames from explicit time', () => {
+  it('samples recognizable teardrop start, mid, and reset frames from explicit time', () => {
     const base = roboEyesPreset.model
     const start = resolveTransientEffectFrame(fixedSweat, [], base, 0, 17)
     const mid = resolveTransientEffectFrame(fixedSweat, [], base, 200, 17)
     const reset = resolveTransientEffectFrame(fixedSweat, [], base, 400, 17)
 
     expect(start.overlays).toHaveLength(3)
-    expect(start.overlays.every((drop) => drop.y === 2 && drop.width === 1 && drop.height === 2)).toBe(true)
+    expect(start.overlays.every((drop) => drop.kind === 'teardrop')).toBe(true)
+    expect(start.overlays.every((drop) => drop.y === 2 && drop.width === 1.8 && drop.height === 3.2)).toBe(true)
     expect(mid.overlays).toHaveLength(3)
-    expect(mid.overlays.every((drop) => drop.y === 7)).toBe(true)
-    expect(mid.overlays.every((drop) => drop.width > 1 && drop.height > 2)).toBe(true)
+    expect(mid.overlays.every((drop) => drop.kind === 'teardrop' && drop.y === 7)).toBe(true)
+    expect(mid.overlays.every((drop) => drop.width > 5 && drop.height > 5)).toBe(true)
     expect(reset.overlays).toHaveLength(3)
-    expect(reset.overlays.every((drop) => drop.y === 2 && drop.width === 1 && drop.height === 2)).toBe(true)
+    expect(reset.overlays.every((drop) => drop.y === 2 && drop.width === 1.8 && drop.height === 3.2)).toBe(true)
     expect(reset.overlays.every((drop) => drop.id.includes('cycle-1'))).toBe(true)
+  })
+
+  it('scales the 64px RoboEyes reference-space sweat on larger canvases without changing logical cycle timing', () => {
+    const large = structuredClone(roboEyesPreset.model)
+    large.canvas = { width: 240, height: 240 }
+
+    const smallMid = resolveTransientEffectFrame(fixedSweat, [], roboEyesPreset.model, 200, 17)
+    const largeMid = resolveTransientEffectFrame(fixedSweat, [], large, 200, 17)
+    const largeReset = resolveTransientEffectFrame(fixedSweat, [], large, 400, 17)
+
+    expect(largeMid.overlays).toHaveLength(3)
+    expect(largeMid.overlays[0].width).toBeGreaterThan(smallMid.overlays[0].width * 3)
+    expect(largeMid.overlays[0].height).toBeGreaterThan(smallMid.overlays[0].height * 3)
+    expect(largeMid.overlays[0].y).toBeCloseTo(7 * (240 / 64))
+    expect(largeReset.overlays.every((drop) => drop.id.includes('cycle-1'))).toBe(true)
   })
 
   it('is repeatable and sampling-order independent for the same time + seed', () => {
