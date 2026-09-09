@@ -114,14 +114,6 @@ The same base model, eye-openness definition, ordered runtime events, explicit `
 
 Sampling timestamps in a different order does not change results. Browser frame cadence is irrelevant.
 
-## Scope boundary
+## Layer boundary
 
-This layer still does not implement:
-
-- idle gaze (#102)
-- Confused/Laugh motion primitives (#103)
-- behavior profiles (#104)
-- sequence authoring (#112)
-- UI playback/authoring controls (#107)
-
-Those features reuse the existing generic animation channels rather than duplicating renderer logic.
+This module owns eye-openness semantics only. Idle gaze (#102), Confused/Laugh motion primitives (#103), behavior profiles (#104), state programs (#112), and browser playback/authoring controls (#107) are implemented as separate layers that compose through the generic animation channels rather than duplicating renderer logic.
