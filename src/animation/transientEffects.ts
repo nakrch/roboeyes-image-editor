@@ -1,4 +1,4 @@
-import type { FaceModel } from '../core/model'
+import type { EyeGeometry, FaceModel } from '../core/model'
 import { normalizeAnimationSeed, sampleRandomRange } from './random'
 import {
   compareRuntimeAnimationEvents,
@@ -55,10 +55,10 @@ export type SweatEffectDefinition = {
   enabled?: boolean
   startTimeMs?: number
   dropCount?: number
-  /** Reference-space values based on the RoboEyes 64 px-tall display behavior. */
+  /** Reference-space values based on the RoboEyes 128x64 / 36px-eye geometry. */
   minTargetY?: number
   maxTargetY?: number
-  /** Reference-space pixels per millisecond. Larger canvases scale distance and duration, not velocity. */
+  /** Logical canvas pixels per millisecond. */
   fallSpeed?: number
   /** Controls the generic teardrop bulb roundness. */
   radius?: number
@@ -91,14 +91,17 @@ export const DEFAULT_SWEAT_EFFECT: Readonly<NormalizedSweatEffectDefinition> = O
   radius: 3,
 })
 
-const REFERENCE_CANVAS_HEIGHT = 64
 const REFERENCE_CANVAS_WIDTH = 128
+const REFERENCE_EYE_SIZE = 36
 const SWEAT_START_Y = 2
-const SWEAT_INITIAL_WIDTH = 1.8
-const SWEAT_INITIAL_HEIGHT = 3.2
-const SWEAT_GROWTH_RATE = 0.028
-const SWEAT_WIDTH_SHRINK_RATE = 0.004
-const SWEAT_HEIGHT_SHRINK_RATE = 0.022
+const SWEAT_INITIAL_WIDTH = 0.9
+const SWEAT_INITIAL_HEIGHT = 1.8
+const SWEAT_PEAK_WIDTH = 1.8
+const SWEAT_PEAK_HEIGHT = 3.6
+const SWEAT_FINAL_WIDTH = 0.65
+const SWEAT_FINAL_HEIGHT = 1.3
+const SWEAT_GROWTH_END_PROGRESS = 0.55
+const SWEAT_EYE_MARGIN = 1.5
 const MAX_SWEAT_CYCLES = 10_000
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -226,9 +229,46 @@ function sweatEpochAtTime(
   return epoch
 }
 
-function canvasScale(model: FaceModel): number {
-  if (model.canvas.height <= 0) return 1
-  return Math.max(0.5, model.canvas.height / REFERENCE_CANVAS_HEIGHT)
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value))
+}
+
+function interpolate(from: number, to: number, progress: number): number {
+  return from + (to - from) * clamp(progress, 0, 1)
+}
+
+function eyeReferenceRatio(model: FaceModel): number {
+  const leftSize = Math.max(1, Math.min(model.leftEye.geometry.width, model.leftEye.geometry.height))
+  const rightSize = Math.max(1, Math.min(model.rightEye.geometry.width, model.rightEye.geometry.height))
+  return ((leftSize + rightSize) / 2) / REFERENCE_EYE_SIZE
+}
+
+function sweatMotionScale(model: FaceModel): number {
+  return clamp(eyeReferenceRatio(model), 0.5, 4)
+}
+
+function sweatSizeScale(model: FaceModel): number {
+  // Size follows the face rather than the canvas, but deliberately weakly so
+  // large eyes do not turn the transient symbol into a dominant foreground blob.
+  return clamp(0.75 + eyeReferenceRatio(model) * 0.25, 0.65, 1.4)
+}
+
+function eyeVerticalHalfExtent(geometry: EyeGeometry): number {
+  const radians = geometry.rotation * Math.PI / 180
+  return Math.abs(Math.sin(radians)) * geometry.width / 2 +
+    Math.abs(Math.cos(radians)) * geometry.height / 2
+}
+
+function eyeTopY(model: FaceModel, geometry: EyeGeometry): number {
+  return geometry.position.y + model.gaze.y - eyeVerticalHalfExtent(geometry)
+}
+
+function sweatSafeBottom(model: FaceModel, sizeScale: number): number {
+  const eyeTop = Math.min(
+    eyeTopY(model, model.leftEye.geometry),
+    eyeTopY(model, model.rightEye.geometry),
+  )
+  return Math.min(model.canvas.height, eyeTop - SWEAT_EYE_MARGIN * sizeScale)
 }
 
 function sweatXRange(width: number, dropIndex: number, dropCount: number): { min: number; max: number } {
@@ -250,23 +290,36 @@ function sampledTargetY(
   seed: number,
   dropIndex: number,
   cycleIndex: number,
+  startY: number,
+  maxTargetY: number,
 ): number {
-  const scale = canvasScale(model)
-  const startY = SWEAT_START_Y * scale
-  const canvasMax = Math.max(startY, model.canvas.height)
-  const min = Math.min(canvasMax, Math.max(startY, definition.minTargetY * scale))
-  const max = Math.min(canvasMax, Math.max(min, definition.maxTargetY * scale))
+  const motionScale = sweatMotionScale(model)
+  const min = Math.min(maxTargetY, Math.max(startY, definition.minTargetY * motionScale))
+  const max = Math.min(maxTargetY, Math.max(min, definition.maxTargetY * motionScale))
   return sampleRandomRange(seed, `transient:${definition.id}:drop-${dropIndex}:target-y`, cycleIndex, min, max)
 }
 
-function cycleDurationMs(definition: NormalizedSweatEffectDefinition, targetY: number, scale: number): number {
-  const targetYReference = targetY / scale
-  const referenceDurationMs = (Math.max(SWEAT_START_Y, targetYReference) - SWEAT_START_Y) / definition.fallSpeed
-  return Math.max(1, referenceDurationMs * scale)
+function cycleDurationMs(
+  definition: NormalizedSweatEffectDefinition,
+  startY: number,
+  targetY: number,
+): number {
+  return Math.max(1, (Math.max(startY, targetY) - startY) / definition.fallSpeed)
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value))
+function sweatSizeAtProgress(progress: number, sizeScale: number): { width: number; height: number } {
+  if (progress <= SWEAT_GROWTH_END_PROGRESS) {
+    const growth = progress / SWEAT_GROWTH_END_PROGRESS
+    return {
+      width: interpolate(SWEAT_INITIAL_WIDTH, SWEAT_PEAK_WIDTH, growth) * sizeScale,
+      height: interpolate(SWEAT_INITIAL_HEIGHT, SWEAT_PEAK_HEIGHT, growth) * sizeScale,
+    }
+  }
+  const shrink = (progress - SWEAT_GROWTH_END_PROGRESS) / (1 - SWEAT_GROWTH_END_PROGRESS)
+  return {
+    width: interpolate(SWEAT_PEAK_WIDTH, SWEAT_FINAL_WIDTH, shrink) * sizeScale,
+    height: interpolate(SWEAT_PEAK_HEIGHT, SWEAT_FINAL_HEIGHT, shrink) * sizeScale,
+  }
 }
 
 function sweatOverlayAtTime(
@@ -277,14 +330,17 @@ function sweatOverlayAtTime(
   epochStartTimeMs: number,
   timeMs: number,
 ): TeardropTransientOverlay | undefined {
-  const scale = canvasScale(model)
-  const startY = SWEAT_START_Y * scale
-  if (model.canvas.width <= 0 || model.canvas.height <= startY) return undefined
+  const motionScale = sweatMotionScale(model)
+  const sizeScale = sweatSizeScale(model)
+  const startY = SWEAT_START_Y * motionScale
+  const safeBottom = sweatSafeBottom(model, sizeScale)
+  const maxTargetY = safeBottom - SWEAT_PEAK_HEIGHT * sizeScale
+  if (model.canvas.width <= 0 || model.canvas.height <= startY || maxTargetY <= startY) return undefined
 
   let cycleStartTimeMs = epochStartTimeMs
   let cycleIndex = 0
-  let targetY = sampledTargetY(definition, model, seed, dropIndex, cycleIndex)
-  let durationMs = cycleDurationMs(definition, targetY, scale)
+  let targetY = sampledTargetY(definition, model, seed, dropIndex, cycleIndex, startY, maxTargetY)
+  let durationMs = cycleDurationMs(definition, startY, targetY)
 
   while (timeMs >= cycleStartTimeMs + durationMs) {
     cycleStartTimeMs += durationMs
@@ -292,35 +348,16 @@ function sweatOverlayAtTime(
     if (cycleIndex >= MAX_SWEAT_CYCLES) {
       throw new RangeError(`Sweat effect exceeds max cycles (${MAX_SWEAT_CYCLES}) before requested time`)
     }
-    targetY = sampledTargetY(definition, model, seed, dropIndex, cycleIndex)
-    durationMs = cycleDurationMs(definition, targetY, scale)
+    targetY = sampledTargetY(definition, model, seed, dropIndex, cycleIndex, startY, maxTargetY)
+    durationMs = cycleDurationMs(definition, startY, targetY)
   }
 
   const elapsedMs = Math.max(0, timeMs - cycleStartTimeMs)
-  const referenceElapsedMs = elapsedMs / scale
-  const targetYReference = targetY / scale
-  const yReference = Math.min(
-    targetYReference,
-    SWEAT_START_Y + definition.fallSpeed * referenceElapsedMs,
-  )
-  const y = yReference * scale
-  const growthEndYReference = Math.max(SWEAT_START_Y, targetYReference / 2)
-  const growthDurationReferenceMs = Math.max(
-    0,
-    (growthEndYReference - SWEAT_START_Y) / definition.fallSpeed,
-  )
-  const growthElapsedReferenceMs = Math.min(referenceElapsedMs, growthDurationReferenceMs)
-  const shrinkElapsedReferenceMs = Math.max(0, referenceElapsedMs - growthDurationReferenceMs)
-  const widthAtGrowthEnd = SWEAT_INITIAL_WIDTH + SWEAT_GROWTH_RATE * growthElapsedReferenceMs
-  const heightAtGrowthEnd = SWEAT_INITIAL_HEIGHT + SWEAT_GROWTH_RATE * growthElapsedReferenceMs
-  const rawWidthReference = shrinkElapsedReferenceMs === 0
-    ? SWEAT_INITIAL_WIDTH + SWEAT_GROWTH_RATE * referenceElapsedMs
-    : widthAtGrowthEnd - SWEAT_WIDTH_SHRINK_RATE * shrinkElapsedReferenceMs
-  const rawHeightReference = shrinkElapsedReferenceMs === 0
-    ? SWEAT_INITIAL_HEIGHT + SWEAT_GROWTH_RATE * referenceElapsedMs
-    : heightAtGrowthEnd - SWEAT_HEIGHT_SHRINK_RATE * shrinkElapsedReferenceMs
-  const width = clamp(rawWidthReference * scale, 0, model.canvas.width)
-  const height = clamp(rawHeightReference * scale, 0, Math.max(0, model.canvas.height - y))
+  const progress = clamp(elapsedMs / durationMs, 0, 1)
+  const y = interpolate(startY, targetY, progress)
+  const size = sweatSizeAtProgress(progress, sizeScale)
+  const width = clamp(size.width, 0, model.canvas.width)
+  const height = clamp(size.height, 0, Math.max(0, safeBottom - y))
   if (width <= 0 || height <= 0) return undefined
 
   const range = sweatXRange(model.canvas.width, dropIndex, definition.dropCount)
