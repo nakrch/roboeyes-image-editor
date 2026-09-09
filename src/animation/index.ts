@@ -198,6 +198,29 @@ export type {
 } from './runtime'
 
 export {
+  createSpringFaceTransition,
+  normalizeSpringFaceTransitionDefinition,
+  normalizeSpringParameters,
+  retargetSpringFaceTransition,
+  sampleGenericFaceTransition,
+  sampleSpringFaceTransition,
+  springPreset,
+  springResponse,
+  springStateTransitionChannelResolver,
+  springTransitionProgress,
+  SPRING_FACE_TRANSITION_KIND,
+  SPRING_PRESET_IDS,
+  SPRING_PRESETS,
+} from './spring'
+export type {
+  GenericFaceTransitionDefinition,
+  RetargetGenericTransitionOptions,
+  SpringFaceTransitionDefinition,
+  SpringParameters,
+  SpringPresetId,
+} from './spring'
+
+export {
   DEFAULT_SWEAT_EFFECT,
   EMPTY_TRANSIENT_EFFECT_FRAME,
   isSweatControlAction,
