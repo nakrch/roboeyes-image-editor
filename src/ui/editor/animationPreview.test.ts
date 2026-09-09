@@ -7,7 +7,12 @@ import {
   happyBehaviorProfile,
   type PresetAnimationDefaults,
 } from '../../animation'
-import { editableAnimationDefaults, evaluateEditorAnimationFrame, nextRuntimeEvent } from './animationPreview'
+import {
+  editableAnimationDefaults,
+  evaluateEditorAnimationFrame,
+  evaluateEditorAnimationPreviewFrame,
+  nextRuntimeEvent,
+} from './animationPreview'
 
 function expression(id: string) {
   const found = expressionPresets.find((preset) => preset.id === id)
@@ -78,6 +83,56 @@ describe('editor animation preview composition', () => {
       periodMs: 60,
     })
     expect(event.payload).toEqual({ amplitude: 6, durationMs: 450, periodMs: 60 })
+  })
+
+  it('uses a visibly slower sweat cadence in the standard 128x64 editor preview', () => {
+    const defaults: PresetAnimationDefaults = {
+      version: 1,
+      seed: 17,
+      definition: {
+        version: 1,
+        enabled: true,
+        channels: {
+          'transient-effect': {
+            kind: 'transient-effect-layer',
+            effects: [{
+              kind: 'sweat',
+              id: 'sweat',
+              enabled: true,
+              startTimeMs: 0,
+              dropCount: 3,
+              minTargetY: 12,
+              maxTargetY: 12,
+              fallSpeed: 0.025,
+              radius: 3,
+            }],
+          },
+        },
+      },
+    }
+
+    const visible = evaluateEditorAnimationPreviewFrame(
+      roboEyesPreset.model,
+      defaults,
+      { timeMs: 200 },
+    )
+    expect(visible.transientEffects.overlays).toHaveLength(3)
+    expect(visible.transientEffects.overlays.every((drop) => drop.id.includes('cycle-0'))).toBe(true)
+    expect(visible.transientEffects.overlays.every((drop) => drop.y > 2)).toBe(true)
+
+    const waiting = evaluateEditorAnimationPreviewFrame(
+      roboEyesPreset.model,
+      defaults,
+      { timeMs: 400 },
+    )
+    expect(waiting.transientEffects.overlays).toHaveLength(0)
+
+    const reset = evaluateEditorAnimationPreviewFrame(
+      roboEyesPreset.model,
+      defaults,
+      { timeMs: 1_250 },
+    )
+    expect(reset.transientEffects.overlays.every((drop) => drop.id.includes('cycle-1'))).toBe(true)
   })
 
   it('keeps behavior active when eye positions move beyond the authored idle wander window', () => {

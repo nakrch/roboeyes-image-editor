@@ -5,11 +5,14 @@ import {
   type EyeGeometry,
   type FaceModel,
 } from '../../core/model'
+import type { TransientOverlay, TransientOverlayPaint } from '../../animation/transientEffects'
 
 export type SvgRenderOptions = {
   transparentBackground?: boolean
   /** Optional stable prefix for inline-SVG definition IDs to avoid document-level collisions. */
   idPrefix?: string
+  /** Optional renderer-independent overlays resolved by the animation/effect layer. */
+  overlays?: readonly TransientOverlay[]
 }
 
 type RenderedEye = {
@@ -79,6 +82,50 @@ function renderEye(
   }
 }
 
+function overlayPaint(paint: TransientOverlayPaint, model: FaceModel): string {
+  if ('value' in paint) return paint.value
+  switch (paint.role) {
+    case 'eye': return model.colors.eye
+    case 'stroke': return model.colors.stroke ?? model.colors.eye
+    case 'background': return model.colors.background
+  }
+}
+
+function renderTeardropPath(overlay: Extract<TransientOverlay, { kind: 'teardrop' }>): string {
+  const x = overlay.x
+  const y = overlay.y
+  const width = overlay.width
+  const height = overlay.height
+  const centerX = x + width / 2
+  const bottomY = y + height
+  const roundness = Math.min(1, Math.max(0, overlay.roundness))
+  const shoulderY = y + height * (0.32 + 0.08 * roundness)
+  const sideY = y + height * (0.62 - 0.08 * roundness)
+  const lowerControlY = y + height * (0.92 + 0.04 * roundness)
+  const innerX = width * (0.2 + 0.05 * roundness)
+
+  return [
+    `M ${number(centerX)} ${number(y)}`,
+    `C ${number(centerX - width * 0.05)} ${number(y + height * 0.14)} ${number(x)} ${number(shoulderY)} ${number(x)} ${number(sideY)}`,
+    `C ${number(x)} ${number(lowerControlY)} ${number(centerX - innerX)} ${number(bottomY)} ${number(centerX)} ${number(bottomY)}`,
+    `C ${number(centerX + innerX)} ${number(bottomY)} ${number(x + width)} ${number(lowerControlY)} ${number(x + width)} ${number(sideY)}`,
+    `C ${number(x + width)} ${number(shoulderY)} ${number(centerX + width * 0.05)} ${number(y + height * 0.14)} ${number(centerX)} ${number(y)}`,
+    'Z',
+  ].join(' ')
+}
+
+function renderOverlay(overlay: TransientOverlay, model: FaceModel): string {
+  const opacity = overlay.opacity === undefined ? 1 : Math.min(1, Math.max(0, overlay.opacity))
+  const common = `data-transient-overlay="${escapeAttribute(overlay.id)}" data-overlay-kind="${overlay.kind}" fill="${escapeAttribute(overlayPaint(overlay.paint, model))}" opacity="${number(opacity)}"`
+
+  switch (overlay.kind) {
+    case 'rounded-rect':
+      return `<rect ${common} x="${number(overlay.x)}" y="${number(overlay.y)}" width="${number(overlay.width)}" height="${number(overlay.height)}" rx="${number(overlay.radius)}" ry="${number(overlay.radius)}" />`
+    case 'teardrop':
+      return `<path ${common} d="${renderTeardropPath(overlay)}" />`
+  }
+}
+
 export function renderFaceToSvg(
   model: FaceModel,
   options: SvgRenderOptions = {},
@@ -91,6 +138,7 @@ export function renderFaceToSvg(
   const background = options.transparentBackground
     ? ''
     : `<rect data-background="true" x="0" y="0" width="${number(width)}" height="${number(height)}" fill="${escapeAttribute(model.colors.background)}" />`
+  const overlays = (options.overlays ?? []).map((overlay) => renderOverlay(overlay, model)).join('')
 
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${number(width)}" height="${number(height)}" viewBox="0 0 ${number(width)} ${number(height)}">`,
@@ -98,6 +146,7 @@ export function renderFaceToSvg(
     `<defs>${left.clipPath}${right.clipPath}</defs>`,
     left.shape,
     right.shape,
+    overlays,
     '</svg>',
   ].join('')
 }

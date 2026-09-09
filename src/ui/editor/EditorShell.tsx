@@ -47,7 +47,7 @@ import {
   setAnimationPlaybackRate,
   stopAnimationPlayback,
 } from './animationPlayback'
-import { evaluateEditorAnimationFrame, nextRuntimeEvent } from './animationPreview'
+import { evaluateEditorAnimationPreviewFrame, nextRuntimeEvent } from './animationPreview'
 import { ContinuousEditProvider } from './continuousEdit'
 import { commitHistory, redoHistory, undoHistory, type HistoryState } from './history'
 
@@ -330,11 +330,12 @@ export function EditorShell() {
   }
 
   const { model, transparentBackground, animationDefaults } = history.present
-  const displayedModel = evaluateEditorAnimationFrame(model, animationDefaults, {
+  const displayedFrame = evaluateEditorAnimationPreviewFrame(model, animationDefaults, {
     timeMs: playback.clock.positionMs,
     runtimeEvents,
     reducedMotion,
   })
+  const displayedModel = displayedFrame.model
   const activePreset = presets.find((preset) => preset.id === activePresetId)
   const displayedPresetId = activePreset && snapshotEqual(snapshotFromPreset(activePreset), history.present)
     ? activePreset.id
@@ -359,6 +360,7 @@ export function EditorShell() {
           <div className="editor-preview-column">
             <PreviewArea
               model={displayedModel}
+              overlays={displayedFrame.transientEffects.overlays}
               transparentBackground={transparentBackground}
               pixelPerfect={pixelPerfect}
               onTransparentBackgroundChange={(value) => commit((current) => ({ ...current, transparentBackground: value }))}

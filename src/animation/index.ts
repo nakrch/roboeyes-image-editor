@@ -198,6 +198,30 @@ export type {
 } from './runtime'
 
 export {
+  DEFAULT_SWEAT_EFFECT,
+  EMPTY_TRANSIENT_EFFECT_FRAME,
+  isSweatControlAction,
+  normalizeTransientEffectLayerDefinition,
+  resolveTransientEffectFrame,
+  SWEAT_CONTROL_ACTIONS,
+  SWEAT_EFFECT_KIND,
+  TRANSIENT_EFFECT_LAYER_KIND,
+  TRANSIENT_OVERLAY_ROUNDED_RECT,
+} from './transientEffects'
+export type {
+  NormalizedSweatEffectDefinition,
+  NormalizedTransientEffectLayerDefinition,
+  RoundedRectTransientOverlay,
+  SweatControlAction,
+  SweatEffectDefinition,
+  TransientEffectDefinition,
+  TransientEffectFrame,
+  TransientEffectLayerDefinition,
+  TransientOverlay,
+  TransientOverlayPaint,
+} from './transientEffects'
+
+export {
   createFaceTransition,
   eyeSpacing,
   FACE_TRANSITION_KIND,

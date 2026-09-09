@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { FaceModel } from '../../core/model'
 import { expressionPresets, matchExpressionPreset } from '../../core/presets'
 import {
@@ -38,7 +39,7 @@ function editable(defaults: PresetAnimationDefaults): PresetAnimationDefaultsV1 
 
 function withDefinitionChannel(
   defaults: PresetAnimationDefaults,
-  channel: 'eye-openness' | 'gaze-pose' | 'motion-offset',
+  channel: 'eye-openness' | 'gaze-pose' | 'motion-offset' | 'transient-effect',
   value: JsonValue | undefined,
 ): PresetAnimationDefaultsV1 {
   const next = editable(defaults)
@@ -90,6 +91,34 @@ function motionDefinition(defaults: PresetAnimationDefaults): Record<string, unk
         phase: 0,
         waveform: 'sine',
       }
+}
+
+function transientDefinition(defaults: PresetAnimationDefaults): Record<string, unknown> {
+  const value = editable(defaults).definition?.channels?.['transient-effect']
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? structuredClone(value) as Record<string, unknown>
+    : { kind: 'transient-effect-layer', effects: [] }
+}
+
+function sweatDefinition(layer: Record<string, unknown>): Record<string, unknown> {
+  const effects = Array.isArray(layer.effects) ? layer.effects : []
+  const found = effects.find((effect) =>
+    effect !== null && typeof effect === 'object' && !Array.isArray(effect) &&
+    (effect as Record<string, unknown>).kind === 'sweat'
+  )
+  return found === undefined
+    ? {
+        kind: 'sweat',
+        id: 'sweat',
+        enabled: false,
+        startTimeMs: 0,
+        dropCount: 3,
+        minTargetY: 10,
+        maxTargetY: 20,
+        fallSpeed: 0.025,
+        radius: 3,
+      }
+    : structuredClone(found) as Record<string, unknown>
 }
 
 function numberValue(value: unknown, fallback: number): number {
@@ -164,6 +193,10 @@ export function AnimationPanel({
     : { enabled: false, intervalMs: 2_500, variationMs: 1_500 }
   const idle = idleDefinition(animationDefaults)
   const motion = motionDefinition(animationDefaults)
+  const transient = transientDefinition(animationDefaults)
+  const sweat = sweatDefinition(transient)
+  const dropletCount = Math.max(1, Math.min(8, Math.round(numberValue(sweat.dropCount, 3))))
+  const [dropletDraft, setDropletDraft] = useState<string | null>(null)
   const program = authored.program
 
   const commitAuthored = (updater: (current: PresetAnimationDefaultsV1) => PresetAnimationDefaultsV1) => {
@@ -178,6 +211,16 @@ export function AnimationPanel({
   }
   const setMotion = (next: Record<string, unknown> | undefined) => {
     onAnimationDefaultsChange(withDefinitionChannel(animationDefaults, 'motion-offset', next as JsonValue | undefined))
+  }
+  const setTransient = (next: Record<string, unknown> | undefined) => {
+    onAnimationDefaultsChange(withDefinitionChannel(animationDefaults, 'transient-effect', next as JsonValue | undefined))
+  }
+  const setSweat = (next: Record<string, unknown> | undefined) => {
+    if (next === undefined) {
+      setTransient(undefined)
+      return
+    }
+    setTransient({ kind: 'transient-effect-layer', effects: [next] })
   }
 
   const updateProgram = (next: AnimationProgram | undefined) => {
@@ -205,7 +248,7 @@ export function AnimationPanel({
 
       {reducedMotion && (
         <p className="animation-note" role="status">
-          Reduced motion is active: automatic profile/idle/blink motion is suppressed in preview. Direct controls and authored data remain available.
+          Reduced motion is active: automatic profile/idle/blink/transient motion is suppressed in preview. Direct controls and authored data remain available.
         </p>
       )}
 
@@ -384,6 +427,74 @@ export function AnimationPanel({
             </select>
           </label>
         </div>
+      </details>
+
+      <details className="animation-section" open={boolValue(sweat.enabled, false)}>
+        <summary>Transient effects</summary>
+        <div className="animation-fields-grid">
+          <label className="animation-check">
+            <input
+              type="checkbox"
+              checked={boolValue(sweat.enabled, false)}
+              onChange={(event) => {
+                setDropletDraft(null)
+                setSweat(event.target.checked
+                  ? { ...sweat, kind: 'sweat', id: 'sweat', enabled: true }
+                  : undefined)
+              }}
+            />
+            Animated sweat
+          </label>
+          <label className="animation-field">
+            <span>Droplets</span>
+            <input
+              className="number-input"
+              type="number"
+              min="1"
+              max="8"
+              step="1"
+              disabled={!boolValue(sweat.enabled, false)}
+              value={dropletDraft ?? String(dropletCount)}
+              onChange={(event) => {
+                const draft = event.target.value
+                setDropletDraft(draft)
+                if (draft.trim() === '') return
+                const parsed = Number(draft)
+                if (!Number.isInteger(parsed) || parsed < 1 || parsed > 8) return
+                setSweat({
+                  ...sweat,
+                  kind: 'sweat',
+                  id: 'sweat',
+                  enabled: true,
+                  dropCount: parsed,
+                })
+              }}
+              onBlur={() => {
+                if (dropletDraft === null) return
+                const trimmed = dropletDraft.trim()
+                if (trimmed !== '') {
+                  const parsed = Number(trimmed)
+                  if (Number.isFinite(parsed)) {
+                    const nextCount = Math.max(1, Math.min(8, Math.round(parsed)))
+                    if (nextCount !== dropletCount) {
+                      setSweat({
+                        ...sweat,
+                        kind: 'sweat',
+                        id: 'sweat',
+                        enabled: true,
+                        dropCount: nextCount,
+                      })
+                    }
+                  }
+                }
+                setDropletDraft(null)
+              }}
+            />
+          </label>
+        </div>
+        <p className="animation-note">
+          Sweat is resolved as deterministic teardrop overlays after the face state. It is stored separately from Expression/eye geometry and uses the current Seed for repeatable droplet resets.
+        </p>
       </details>
 
       <details className="animation-section" open={program !== undefined}>

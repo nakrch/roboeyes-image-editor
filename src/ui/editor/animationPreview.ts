@@ -9,10 +9,12 @@ import {
 import { expressionPresets } from '../../core/presets'
 import {
   ANIMATION_DEFINITION_VERSION,
+  EMPTY_TRANSIENT_EFFECT_FRAME,
   PRESET_ANIMATION_DEFAULTS_VERSION,
   behaviorProfileChannelResolvers,
   evaluateAnimationFrame,
   initializePresetAnimation,
+  resolveTransientEffectFrame,
   sampleAnimationProgram,
   stateTransitionChannelResolver,
   type AnimationChannelResolvers,
@@ -22,6 +24,7 @@ import {
   type PresetAnimationDefaults,
   type PresetAnimationDefaultsV1,
   type RuntimeAnimationEvent,
+  type TransientEffectFrame,
 } from '../../animation'
 
 export type AnimationPreviewOptions = {
@@ -30,10 +33,18 @@ export type AnimationPreviewOptions = {
   reducedMotion?: boolean
 }
 
+export type EditorAnimationPreviewFrame = {
+  model: FaceModel
+  transientEffects: TransientEffectFrame
+}
+
 const editorChannelResolvers: AnimationChannelResolvers = {
   ...behaviorProfileChannelResolvers,
   'state-transition': stateTransitionChannelResolver,
 }
+
+const ROBOEYES_REFERENCE_SWEAT_FALL_SPEED = 0.025
+const EDITOR_SWEAT_FALL_SPEED = 0.008
 
 function mergeDefinitions(
   profileDefinition: AnimationDefinition | undefined,
@@ -62,6 +73,30 @@ function mergeDefinitions(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function editorTransientEffectDefinition(value: JsonValue | undefined): JsonValue | undefined {
+  if (!isRecord(value) || value.kind !== 'transient-effect-layer' || !Array.isArray(value.effects)) {
+    return value
+  }
+
+  let changed = false
+  const effects = value.effects.map((effect) => {
+    if (!isRecord(effect) || effect.kind !== 'sweat') return effect as JsonValue
+    const fallSpeed = effect.fallSpeed
+    if (fallSpeed !== undefined && fallSpeed !== ROBOEYES_REFERENCE_SWEAT_FALL_SPEED) {
+      return effect as JsonValue
+    }
+    changed = true
+    return {
+      ...effect,
+      fallSpeed: EDITOR_SWEAT_FALL_SPEED,
+    } as JsonValue
+  })
+
+  return changed
+    ? { ...value, effects } as JsonValue
+    : value
 }
 
 function fitRequestedRange(
@@ -153,11 +188,11 @@ export function editableAnimationDefaults(
   }
 }
 
-export function evaluateEditorAnimationFrame(
+export function evaluateEditorAnimationPreviewFrame(
   baseModel: FaceModel,
   defaults: PresetAnimationDefaults,
   options: AnimationPreviewOptions,
-): FaceModel {
+): EditorAnimationPreviewFrame {
   const initialized = initializePresetAnimation(defaults)
   const manualEvents = options.runtimeEvents ?? []
 
@@ -170,7 +205,9 @@ export function evaluateEditorAnimationFrame(
   // user is manipulating controls. The core animation transition contract is
   // stricter. Never let that temporary mismatch tear down the React render tree;
   // keep showing the authored/static preview until the model is animatable again.
-  if (!canAnimatePreviewBase(previewBase)) return previewBase
+  if (!canAnimatePreviewBase(previewBase)) {
+    return { model: previewBase, transientEffects: EMPTY_TRANSIENT_EFFECT_FRAME }
+  }
 
   try {
     let stateModel = previewBase
@@ -189,22 +226,43 @@ export function evaluateEditorAnimationFrame(
       ),
       stateModel,
     )
-
-    return evaluateAnimationFrame({
+    const allRuntimeEvents = [...programEvents, ...manualEvents]
+    const resolved = evaluateAnimationFrame({
       baseModel: stateModel,
       definition,
       context: { timeMs: options.timeMs, seed: initialized.seed },
-      runtimeEvents: [...programEvents, ...manualEvents],
+      runtimeEvents: allRuntimeEvents,
       channelResolvers: editorChannelResolvers,
-    }).model
+    })
+    const transientEffects = resolveTransientEffectFrame(
+      editorTransientEffectDefinition(
+        definition.enabled ? definition.channels?.['transient-effect'] : undefined,
+      ),
+      allRuntimeEvents,
+      resolved.model,
+      options.timeMs,
+      initialized.seed,
+    )
+
+    return { model: resolved.model, transientEffects }
   } catch (error) {
     // An otherwise valid authored program/profile can become temporarily
     // incompatible with a newly edited base geometry. Preview is non-authoring
     // state, so falling back to the current static model is safer than crashing
     // the editor. Persisted data and the core runtime remain strict.
-    if (error instanceof RangeError || error instanceof TypeError) return previewBase
+    if (error instanceof RangeError || error instanceof TypeError) {
+      return { model: previewBase, transientEffects: EMPTY_TRANSIENT_EFFECT_FRAME }
+    }
     throw error
   }
+}
+
+export function evaluateEditorAnimationFrame(
+  baseModel: FaceModel,
+  defaults: PresetAnimationDefaults,
+  options: AnimationPreviewOptions,
+): FaceModel {
+  return evaluateEditorAnimationPreviewFrame(baseModel, defaults, options).model
 }
 
 export function nextRuntimeEvent(
