@@ -467,7 +467,7 @@ export function EditorShell() {
       <ContinuousEditProvider value={{ begin: beginContinuousEdit, end: endContinuousEdit }}>
         <section className="editor-workspace" aria-label="Editor workspace">
           <div className="editor-preview-column">
-            <PreviewArea model={displayedModel} overlays={displayedFrame.transientEffects.overlays} transparentBackground={transparentBackground} pixelPerfect={pixelPerfect} onTransparentBackgroundChange={(value) => commit((current) => ({ ...current, transparentBackground: value }))} onPixelPerfectChange={setPixelPerfect} />
+            <PreviewArea model={displayedModel} overlays={displayedFrame.transientEffects.overlays} transparentBackground={transparentBackground} pixelPerfect={pixelPerfect} />
             <div className="preview-history-actions" aria-label="Editor history">
               <button type="button" onClick={undo} disabled={history.past.length === 0}>Undo</button>
               <button type="button" onClick={redo} disabled={history.future.length === 0}>Redo</button>
@@ -481,7 +481,7 @@ export function EditorShell() {
             {presetError && <p className="preset-error" role="alert">{presetError}</p>}
             <ExpressionPresetPanel presets={selectableExpressions} activePresetId={activeExpressionId} status={expressionPresetStatus} disabled={singleEye} onApply={applyExpressionPreset} onSaveCurrent={saveCurrentExpressionPreset} onImport={importExpressionPreset} onExport={exportExpressionPreset} onDelete={deleteExpressionPreset} />
             {expressionPresetError && <p className="preset-error" role="alert">{expressionPresetError}</p>}
-            <ParameterPanel model={model} linkedEyes={linkedEyes} onChange={updateModel} onLinkedEyesChange={setLinkedEyes} onSingleEyeLayoutChange={setSingleEyeLayout} />
+            <ParameterPanel model={model} linkedEyes={linkedEyes} transparentBackground={transparentBackground} pixelPerfect={pixelPerfect} onChange={updateModel} onLinkedEyesChange={setLinkedEyes} onSingleEyeLayoutChange={setSingleEyeLayout} onTransparentBackgroundChange={(value) => commit((current) => ({ ...current, transparentBackground: value }))} onPixelPerfectChange={setPixelPerfect} />
             <ExportPanel model={model} transparentBackground={transparentBackground} resolveAnimationFrame={resolveAnimationFrame} />
           </div>
         </section>
