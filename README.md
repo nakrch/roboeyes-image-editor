@@ -2,11 +2,11 @@
 
 > 🚧 **Under active development**
 >
-> **Phase 1 and Phase 2 are complete. Phase 3 animation/state-transition work is in progress.** Embedded-display export remains planned for Phase 4.
+> **Phase 1–3 are complete.** The current baseline includes static editing, parametric expressions, deterministic animation authoring/playback, and static/animated image export.
 
 **RoboEyes Image Editor** is a browser-based parametric editor for creating robot eye and face graphics for small displays.
 
-Instead of editing fixed images, eye shape, spacing, gaze, expression, canvas size, and other properties are represented as parameters and rendered dynamically.
+Instead of editing fixed images, eye shape, spacing, gaze, expression, canvas size, animation state, and other properties are represented as parameters and rendered dynamically.
 
 このプロジェクトは RoboEyes の単純なブラウザ移植ではありません。目・表情・視線・状態を固定画像ではなく **パラメータで定義されたモデル** として扱い、RoboEyes はその上に載る互換レイヤー / プリセットの一つとして扱います。
 
@@ -18,32 +18,58 @@ https://nakrch.github.io/roboeyes-image-editor/
 
 The site is rebuilt and redeployed automatically whenever changes are pushed or merged to `main`. Deployment status and failures are visible in GitHub Actions under the **Deploy GitHub Pages** workflow.
 
-## Planned Features
+## Current capabilities
 
-- realtime preview
-- independent left / right eye editing
+### Static editing
+
+- realtime SVG preview
+- independent / linked left and right eye editing
 - RoboEyes-compatible parameters through an adapter layer
-- eye geometry, spacing, gaze, rotation, and canvas controls
-- SVG export
-- PNG export
-- small-display resolution presets
-- transparent and pixel-perfect preview workflows
-- expression presets and custom expression parameters
-- deterministic state/transition animation and embedded-display export support
+- eye geometry, spacing, gaze, rotation, canvas, color, and background controls
+- preset save/load and JSON import/export
+- SVG and PNG export
+- exact small-display resolution presets
+- single-eye / RoboEyes cyclops-compatible layout
 
-## Current Status
+### Expressions
 
-**Phase 1 and Phase 2 are complete. Phase 3 is in progress.**
+- generic eyelid/mask authoring
+- RoboEyes-compatible core expressions
+- gaze-reactive Curious behavior
+- reusable expression-only presets
+- asymmetric/custom expression parameters
+- deterministic visual-regression coverage
 
-The browser editor supports the complete Phase 1 static-image workflow: generic eye geometry and gaze editing, linked/independent eye controls, realtime SVG preview, presets, small-display resolutions, and PNG/SVG export. The implementation keeps the generic model, RoboEyes adapter, renderer, UI, and export layers separated.
+### Animation
 
-Phase 2 completed the parametric expression layer, including generic eyelid/mask authoring, RoboEyes-compatible core expressions, gaze-reactive Curious behavior, reusable expression-only presets, additional static expressions, and deterministic visual-regression coverage. The completed Phase 2 tracker is [Issue #86](https://github.com/nakrch/roboeyes-image-editor/issues/86).
+- deterministic explicit-time animation runtime
+- state transitions and spring transitions
+- blink / wink / open / close / sleep
+- deterministic auto-blink and idle gaze
+- motion primitives including Confused / Laugh style one-shots
+- composable temporal behavior profiles
+- transient effects
+- reusable ordered state programs with hold/transition timing
+- once / loop / ping-pong playback
+- persistent animation defaults in preset JSON
+- browser preview/player with reduced-motion handling
+- deterministic temporal regression and frame-rate-independence tests
 
-Phase 3 is now active under [Issue #97](https://github.com/nakrch/roboeyes-image-editor/issues/97). It adds a deterministic animation layer around the existing static `FaceModel`, centered on **state + transition** semantics, including reusable ordered state programs with explicit hold/transition timing. The intent is not to build a free-form video/keyframe timeline editor.
+### Animated export
 
-Animated WebP/GIF work is tracked as a Phase 3 follow-up, while sprite-sheet and embedded-display formats remain Phase 4 work. RoboEyes cyclops support is tracked separately as the static-layout backlog [Issue #110](https://github.com/nakrch/roboeyes-image-editor/issues/110), not as a Phase 3 blocker.
+- deterministic frame sampling
+- animated WebP export
+- GIF export
 
-Implementation progresses incrementally through GitHub Issues so that the generic model, RoboEyes adapter, renderer, editor UI, animation runtime, and export layers remain separated from the beginning.
+## Project status
+
+Phase 1 established the static parametric editor and PNG/SVG workflow. Its completion audit is recorded in [Issue #78](https://github.com/nakrch/roboeyes-image-editor/issues/78).
+
+Phase 2 completed the parametric expression system and static regression coverage. The completed tracker is [Issue #86](https://github.com/nakrch/roboeyes-image-editor/issues/86).
+
+Phase 3 completed the deterministic animation runtime, behavior system, authoring/player workflow, persistence, regression coverage, transient effects, spring transitions, and animated image export. The completed tracker is [Issue #97](https://github.com/nakrch/roboeyes-image-editor/issues/97).
+
+Future changes are tracked as ordinary Issues rather than being assigned to another numbered development phase.
 
 ## Core concept
 
@@ -61,7 +87,7 @@ Renderer
 Export
 ```
 
-RoboEyes 互換入力は次のレイヤーを通します。
+RoboEyes-compatible input follows this boundary:
 
 ```text
 RoboEyes Parameters
@@ -73,53 +99,28 @@ Generic Face Model
 Renderer
 ```
 
-この分離により、RoboEyes 互換性を保ちながら、将来は Minimal / Cute / M5Stack-style / Vector-style / Custom など別スタイルへ拡張できます。
+This separation keeps RoboEyes compatibility while allowing other parameterized styles and presets to be added without coupling the renderer to one source library.
 
 ## Primary use cases
 
-- RoboEyes 系の目画像生成
-- Codex Pet 用の表情素材生成
-- M5Stack / 小型ディスプレイ向け画像生成
-- 組込み機器向けスプライト生成
-- PNG / SVG / WebP / sprite sheet などへの書き出し
-- 将来的な RGB565 / monochrome bitmap / C array など組込み向け出力
+- RoboEyes-style eye/face asset authoring
+- Codex Pet expression and animation assets
+- fixed-size / small-display graphics
+- PNG / SVG static assets
+- animated WebP / GIF assets
 
 ## Design principles
 
-- 完成画像ではなく **parametric model** を編集する
-- UI・モデル・adapter・renderer・export を分離する
-- 初期 renderer は SVG を採用する
-- 小型ディスプレイ用途を first-class に扱う
-- animation は timeline 主体ではなく **state + transition** と再利用可能な ordered state program を中心にする
-- MVP は静止画エディタから始め、将来の animation / embedded export を阻害しない構造にする
-
-## Phase 1 MVP — Complete
-
-Phase 1 のゴールは次です。
-
-> **RoboEyes の目をブラウザ上で自由に調整し、PNG / SVG として保存できる。**
-
-対象機能:
-
-- left / right eye
-- width / height
-- radius
-- spacing
-- position
-- gaze
-- rotation
-- canvas size
-- realtime SVG preview
-- PNG export
-- SVG export
-
-Phase 1 の完了監査は Issue #78 で記録しています。
-
-MVP でも内部実装は最初から `RoboEyes → adapter → generic model → renderer` に分離します。
+- edit a **parametric model**, not fixed source images
+- keep UI, model, adapter, renderer, animation, and export responsibilities separated
+- keep the renderer deterministic and free of timers/randomness
+- treat exact canvas dimensions and small-display workflows as first-class requirements
+- model animation as **state + transition** and reusable ordered state programs rather than a free-form video/keyframe timeline
+- preserve static assets as valid inputs independent of animation runtime state
 
 ## Small-display focus
 
-想定プリセット解像度:
+Preset resolutions include:
 
 - 128×64
 - 128×128
@@ -128,30 +129,24 @@ MVP でも内部実装は最初から `RoboEyes → adapter → generic model �
 - 320×320
 - Custom
 
-将来的に以下を重視します。
+The editor prioritizes exact canvas dimensions, transparent backgrounds, predictable rasterization, and deterministic output at these sizes.
 
-- pixel-perfect preview
-- nearest-neighbor preview
-- monochrome / 1-bit preview
-- transparent background
-- fixed canvas
-- safe area
-
-## Planned stack
+## Stack
 
 - React
 - TypeScript
 - Vite
 - SVG-first renderer
 
-必要になった段階で Canvas renderer を追加します。
-
 ## Documentation
 
-- [`docs/direction.md`](docs/direction.md) — プロジェクトの思想・方向性。設計判断の一次資料
-- [`docs/architecture.md`](docs/architecture.md) — レイヤー構造と責務
-- [`docs/roadmap.md`](docs/roadmap.md) — Phase 1〜4 の実装範囲
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) — 開発時の基本ルール
+Start with [`docs/README.md`](docs/README.md).
+
+- [`docs/direction.md`](docs/direction.md) — project direction and scope
+- [`docs/architecture.md`](docs/architecture.md) — layer responsibilities and data flow
+- [`docs/roadmap.md`](docs/roadmap.md) — completed Phase 0–3 history and future candidates
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — contribution and PR workflow
+- [`AGENTS.md`](AGENTS.md) — repository-specific guidance for coding agents
 
 ## Acknowledgements
 
