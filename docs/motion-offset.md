@@ -100,6 +100,6 @@ For the same ordered runtime events, explicit `timeMs`, and seed, motion samplin
 
 No `Date.now()`, `performance.now()`, `Math.random()`, `requestAnimationFrame`, or renderer frame counter participates in semantic motion timing.
 
-## Scope boundary
+## Layer boundary
 
-This issue provides runtime/core primitives only. It does not add editor playback controls or visible authoring UI; those belong to #107. Behavior/profile composition belongs to #104, and animated sweat remains #106.
+This module owns the runtime/core motion primitives. Browser playback and visible authoring controls (#107), continuous behavior-profile composition (#104), and transient Sweat overlays (#106) are separate completed layers that reuse the same deterministic motion/effect architecture rather than adding renderer-specific branches.
