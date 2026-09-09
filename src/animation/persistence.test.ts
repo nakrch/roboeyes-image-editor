@@ -58,6 +58,10 @@ const fullDefaults: PresetAnimationDefaultsV1 = {
         kind: 'eye-openness',
         autoBlink: { enabled: true, intervalMs: 2_000, variationMs: 500 },
       },
+      'transient-effect': {
+        kind: 'transient-effect-layer',
+        effects: [{ kind: 'sweat', id: 'sweat:persisted', enabled: true, dropCount: 3 }],
+      },
     },
   },
   behaviorProfile: defaultBehaviorProfile,
@@ -74,7 +78,7 @@ describe('preset animation defaults schema', () => {
     })
   })
 
-  it('round-trips seed, behavior profile, program identities, timing, and easing as JSON-safe data', () => {
+  it('round-trips seed, behavior profile, program identities, timing, easing, and transient effects as JSON-safe data', () => {
     const normalized = normalizePresetAnimationDefaults(fullDefaults)
     const roundTrip = normalizePresetAnimationDefaults(JSON.parse(JSON.stringify(normalized)))
     expect(roundTrip).toEqual(normalized)
@@ -87,6 +91,10 @@ describe('preset animation defaults schema', () => {
     expect(roundTrip.program?.steps[0].actions?.[0].id).toBe('blink')
     expect(roundTrip.program?.steps[0].transitionDurationMs).toBe(120)
     expect(roundTrip.program?.steps[0].easing).toBe('ease-in-out')
+    expect(roundTrip.definition?.channels?.['transient-effect']).toMatchObject({
+      kind: 'transient-effect-layer',
+      effects: [{ kind: 'sweat', id: 'sweat:persisted', enabled: true, dropCount: 3 }],
+    })
   })
 
   it('preserves stable program/step/action identities through reorder and another JSON round trip', () => {
@@ -141,7 +149,18 @@ describe('preset animation defaults schema', () => {
       version: 1,
       enabled: true,
       channels: { 'transient-effect': { kind: 'future-effect' } },
-    })).toThrow(/not supported/)
+    })).toThrow(/Unsupported transient effect/)
+
+    expect(() => normalizePersistedAnimationDefinition({
+      version: 1,
+      enabled: true,
+      channels: {
+        'transient-effect': {
+          kind: 'transient-effect-layer',
+          effects: [{ kind: 'sweat', id: 'sweat', hiddenRuntimeCursor: 1 }],
+        },
+      },
+    })).toThrow(/unsupported field/)
   })
 
   it('rejects unknown fields nested inside sequence state targets', () => {
