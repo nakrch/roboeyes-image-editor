@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
+import { resolveGazeReactiveHeightScale } from '../core/model'
 import {
   createAnimationFrameContext,
   createFaceTransition,
   evaluateAnimationFrame,
   eyeOpennessChannelResolver,
   normalizeRuntimeAnimationEvents,
-  resolveGazeReactiveHeightScale,
   sampleFaceTransition,
   scheduledAutoBlinkEvents,
   scheduledIdleGazeTargets,
