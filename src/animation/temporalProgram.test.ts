@@ -78,7 +78,7 @@ describe('#112 state-sequence temporal boundaries', () => {
       ['angry', 'transition'],
       ['angry', 'transition'],
       ['angry', 'hold'],
-      [undefined, 'complete'],
+      ['angry', 'complete'],
     ])
     expect(samples[2].model.gaze.x).toBeCloseTo(0)
     expect(resolveEyeExpression(samples[2].model.expression, 'left').lowerLid).toBeCloseTo(0.14)
