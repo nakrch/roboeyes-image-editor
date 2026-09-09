@@ -115,6 +115,22 @@ export async function encodeAnimatedGif(
   return new Blob([ownedBytes(bytes)], { type: 'image/gif' })
 }
 
+type WebpAnimationFrame = {
+  data: Uint8Array<ArrayBuffer>
+  duration: number
+  config: { lossless: number; quality: number }
+}
+
+export function webpAnimationFrames(frames: readonly RasterAnimationFrame[]): WebpAnimationFrame[] {
+  // wasm-webp expects each frame's display duration and accumulates timestamps
+  // internally before calling WebPAnimEncoderAdd.
+  return frames.map((frame) => ({
+    data: ownedBytes(frame.rgba),
+    duration: Math.max(1, Math.round(frame.durationMs)),
+    config: { lossless: 1, quality: 100 },
+  }))
+}
+
 export async function encodeAnimatedWebp(
   frames: readonly RasterAnimationFrame[],
   options: AnimatedImageExportOptions,
@@ -123,15 +139,16 @@ export async function encodeAnimatedWebp(
   const { encodeAnimation } = await import('wasm-webp')
   const width = positiveDimension(options.dimensions.width, 'width')
   const height = positiveDimension(options.dimensions.height, 'height')
+
+  // Rasterization always produces four-byte RGBA pixels. wasm-webp switches
+  // between RGB and RGBA import solely from this flag, so passing false for an
+  // opaque export would make it read the RGBA buffer with a three-byte stride.
+  // Keep RGBA import enabled; opaque frames already carry alpha=255.
   const bytes = await encodeAnimation(
     width,
     height,
-    options.transparentBackground,
-    frames.map((frame) => ({
-      data: ownedBytes(frame.rgba),
-      duration: Math.max(1, Math.round(frame.durationMs)),
-      config: { lossless: 1, quality: 100 },
-    })),
+    true,
+    webpAnimationFrames(frames),
   )
   if (bytes == null) throw new Error('Animated WebP encoder returned no data')
   return new Blob([ownedBytes(bytes)], { type: 'image/webp' })

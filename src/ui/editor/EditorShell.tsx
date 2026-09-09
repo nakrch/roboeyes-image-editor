@@ -159,10 +159,7 @@ export function EditorShell() {
   }
 
   const updateAnimationDefaults = (next: PresetAnimationDefaults) => {
-    commit((current) => ({
-      ...current,
-      animationDefaults: normalizePresetAnimationDefaults(next),
-    }))
+    commit((current) => ({ ...current, animationDefaults: normalizePresetAnimationDefaults(next) }))
   }
 
   const resetPlaybackRuntime = () => {
@@ -207,13 +204,7 @@ export function EditorShell() {
   }
 
   const saveCurrentPreset = (name: string) => {
-    const preset = createCustomPreset(
-      name,
-      history.present.model,
-      history.present.transparentBackground,
-      presets,
-      history.present.animationDefaults,
-    )
+    const preset = createCustomPreset(name, history.present.model, history.present.transparentBackground, presets, history.present.animationDefaults)
     persistCustomPresets([...customPresets, preset])
     setActivePresetId(preset.id)
     setPresetError('')
@@ -223,11 +214,7 @@ export function EditorShell() {
   const importPreset = (json: string) => {
     try {
       const imported = parsePreset(json)
-      const preset: FacePreset = {
-        ...clonePreset(imported),
-        id: `custom:${crypto.randomUUID()}`,
-        name: uniquePresetName(imported.name, presets),
-      }
+      const preset: FacePreset = { ...clonePreset(imported), id: `custom:${crypto.randomUUID()}`, name: uniquePresetName(imported.name, presets) }
       persistCustomPresets([...customPresets, preset])
       applyPreset(preset)
       setPresetStatus(`Imported “${preset.name}”.`)
@@ -272,20 +259,13 @@ export function EditorShell() {
     setActiveExpressionPresetId(preset.id)
     setExpressionPresetError('')
     setExpressionPresetStatus('')
-    commit((current) => ({
-      ...current,
-      model: { ...current.model, expression: structuredClone(preset.expression) },
-    }))
+    commit((current) => ({ ...current, model: { ...current.model, expression: structuredClone(preset.expression) } }))
   }
 
   const importExpressionPreset = (json: string) => {
     try {
       const imported = parseExpressionPreset(json)
-      const preset = createUserExpressionPreset(
-        imported.name,
-        imported.expression,
-        selectableExpressions,
-      )
+      const preset = createUserExpressionPreset(imported.name, imported.expression, selectableExpressions)
       persistExpressionPresets([...customExpressionPresets, preset])
       applyExpressionPreset(preset)
       setExpressionPresetStatus(`Imported “${preset.name}”.`)
@@ -312,11 +292,7 @@ export function EditorShell() {
     setExpressionPresetStatus(`Deleted “${preset.name}”.`)
   }
 
-  const triggerAnimation = (
-    action: string,
-    channel: RuntimeAnimationEvent['channel'],
-    payload?: JsonObject,
-  ) => {
+  const triggerAnimation = (action: string, channel: RuntimeAnimationEvent['channel'], payload?: JsonObject) => {
     const order = runtimeEventOrder.current++
     const event = nextRuntimeEvent(action, channel, playback.clock.positionMs, order, payload)
     setRuntimeEvents((current) => [...current, event])
@@ -335,37 +311,31 @@ export function EditorShell() {
     runtimeEvents,
     reducedMotion,
   })
+  const resolveAnimationFrame = (timeMs: number) => {
+    const frame = evaluateEditorAnimationPreviewFrame(model, animationDefaults, {
+      timeMs,
+      runtimeEvents: [],
+      reducedMotion: false,
+    })
+    return { model: frame.model, overlays: frame.transientEffects.overlays }
+  }
   const displayedModel = displayedFrame.model
   const activePreset = presets.find((preset) => preset.id === activePresetId)
-  const displayedPresetId = activePreset && snapshotEqual(snapshotFromPreset(activePreset), history.present)
-    ? activePreset.id
-    : 'custom'
+  const displayedPresetId = activePreset && snapshotEqual(snapshotFromPreset(activePreset), history.present) ? activePreset.id : 'custom'
   const activeExpressionPreset = selectableExpressions.find((preset) => preset.id === activeExpressionPresetId)
-  const activeExpressionId = activeExpressionPreset && expressionEqual(activeExpressionPreset.expression, model.expression)
-    ? activeExpressionPreset.id
-    : matchExpressionPreset(model.expression)
+  const activeExpressionId = activeExpressionPreset && expressionEqual(activeExpressionPreset.expression, model.expression) ? activeExpressionPreset.id : matchExpressionPreset(model.expression)
 
   return (
     <main className="editor-shell">
       <header className="editor-header">
-        <div>
-          <p className="eyebrow">Parametric Robot Face Editor</p>
-          <h1>RoboEyes Image Editor</h1>
-        </div>
+        <div><p className="eyebrow">Parametric Robot Face Editor</p><h1>RoboEyes Image Editor</h1></div>
         <span className="phase-badge">Realtime SVG + Animation</span>
       </header>
 
       <ContinuousEditProvider value={{ begin: beginContinuousEdit, end: endContinuousEdit }}>
         <section className="editor-workspace" aria-label="Editor workspace">
           <div className="editor-preview-column">
-            <PreviewArea
-              model={displayedModel}
-              overlays={displayedFrame.transientEffects.overlays}
-              transparentBackground={transparentBackground}
-              pixelPerfect={pixelPerfect}
-              onTransparentBackgroundChange={(value) => commit((current) => ({ ...current, transparentBackground: value }))}
-              onPixelPerfectChange={setPixelPerfect}
-            />
+            <PreviewArea model={displayedModel} overlays={displayedFrame.transientEffects.overlays} transparentBackground={transparentBackground} pixelPerfect={pixelPerfect} onTransparentBackgroundChange={(value) => commit((current) => ({ ...current, transparentBackground: value }))} onPixelPerfectChange={setPixelPerfect} />
             <div className="preview-history-actions" aria-label="Editor history">
               <button type="button" onClick={undo} disabled={history.past.length === 0}>Undo</button>
               <button type="button" onClick={redo} disabled={history.future.length === 0}>Redo</button>
@@ -374,52 +344,13 @@ export function EditorShell() {
           </div>
 
           <div className="editor-sidebar">
-            <AnimationPanel
-              model={model}
-              animationDefaults={animationDefaults}
-              playback={playback}
-              reducedMotion={reducedMotion}
-              onAnimationDefaultsChange={updateAnimationDefaults}
-              onPlay={() => setPlayback(playAnimationPlayback)}
-              onPause={() => setPlayback(pauseAnimationPlayback)}
-              onStop={() => {
-                setRuntimeEvents([])
-                runtimeEventOrder.current = 0
-                setPlayback(stopAnimationPlayback)
-              }}
-              onRestart={() => {
-                setRuntimeEvents([])
-                runtimeEventOrder.current = 0
-                setPlayback(restartAnimationPlayback)
-              }}
-              onPlaybackRateChange={(rate) => setPlayback((current) => setAnimationPlaybackRate(current, rate))}
-              onTrigger={triggerAnimation}
-              onPreviewSequenceStep={previewSequenceStep}
-            />
-            <PresetPanel
-              presets={presets}
-              activePresetId={displayedPresetId}
-              status={presetStatus}
-              onApply={applyPreset}
-              onSaveCurrent={saveCurrentPreset}
-              onImport={importPreset}
-              onExport={exportPreset}
-              onDelete={deletePreset}
-            />
+            <AnimationPanel model={model} animationDefaults={animationDefaults} playback={playback} reducedMotion={reducedMotion} onAnimationDefaultsChange={updateAnimationDefaults} onPlay={() => setPlayback(playAnimationPlayback)} onPause={() => setPlayback(pauseAnimationPlayback)} onStop={() => { setRuntimeEvents([]); runtimeEventOrder.current = 0; setPlayback(stopAnimationPlayback) }} onRestart={() => { setRuntimeEvents([]); runtimeEventOrder.current = 0; setPlayback(restartAnimationPlayback) }} onPlaybackRateChange={(rate) => setPlayback((current) => setAnimationPlaybackRate(current, rate))} onTrigger={triggerAnimation} onPreviewSequenceStep={previewSequenceStep} />
+            <PresetPanel presets={presets} activePresetId={displayedPresetId} status={presetStatus} onApply={applyPreset} onSaveCurrent={saveCurrentPreset} onImport={importPreset} onExport={exportPreset} onDelete={deletePreset} />
             {presetError && <p className="preset-error" role="alert">{presetError}</p>}
-            <ExpressionPresetPanel
-              presets={selectableExpressions}
-              activePresetId={activeExpressionId}
-              status={expressionPresetStatus}
-              onApply={applyExpressionPreset}
-              onSaveCurrent={saveCurrentExpressionPreset}
-              onImport={importExpressionPreset}
-              onExport={exportExpressionPreset}
-              onDelete={deleteExpressionPreset}
-            />
+            <ExpressionPresetPanel presets={selectableExpressions} activePresetId={activeExpressionId} status={expressionPresetStatus} onApply={applyExpressionPreset} onSaveCurrent={saveCurrentExpressionPreset} onImport={importExpressionPreset} onExport={exportExpressionPreset} onDelete={deleteExpressionPreset} />
             {expressionPresetError && <p className="preset-error" role="alert">{expressionPresetError}</p>}
             <ParameterPanel model={model} linkedEyes={linkedEyes} onChange={updateModel} onLinkedEyesChange={setLinkedEyes} />
-            <ExportPanel model={model} transparentBackground={transparentBackground} />
+            <ExportPanel model={model} transparentBackground={transparentBackground} resolveAnimationFrame={resolveAnimationFrame} />
           </div>
         </section>
       </ContinuousEditProvider>
