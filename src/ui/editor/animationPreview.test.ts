@@ -68,7 +68,7 @@ describe('editor animation preview composition', () => {
     expect(event.payload).toEqual({ amplitude: 6, durationMs: 450, periodMs: 60 })
   })
 
-  it('falls back to the authored model instead of crashing when an eye edit is temporarily not animation-safe', () => {
+  it('falls back to a static profile preview instead of crashing when eye geometry is temporarily not animation-safe', () => {
     const base = structuredClone(roboEyesPreset.model)
     base.leftEye.geometry.width = 1_000
     base.rightEye.geometry.width = 1_000
@@ -94,7 +94,10 @@ describe('editor animation preview composition', () => {
     }
 
     expect(() => evaluateEditorAnimationFrame(base, defaults, { timeMs: 120 })).not.toThrow()
-    expect(evaluateEditorAnimationFrame(base, defaults, { timeMs: 120 })).toEqual(base)
+    const frame = evaluateEditorAnimationFrame(base, defaults, { timeMs: 120 })
+    expect(frame.leftEye.geometry).toEqual(base.leftEye.geometry)
+    expect(frame.rightEye.geometry).toEqual(base.rightEye.geometry)
+    expect(frame.expression).toEqual(expression('expression:curious'))
   })
 
   it('samples sequence state before ambient/runtime channels and remains seekable', () => {
