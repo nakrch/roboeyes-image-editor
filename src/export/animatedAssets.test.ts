@@ -6,30 +6,31 @@ function frame(index: number, timeMs: number, durationMs: number): RasterAnimati
     index,
     timeMs,
     durationMs,
-    rgba: new Uint8ClampedArray([index, index, index, 255]),
+    rgba: new Uint8ClampedArray([index, index + 1, index + 2, 255]),
   }
 }
 
 describe('animated WebP frame adaptation', () => {
-  it('converts sampled frame durations to cumulative libwebp timestamps', () => {
+  it('passes deterministic sampled durations through to wasm-webp', () => {
     const encoded = webpAnimationFrames([
       frame(0, 0, 50),
       frame(1, 50, 50),
       frame(2, 100, 50),
     ])
 
-    expect(encoded.map((item) => item.duration)).toEqual([0, 50, 100, 150])
+    expect(encoded.map((item) => item.duration)).toEqual([50, 50, 50])
+    expect(encoded).toHaveLength(3)
   })
 
-  it('uses the requested clipped final duration as the terminal timestamp', () => {
+  it('preserves the clipped final duration and RGBA byte layout', () => {
     const encoded = webpAnimationFrames([
       frame(0, 0, 250),
       frame(1, 250, 250),
       frame(2, 500, 50),
     ])
 
-    expect(encoded.map((item) => item.duration)).toEqual([0, 250, 500, 550])
-    expect(encoded.at(-1)?.data).toEqual(encoded.at(-2)?.data)
-    expect(encoded.at(-1)?.data).not.toBe(encoded.at(-2)?.data)
+    expect(encoded.map((item) => item.duration)).toEqual([250, 250, 50])
+    expect(Array.from(encoded[0].data)).toEqual([0, 1, 2, 255])
+    expect(encoded[0].data).not.toBe(encoded[1].data)
   })
 })
