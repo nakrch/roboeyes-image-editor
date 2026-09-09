@@ -5,11 +5,14 @@ import {
   type EyeGeometry,
   type FaceModel,
 } from '../../core/model'
+import type { TransientOverlay, TransientOverlayPaint } from '../../animation/transientEffects'
 
 export type SvgRenderOptions = {
   transparentBackground?: boolean
   /** Optional stable prefix for inline-SVG definition IDs to avoid document-level collisions. */
   idPrefix?: string
+  /** Optional renderer-independent overlays resolved by the animation/effect layer. */
+  overlays?: readonly TransientOverlay[]
 }
 
 type RenderedEye = {
@@ -79,6 +82,20 @@ function renderEye(
   }
 }
 
+function overlayPaint(paint: TransientOverlayPaint, model: FaceModel): string {
+  if ('value' in paint) return paint.value
+  switch (paint.role) {
+    case 'eye': return model.colors.eye
+    case 'stroke': return model.colors.stroke ?? model.colors.eye
+    case 'background': return model.colors.background
+  }
+}
+
+function renderOverlay(overlay: TransientOverlay, model: FaceModel): string {
+  const opacity = overlay.opacity === undefined ? 1 : Math.min(1, Math.max(0, overlay.opacity))
+  return `<rect data-transient-overlay="${escapeAttribute(overlay.id)}" data-overlay-kind="${overlay.kind}" x="${number(overlay.x)}" y="${number(overlay.y)}" width="${number(overlay.width)}" height="${number(overlay.height)}" rx="${number(overlay.radius)}" ry="${number(overlay.radius)}" fill="${escapeAttribute(overlayPaint(overlay.paint, model))}" opacity="${number(opacity)}" />`
+}
+
 export function renderFaceToSvg(
   model: FaceModel,
   options: SvgRenderOptions = {},
@@ -91,6 +108,7 @@ export function renderFaceToSvg(
   const background = options.transparentBackground
     ? ''
     : `<rect data-background="true" x="0" y="0" width="${number(width)}" height="${number(height)}" fill="${escapeAttribute(model.colors.background)}" />`
+  const overlays = (options.overlays ?? []).map((overlay) => renderOverlay(overlay, model)).join('')
 
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${number(width)}" height="${number(height)}" viewBox="0 0 ${number(width)} ${number(height)}">`,
@@ -98,6 +116,7 @@ export function renderFaceToSvg(
     `<defs>${left.clipPath}${right.clipPath}</defs>`,
     left.shape,
     right.shape,
+    overlays,
     '</svg>',
   ].join('')
 }
