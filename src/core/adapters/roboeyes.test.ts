@@ -42,6 +42,7 @@ describe('roboEyesToFaceModel', () => {
     expect(model.gaze).toEqual({ x: 4, y: -3 })
     expect(model.expression).toEqual({ upperLid: 0.1, lowerLid: 0.2, tilt: -5 })
     expect(model.colors).toEqual({ eye: '#fff', stroke: '#0ff', background: '#000' })
+    expect(model.eyeVisibility).toBeUndefined()
   })
 
   it('uses an explicit pair center and preserves edge spacing with asymmetric eyes', () => {
@@ -62,6 +63,21 @@ describe('roboEyesToFaceModel', () => {
     const leftRightEdge = model.leftEye.geometry.position.x + model.leftEye.geometry.width / 2
     const rightLeftEdge = model.rightEye.geometry.position.x - model.rightEye.geometry.width / 2
     expect(rightLeftEdge - leftRightEdge).toBe(10)
+  })
+
+  it('maps RoboEyes cyclops to a centered visible left eye without destroying hidden geometry', () => {
+    const model = roboEyesToFaceModel({
+      ...baseParameters,
+      cyclops: true,
+      centerX: 70,
+      centerY: 30,
+      leftEye: { width: 42 },
+    })
+
+    expect(model.eyeVisibility).toEqual({ left: true, right: false })
+    expect(model.leftEye.geometry.position).toEqual({ x: 70, y: 30 })
+    expect(model.leftEye.geometry.width).toBe(42)
+    expect(model.rightEye.geometry.width).toBe(36)
   })
 
   it('falls back to the fill color when no stroke color is provided', () => {
