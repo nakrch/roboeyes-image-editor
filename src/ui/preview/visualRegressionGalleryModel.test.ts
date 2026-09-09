@@ -5,7 +5,7 @@ import { phase2ExpressionVisualFixtures } from '../../renderers/svg/__fixtures__
 import {
   GALLERY_MOTION_PREVIEW_CYCLE_MS,
   applyGallerySelection,
-  isInteractiveGalleryFixture,
+  isGalleryVisibleFixture,
   sampleFixtureMotionPreview,
   selectionForFixture,
 } from './visualRegressionGalleryModel'
@@ -17,11 +17,12 @@ function fixture(id: string) {
 }
 
 describe('interactive visual regression gallery model', () => {
-  it('keeps regression-only fixtures visible but non-interactive', () => {
-    expect(isInteractiveGalleryFixture(fixture('curious-center-128x64'))).toBe(false)
-    expect(isInteractiveGalleryFixture(fixture('happy-240x240'))).toBe(false)
-    expect(isInteractiveGalleryFixture(fixture('curious-left-128x64'))).toBe(true)
-    expect(isInteractiveGalleryFixture(fixture('happy-128x64'))).toBe(true)
+  it('hides redundant regression-only fixtures from the browser gallery', () => {
+    expect(isGalleryVisibleFixture(fixture('neutral-128x64'))).toBe(false)
+    expect(isGalleryVisibleFixture(fixture('curious-center-128x64'))).toBe(false)
+    expect(isGalleryVisibleFixture(fixture('happy-240x240'))).toBe(false)
+    expect(isGalleryVisibleFixture(fixture('curious-left-128x64'))).toBe(true)
+    expect(isGalleryVisibleFixture(fixture('happy-128x64'))).toBe(true)
   })
 
   it('applies a square fixture expression without changing the editor canvas', () => {
