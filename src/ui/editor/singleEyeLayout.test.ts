@@ -4,9 +4,11 @@ import { pairCenterX, pairSpacing } from './modelEditing'
 import {
   disableSingleEyeLayout,
   enableSingleEyeLayout,
+  enforceSingleEyeNeutralExpression,
   isSingleEyeLayout,
   moveSingleEye,
   preserveSingleEyeSpacing,
+  SINGLE_EYE_NEUTRAL_EXPRESSION,
 } from './singleEyeLayout'
 
 const model: FaceModel = {
@@ -29,6 +31,30 @@ describe('single-eye editor layout', () => {
     expect(pair.eyeVisibility).toBeUndefined()
     expect(pair.leftEye.geometry.position).toEqual(model.leftEye.geometry.position)
     expect(pair.rightEye.geometry.position).toEqual(model.rightEye.geometry.position)
+  })
+
+  it('forces neutral expression in single-eye mode and can restore the prior two-eye expression', () => {
+    const priorExpression: FaceModel['expression'] = {
+      upperLid: 0.12,
+      lowerLid: 0.28,
+      lowerLidCurvature: 0.4,
+      tilt: 5,
+      leftEye: { upperLid: 0.2 },
+    }
+    const expressive = { ...model, expression: priorExpression }
+
+    const single = enableSingleEyeLayout(expressive)
+    expect(single.expression).toEqual(SINGLE_EYE_NEUTRAL_EXPRESSION)
+
+    const contaminated: FaceModel = {
+      ...single,
+      expression: { upperLid: 0.4, lowerLid: 0.2, tilt: -8 },
+    }
+    expect(enforceSingleEyeNeutralExpression(contaminated).expression).toEqual(SINGLE_EYE_NEUTRAL_EXPRESSION)
+
+    const restored = disableSingleEyeLayout(single, priorExpression)
+    expect(restored.expression).toEqual(priorExpression)
+    expect(restored.expression).not.toBe(priorExpression)
   })
 
   it('moves the visible eye and hidden layout together', () => {
