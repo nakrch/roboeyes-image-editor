@@ -122,29 +122,13 @@ type WebpAnimationFrame = {
 }
 
 export function webpAnimationFrames(frames: readonly RasterAnimationFrame[]): WebpAnimationFrame[] {
-  // wasm-webp's wrapper calls WebPAnimEncoderAdd(frame, timestamp, ...), so its
-  // `duration` field is actually consumed as the frame presentation timestamp.
-  // Feed cumulative logical timestamps and append a duplicate terminal frame at
-  // the requested end timestamp so libwebp can derive the final frame duration.
-  let timestampMs = 0
-  const encoded: WebpAnimationFrame[] = frames.map((frame) => {
-    const current: WebpAnimationFrame = {
-      data: ownedBytes(frame.rgba),
-      duration: Math.max(0, Math.round(timestampMs)),
-      config: { lossless: 1, quality: 100 },
-    }
-    timestampMs += frame.durationMs
-    return current
-  })
-  const last = frames.at(-1)
-  if (last) {
-    encoded.push({
-      data: ownedBytes(last.rgba),
-      duration: Math.max(1, Math.round(timestampMs)),
-      config: { lossless: 1, quality: 100 },
-    })
-  }
-  return encoded
+  // wasm-webp expects each frame's display duration and accumulates timestamps
+  // internally before calling WebPAnimEncoderAdd.
+  return frames.map((frame) => ({
+    data: ownedBytes(frame.rgba),
+    duration: Math.max(1, Math.round(frame.durationMs)),
+    config: { lossless: 1, quality: 100 },
+  }))
 }
 
 export async function encodeAnimatedWebp(
@@ -155,10 +139,15 @@ export async function encodeAnimatedWebp(
   const { encodeAnimation } = await import('wasm-webp')
   const width = positiveDimension(options.dimensions.width, 'width')
   const height = positiveDimension(options.dimensions.height, 'height')
+
+  // Rasterization always produces four-byte RGBA pixels. wasm-webp switches
+  // between RGB and RGBA import solely from this flag, so passing false for an
+  // opaque export would make it read the RGBA buffer with a three-byte stride.
+  // Keep RGBA import enabled; opaque frames already carry alpha=255.
   const bytes = await encodeAnimation(
     width,
     height,
-    options.transparentBackground,
+    true,
     webpAnimationFrames(frames),
   )
   if (bytes == null) throw new Error('Animated WebP encoder returned no data')
