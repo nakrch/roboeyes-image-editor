@@ -107,7 +107,11 @@ export function ExpressionControls({ model, linkedEyes, disabled = false, onChan
             Single-eye mode uses Neutral expression. Switch to Two eyes to edit expression parameters.
           </p>
         )}
-        <fieldset className="expression-control-fields" disabled={disabled}>
+        <fieldset
+          className="expression-control-fields"
+          disabled={disabled}
+          style={{ margin: 0, border: 0, padding: 0, minWidth: 0 }}
+        >
           <div className="nested-controls">
             {linkedEyes ? fields.map((field) => {
               const range = isExpressionGeometryKey(field.key) ? sharedExpressionGeometryRange(model, field.key) : { min: field.min, max: field.max }
