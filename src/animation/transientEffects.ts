@@ -11,6 +11,7 @@ import {
 export const TRANSIENT_EFFECT_LAYER_KIND = 'transient-effect-layer' as const
 export const SWEAT_EFFECT_KIND = 'sweat' as const
 export const TRANSIENT_OVERLAY_ROUNDED_RECT = 'rounded-rect' as const
+export const TRANSIENT_OVERLAY_TEARDROP = 'teardrop' as const
 
 export const SWEAT_CONTROL_ACTIONS = ['sweat-enable', 'sweat-disable'] as const
 export type SweatControlAction = typeof SWEAT_CONTROL_ACTIONS[number]
@@ -19,19 +20,28 @@ export type TransientOverlayPaint =
   | { role: 'eye' | 'stroke' | 'background' }
   | { value: string }
 
-export type RoundedRectTransientOverlay = {
+type BaseTransientOverlay = {
   id: string
-  kind: typeof TRANSIENT_OVERLAY_ROUNDED_RECT
   x: number
   y: number
   width: number
   height: number
-  radius: number
   paint: TransientOverlayPaint
   opacity?: number
 }
 
-export type TransientOverlay = RoundedRectTransientOverlay
+export type RoundedRectTransientOverlay = BaseTransientOverlay & {
+  kind: typeof TRANSIENT_OVERLAY_ROUNDED_RECT
+  radius: number
+}
+
+export type TeardropTransientOverlay = BaseTransientOverlay & {
+  kind: typeof TRANSIENT_OVERLAY_TEARDROP
+  /** Generic shape control in the 0..1 range. Higher values produce a rounder bulb. */
+  roundness: number
+}
+
+export type TransientOverlay = RoundedRectTransientOverlay | TeardropTransientOverlay
 
 export type TransientEffectFrame = {
   overlays: readonly TransientOverlay[]
@@ -45,9 +55,12 @@ export type SweatEffectDefinition = {
   enabled?: boolean
   startTimeMs?: number
   dropCount?: number
+  /** Reference-space values based on the RoboEyes 64 px-tall display behavior. */
   minTargetY?: number
   maxTargetY?: number
+  /** Reference-space pixels per millisecond; scaled with canvas height at sampling time. */
   fallSpeed?: number
+  /** Controls the generic teardrop bulb roundness. */
   radius?: number
 }
 
@@ -78,12 +91,14 @@ export const DEFAULT_SWEAT_EFFECT: Readonly<NormalizedSweatEffectDefinition> = O
   radius: 3,
 })
 
+const REFERENCE_CANVAS_HEIGHT = 64
+const REFERENCE_CANVAS_WIDTH = 128
 const SWEAT_START_Y = 2
-const SWEAT_INITIAL_WIDTH = 1
-const SWEAT_INITIAL_HEIGHT = 2
-const SWEAT_GROWTH_RATE = 0.025
-const SWEAT_WIDTH_SHRINK_RATE = 0.005
-const SWEAT_HEIGHT_SHRINK_RATE = 0.025
+const SWEAT_INITIAL_WIDTH = 1.8
+const SWEAT_INITIAL_HEIGHT = 3.2
+const SWEAT_GROWTH_RATE = 0.028
+const SWEAT_WIDTH_SHRINK_RATE = 0.004
+const SWEAT_HEIGHT_SHRINK_RATE = 0.022
 const MAX_SWEAT_CYCLES = 10_000
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -204,24 +219,29 @@ function sweatEpochAtTime(
     .sort(compareRuntimeAnimationEvents)
 
   for (const event of controls) {
-    if (event.action === 'sweat-disable') {
-      epoch = { enabled: false, startTimeMs: event.startTimeMs }
-    } else {
-      epoch = { enabled: true, startTimeMs: event.startTimeMs }
-    }
+    epoch = event.action === 'sweat-disable'
+      ? { enabled: false, startTimeMs: event.startTimeMs }
+      : { enabled: true, startTimeMs: event.startTimeMs }
   }
   return epoch
 }
 
+function canvasScale(model: FaceModel): number {
+  if (model.canvas.height <= 0) return 1
+  return Math.max(0.5, model.canvas.height / REFERENCE_CANVAS_HEIGHT)
+}
+
 function sweatXRange(width: number, dropIndex: number, dropCount: number): { min: number; max: number } {
-  if (dropCount === 3 && width >= 60) {
-    if (dropIndex === 0) return { min: 0, max: 30 }
-    if (dropIndex === 1) return { min: 30, max: width - 30 }
-    return { min: width - 30, max: width }
+  if (dropCount === 3 && width > 0) {
+    const edge = width * (30 / REFERENCE_CANVAS_WIDTH)
+    if (dropIndex === 0) return { min: 0, max: edge }
+    if (dropIndex === 1) return { min: edge, max: width - edge }
+    return { min: width - edge, max: width }
   }
-  const min = width * (dropIndex / dropCount)
-  const max = width * ((dropIndex + 1) / dropCount)
-  return { min, max }
+  return {
+    min: width * (dropIndex / dropCount),
+    max: width * ((dropIndex + 1) / dropCount),
+  }
 }
 
 function sampledTargetY(
@@ -231,14 +251,17 @@ function sampledTargetY(
   dropIndex: number,
   cycleIndex: number,
 ): number {
-  const canvasMax = Math.max(SWEAT_START_Y, model.canvas.height)
-  const min = Math.min(canvasMax, Math.max(SWEAT_START_Y, definition.minTargetY))
-  const max = Math.min(canvasMax, Math.max(min, definition.maxTargetY))
+  const scale = canvasScale(model)
+  const startY = SWEAT_START_Y * scale
+  const canvasMax = Math.max(startY, model.canvas.height)
+  const min = Math.min(canvasMax, Math.max(startY, definition.minTargetY * scale))
+  const max = Math.min(canvasMax, Math.max(min, definition.maxTargetY * scale))
   return sampleRandomRange(seed, `transient:${definition.id}:drop-${dropIndex}:target-y`, cycleIndex, min, max)
 }
 
-function cycleDurationMs(definition: NormalizedSweatEffectDefinition, targetY: number): number {
-  return Math.max(1, (Math.max(SWEAT_START_Y, targetY) - SWEAT_START_Y) / definition.fallSpeed)
+function cycleDurationMs(definition: NormalizedSweatEffectDefinition, targetY: number, scale: number): number {
+  const startY = SWEAT_START_Y * scale
+  return Math.max(1, (Math.max(startY, targetY) - startY) / (definition.fallSpeed * scale))
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -252,13 +275,15 @@ function sweatOverlayAtTime(
   dropIndex: number,
   epochStartTimeMs: number,
   timeMs: number,
-): RoundedRectTransientOverlay | undefined {
-  if (model.canvas.width <= 0 || model.canvas.height <= SWEAT_START_Y) return undefined
+): TeardropTransientOverlay | undefined {
+  const scale = canvasScale(model)
+  const startY = SWEAT_START_Y * scale
+  if (model.canvas.width <= 0 || model.canvas.height <= startY) return undefined
 
   let cycleStartTimeMs = epochStartTimeMs
   let cycleIndex = 0
   let targetY = sampledTargetY(definition, model, seed, dropIndex, cycleIndex)
-  let durationMs = cycleDurationMs(definition, targetY)
+  let durationMs = cycleDurationMs(definition, targetY, scale)
 
   while (timeMs >= cycleStartTimeMs + durationMs) {
     cycleStartTimeMs += durationMs
@@ -267,23 +292,24 @@ function sweatOverlayAtTime(
       throw new RangeError(`Sweat effect exceeds max cycles (${MAX_SWEAT_CYCLES}) before requested time`)
     }
     targetY = sampledTargetY(definition, model, seed, dropIndex, cycleIndex)
-    durationMs = cycleDurationMs(definition, targetY)
+    durationMs = cycleDurationMs(definition, targetY, scale)
   }
 
   const elapsedMs = Math.max(0, timeMs - cycleStartTimeMs)
-  const y = Math.min(targetY, SWEAT_START_Y + definition.fallSpeed * elapsedMs)
-  const growthEndY = Math.max(SWEAT_START_Y, targetY / 2)
-  const growthDurationMs = Math.max(0, (growthEndY - SWEAT_START_Y) / definition.fallSpeed)
+  const fallSpeed = definition.fallSpeed * scale
+  const y = Math.min(targetY, startY + fallSpeed * elapsedMs)
+  const growthEndY = Math.max(startY, targetY / 2)
+  const growthDurationMs = Math.max(0, (growthEndY - startY) / fallSpeed)
   const growthElapsedMs = Math.min(elapsedMs, growthDurationMs)
   const shrinkElapsedMs = Math.max(0, elapsedMs - growthDurationMs)
-  const widthAtGrowthEnd = SWEAT_INITIAL_WIDTH + SWEAT_GROWTH_RATE * growthElapsedMs
-  const heightAtGrowthEnd = SWEAT_INITIAL_HEIGHT + SWEAT_GROWTH_RATE * growthElapsedMs
+  const widthAtGrowthEnd = (SWEAT_INITIAL_WIDTH + SWEAT_GROWTH_RATE * growthElapsedMs) * scale
+  const heightAtGrowthEnd = (SWEAT_INITIAL_HEIGHT + SWEAT_GROWTH_RATE * growthElapsedMs) * scale
   const rawWidth = shrinkElapsedMs === 0
-    ? SWEAT_INITIAL_WIDTH + SWEAT_GROWTH_RATE * elapsedMs
-    : widthAtGrowthEnd - SWEAT_WIDTH_SHRINK_RATE * shrinkElapsedMs
+    ? (SWEAT_INITIAL_WIDTH + SWEAT_GROWTH_RATE * elapsedMs) * scale
+    : widthAtGrowthEnd - SWEAT_WIDTH_SHRINK_RATE * shrinkElapsedMs * scale
   const rawHeight = shrinkElapsedMs === 0
-    ? SWEAT_INITIAL_HEIGHT + SWEAT_GROWTH_RATE * elapsedMs
-    : heightAtGrowthEnd - SWEAT_HEIGHT_SHRINK_RATE * shrinkElapsedMs
+    ? (SWEAT_INITIAL_HEIGHT + SWEAT_GROWTH_RATE * elapsedMs) * scale
+    : heightAtGrowthEnd - SWEAT_HEIGHT_SHRINK_RATE * shrinkElapsedMs * scale
   const width = clamp(rawWidth, 0, model.canvas.width)
   const height = clamp(rawHeight, 0, Math.max(0, model.canvas.height - y))
   if (width <= 0 || height <= 0) return undefined
@@ -300,12 +326,12 @@ function sweatOverlayAtTime(
 
   return {
     id: `${definition.id}:drop-${dropIndex}:cycle-${cycleIndex}`,
-    kind: TRANSIENT_OVERLAY_ROUNDED_RECT,
+    kind: TRANSIENT_OVERLAY_TEARDROP,
     x,
     y,
     width,
     height,
-    radius: Math.min(definition.radius, width / 2, height / 2),
+    roundness: clamp(definition.radius / 4, 0.35, 1),
     paint: { role: 'eye' },
   }
 }
@@ -325,7 +351,9 @@ export function resolveTransientEffectFrame(
   timeMs: number,
   seed: number,
 ): TransientEffectFrame {
-  if (!Number.isFinite(timeMs) || timeMs < 0) throw new RangeError('Transient effect sample time must be finite and non-negative')
+  if (!Number.isFinite(timeMs) || timeMs < 0) {
+    throw new RangeError('Transient effect sample time must be finite and non-negative')
+  }
   const normalizedSeed = normalizeAnimationSeed(seed)
   const events = normalizeRuntimeAnimationEvents(eventsInput)
     .filter((event) => event.channel === 'transient-effect' && event.startTimeMs <= timeMs)
