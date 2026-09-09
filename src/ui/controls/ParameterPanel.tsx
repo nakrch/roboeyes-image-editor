@@ -9,9 +9,13 @@ import { NumericControl } from './NumericControl'
 type ParameterPanelProps = {
   model: FaceModel
   linkedEyes: boolean
+  transparentBackground: boolean
+  pixelPerfect: boolean
   onChange: (updater: (current: FaceModel) => FaceModel) => void
   onLinkedEyesChange: (value: boolean) => void
   onSingleEyeLayoutChange: (enabled: boolean) => void
+  onTransparentBackgroundChange: (value: boolean) => void
+  onPixelPerfectChange: (value: boolean) => void
 }
 
 const resolutionPresets = [
@@ -28,9 +32,13 @@ const CANVAS_MAX = 640
 export function ParameterPanel({
   model,
   linkedEyes,
+  transparentBackground,
+  pixelPerfect,
   onChange,
   onLinkedEyesChange,
   onSingleEyeLayoutChange,
+  onTransparentBackgroundChange,
+  onPixelPerfectChange,
 }: ParameterPanelProps) {
   const currentResolution =
     resolutionPresets.find(
@@ -68,7 +76,7 @@ export function ParameterPanel({
       <div className="control-list">
         <details className="control-group collapsible-control-group" open>
           <summary className="control-group-summary">
-            <span>Canvas</span>
+            <span>Display</span>
             <select
               aria-label="Preview resolution preset"
               value={currentResolution}
@@ -108,6 +116,24 @@ export function ParameterPanel({
                 })
               }
             />
+            <div className="display-control-options" aria-label="Preview display options">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={transparentBackground}
+                  onChange={(event) => onTransparentBackgroundChange(event.target.checked)}
+                />
+                Transparent
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={pixelPerfect}
+                  onChange={(event) => onPixelPerfectChange(event.target.checked)}
+                />
+                Pixel perfect
+              </label>
+            </div>
           </div>
         </details>
 
