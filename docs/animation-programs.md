@@ -30,7 +30,7 @@ A program is versioned plain data:
     {
       id: 'happy',
       target: { expression: happyExpression },
-      transitionDurationMs: 200,
+      transitionDurationMs: 700,
       easing: 'ease-in-out',
       spring: { stiffness: 180, damping: 12, mass: 1 },
       holdDurationMs: 600,
@@ -44,6 +44,8 @@ A program is versioned plain data:
 `easing` remains required for compatibility and is used when `spring` is absent. When `spring` is present, the entry transition uses the deterministic Spring response instead. Existing program JSON therefore keeps its previous easing semantics unchanged.
 
 Spring program steps preserve safe physical overshoot before the hard `transitionDurationMs` completion boundary. A `bouncy` step can visibly move past its target and return; gaze/geometry/expression safety is enforced on the resolved FaceModel rather than by flattening Spring progress to `0..1`.
+
+The browser editor chooses settling-friendly transition durations when a built-in Spring preset is selected: `gentle` 700 ms, `snappy` 400 ms, and `bouncy` 700 ms. These are authoring defaults rather than runtime constraints; `Transition (ms)` remains editable. This avoids cutting a Spring response off at the easing-oriented 200 ms default before it has naturally approached its target.
 
 Every partial `FaceStateTarget` is resolved against the same program base model before sampling. This prevents unspecified fields from accumulating drift across long loops.
 
