@@ -1,0 +1,131 @@
+.editor-preview-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.preview-panel { order: 1; }
+.preview-history-actions { order: 2; }
+.preview-display-panel {
+  order: 3;
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 16px 20px;
+}
+
+.preview-title-row { margin-bottom: 10px; }
+
+.preview-display-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 0;
+}
+
+.preview-display-size {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  color: #cbd5e1;
+}
+
+.preview-display-size span {
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.preview-display-size strong {
+  color: #f8fafc;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.preview-display-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  color: #cbd5e1;
+  font-size: 0.82rem;
+}
+
+.preview-display-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Keep the main preview useful on desktop without making it dominate vertically. */
+.preview-stage { min-height: 420px; }
+.svg-preview.scaled { max-height: 360px; }
+
+@media (max-width: 820px) {
+  .editor-preview-column {
+    --compact-preview-height: clamp(140px, 24vh, 220px);
+    position: static;
+    top: auto;
+    z-index: auto;
+    isolation: auto;
+    padding-top: 0;
+    background: transparent;
+  }
+
+  .preview-panel {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    overflow: hidden;
+    padding: 10px;
+    background: #0f172a;
+    box-shadow: 0 10px 24px rgb(0 0 0 / 0.42);
+  }
+
+  .preview-title-row { display: none; }
+
+  .preview-stage {
+    min-height: 0;
+    height: var(--compact-preview-height);
+    padding: 10px;
+  }
+
+  .svg-preview.scaled {
+    max-height: calc(var(--compact-preview-height) - 20px);
+  }
+
+  .preview-history-actions {
+    position: sticky;
+    top: calc(var(--compact-preview-height) + 22px);
+    z-index: 51;
+    margin-top: 0;
+    padding: 4px 2px 8px;
+    background: #0b1020;
+  }
+
+  .preview-history-actions button {
+    padding: 5px 8px;
+  }
+
+  .preview-display-panel {
+    margin-top: 8px;
+    padding: 14px 16px;
+  }
+}
+
+@media (max-width: 440px) {
+  .editor-preview-column {
+    --compact-preview-height: clamp(120px, 22vh, 180px);
+  }
+
+  .preview-display-heading {
+    align-items: flex-start;
+  }
+
+  .preview-display-options {
+    gap: 8px 14px;
+    font-size: 0.78rem;
+  }
+}
