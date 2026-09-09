@@ -13,6 +13,7 @@ import {
   renderExportSvg,
   svgToBlob,
 } from '../../export/staticAssets'
+import { useToast } from '../feedback/ToastProvider'
 
 type ExportPanelProps = {
   model: FaceModel
@@ -55,6 +56,7 @@ export function ExportPanel({ model, transparentBackground, resolveAnimationFram
   const [loopCount, setLoopCount] = useState<NumberDraft>(0)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const { notify } = useToast()
 
   useEffect(() => {
     if (sizeKey === 'current') {
@@ -94,8 +96,15 @@ export function ExportPanel({ model, transparentBackground, resolveAnimationFram
 
   const exportSvg = () => {
     setError('')
-    const svg = renderExportSvg(model, staticOptions)
-    downloadBlob(svgToBlob(svg), `${baseName}.svg`)
+    try {
+      const svg = renderExportSvg(model, staticOptions)
+      downloadBlob(svgToBlob(svg), `${baseName}.svg`)
+      notify('success', 'Downloading SVG…')
+    } catch {
+      const message = 'Could not export SVG in this browser.'
+      setError(message)
+      notify('error', message)
+    }
   }
 
   const exportPng = async () => {
@@ -104,8 +113,11 @@ export function ExportPanel({ model, transparentBackground, resolveAnimationFram
     try {
       const png = await renderExportPng(model, staticOptions)
       downloadBlob(png, `${baseName}.png`)
+      notify('success', 'Downloading PNG…')
     } catch {
-      setError('Could not export PNG in this browser.')
+      const message = 'Could not export PNG in this browser.'
+      setError(message)
+      notify('error', message)
     } finally {
       setBusy(false)
     }
@@ -120,8 +132,11 @@ export function ExportPanel({ model, transparentBackground, resolveAnimationFram
         ? await encodeAnimatedGif(frames, animationOptions)
         : await encodeAnimatedWebp(frames, animationOptions)
       downloadBlob(blob, `${baseName}.${format}`)
+      notify('success', `Downloading ${format.toUpperCase()}…`)
     } catch {
-      setError(`Could not export animated ${format.toUpperCase()} in this browser.`)
+      const message = `Could not export animated ${format.toUpperCase()} in this browser.`
+      setError(message)
+      notify('error', message)
     } finally {
       setBusy(false)
     }

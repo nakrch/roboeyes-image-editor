@@ -17,6 +17,7 @@ import {
 } from '../../animation'
 import { editableAnimationDefaults } from '../editor/animationPreview'
 import type { AnimationPlaybackSession } from '../editor/animationPlayback'
+import { useToast } from '../feedback/ToastProvider'
 import { normalizeNumericControlValue } from './numericInputDraft'
 
 type AnimationPanelProps = {
@@ -198,6 +199,7 @@ export function AnimationPanel({
   const sweat = sweatDefinition(transient)
   const dropletCount = Math.max(1, Math.min(8, Math.round(numberValue(sweat.dropCount, 3))))
   const [dropletDraft, setDropletDraft] = useState<string | null>(null)
+  const { notify } = useToast()
   const program = authored.program
 
   const commitAuthored = (updater: (current: PresetAnimationDefaultsV1) => PresetAnimationDefaultsV1) => {
@@ -233,6 +235,15 @@ export function AnimationPanel({
       }
       return { ...current, program: next }
     })
+  }
+
+  const deleteProgramStep = (currentProgram: AnimationProgram, stepId: string) => {
+    try {
+      updateProgram({ ...currentProgram, steps: currentProgram.steps.filter((candidate) => candidate.id !== stepId) })
+      notify('success', 'Animation step deleted.')
+    } catch {
+      notify('error', 'Could not delete animation step.')
+    }
   }
 
   return (
@@ -528,7 +539,7 @@ export function AnimationPanel({
                     <button
                       type="button"
                       disabled={program.steps.length === 1}
-                      onClick={() => updateProgram({ ...program, steps: program.steps.filter((candidate) => candidate.id !== step.id) })}
+                      onClick={() => deleteProgramStep(program, step.id)}
                     >
                       Delete
                     </button>
