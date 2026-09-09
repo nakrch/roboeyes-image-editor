@@ -50,6 +50,13 @@ import {
 import { evaluateEditorAnimationPreviewFrame, nextRuntimeEvent } from './animationPreview'
 import { ContinuousEditProvider } from './continuousEdit'
 import { commitHistory, redoHistory, undoHistory, type HistoryState } from './history'
+import {
+  disableSingleEyeLayout,
+  enableSingleEyeLayout,
+  enforceSingleEyeNeutralExpression,
+  isSingleEyeLayout,
+  SINGLE_EYE_NEUTRAL_EXPRESSION,
+} from './singleEyeLayout'
 
 type EditorSnapshot = {
   model: FaceModel
@@ -64,7 +71,7 @@ const initialPreset = builtInPresets[0]
 
 function snapshotFromPreset(preset: FacePreset): EditorSnapshot {
   return {
-    model: clampGaze(structuredClone(preset.model)),
+    model: clampGaze(enforceSingleEyeNeutralExpression(structuredClone(preset.model))),
     transparentBackground: preset.preview?.transparentBackground ?? false,
     animationDefaults: normalizePresetAnimationDefaults(preset.animationDefaults),
   }
@@ -85,6 +92,7 @@ export function EditorShell() {
     future: [],
   }))
   const continuousEdit = useRef({ active: false, committed: false })
+  const twoEyeExpression = useRef<FaceModel['expression']>(structuredClone(initialPreset.model.expression))
   const [linkedEyes, setLinkedEyes] = useState(true)
   const [pixelPerfect, setPixelPerfect] = useState(false)
   const [activePresetId, setActivePresetId] = useState(initialPreset.id)
@@ -139,6 +147,12 @@ export function EditorShell() {
     return () => cancelAnimationFrame(animationFrame)
   }, [playback.clock.status])
 
+  useEffect(() => {
+    if (!isSingleEyeLayout(history.present.model)) {
+      twoEyeExpression.current = structuredClone(history.present.model.expression)
+    }
+  }, [history.present.model])
+
   const beginContinuousEdit = () => {
     if (continuousEdit.current.active) return
     continuousEdit.current = { active: true, committed: false }
@@ -155,7 +169,10 @@ export function EditorShell() {
   }
 
   const updateModel = (updater: (current: FaceModel) => FaceModel) => {
-    commit((current) => ({ ...current, model: clampGaze(updater(current.model)) }))
+    commit((current) => ({
+      ...current,
+      model: clampGaze(enforceSingleEyeNeutralExpression(updater(current.model))),
+    }))
   }
 
   const updateAnimationDefaults = (next: PresetAnimationDefaults) => {
@@ -181,21 +198,50 @@ export function EditorShell() {
   const applyPreset = (preset: FacePreset) => {
     endContinuousEdit()
     resetPlaybackRuntime()
+    const snapshot = snapshotFromPreset(preset)
+    twoEyeExpression.current = structuredClone(
+      isSingleEyeLayout(snapshot.model) ? SINGLE_EYE_NEUTRAL_EXPRESSION : snapshot.model.expression,
+    )
     setActivePresetId(preset.id)
-    setActiveExpressionPresetId(matchExpressionPreset(preset.model.expression))
+    setActiveExpressionPresetId(matchExpressionPreset(snapshot.model.expression))
     setLinkedEyes(true)
     setPresetError('')
     setPresetStatus('')
-    commit(() => snapshotFromPreset(preset))
+    commit(() => snapshot)
   }
 
   const reset = () => {
     endContinuousEdit()
     resetPlaybackRuntime()
     const preset = presets.find((item) => item.id === activePresetId) ?? initialPreset
-    setActiveExpressionPresetId(matchExpressionPreset(preset.model.expression))
+    const snapshot = snapshotFromPreset(preset)
+    twoEyeExpression.current = structuredClone(
+      isSingleEyeLayout(snapshot.model) ? SINGLE_EYE_NEUTRAL_EXPRESSION : snapshot.model.expression,
+    )
+    setActiveExpressionPresetId(matchExpressionPreset(snapshot.model.expression))
     setLinkedEyes(true)
-    commit(() => snapshotFromPreset(preset))
+    commit(() => snapshot)
+  }
+
+  const setSingleEyeLayout = (enabled: boolean) => {
+    endContinuousEdit()
+    const currentModel = history.present.model
+    if (enabled) {
+      if (isSingleEyeLayout(currentModel)) return
+      twoEyeExpression.current = structuredClone(currentModel.expression)
+      setActiveExpressionPresetId('expression:neutral')
+      setExpressionPresetError('')
+      setExpressionPresetStatus('')
+      updateModel(enableSingleEyeLayout)
+      return
+    }
+
+    if (!isSingleEyeLayout(currentModel)) return
+    const restoredExpression = structuredClone(twoEyeExpression.current)
+    setActiveExpressionPresetId(matchExpressionPreset(restoredExpression))
+    setExpressionPresetError('')
+    setExpressionPresetStatus('')
+    updateModel((model) => disableSingleEyeLayout(model, restoredExpression))
   }
 
   const persistCustomPresets = (next: FacePreset[]) => {
@@ -247,6 +293,7 @@ export function EditorShell() {
   }
 
   const saveCurrentExpressionPreset = (name: string) => {
+    if (isSingleEyeLayout(history.present.model)) return
     const preset = createUserExpressionPreset(name, history.present.model.expression, selectableExpressions)
     persistExpressionPresets([...customExpressionPresets, preset])
     setActiveExpressionPresetId(preset.id)
@@ -255,6 +302,7 @@ export function EditorShell() {
   }
 
   const applyExpressionPreset = (preset: SelectableExpressionPreset) => {
+    if (isSingleEyeLayout(history.present.model)) return
     endContinuousEdit()
     setActiveExpressionPresetId(preset.id)
     setExpressionPresetError('')
@@ -263,6 +311,7 @@ export function EditorShell() {
   }
 
   const importExpressionPreset = (json: string) => {
+    if (isSingleEyeLayout(history.present.model)) return
     try {
       const imported = parseExpressionPreset(json)
       const preset = createUserExpressionPreset(imported.name, imported.expression, selectableExpressions)
@@ -306,6 +355,7 @@ export function EditorShell() {
   }
 
   const { model, transparentBackground, animationDefaults } = history.present
+  const singleEye = isSingleEyeLayout(model)
   const displayedFrame = evaluateEditorAnimationPreviewFrame(model, animationDefaults, {
     timeMs: playback.clock.positionMs,
     runtimeEvents,
@@ -323,7 +373,11 @@ export function EditorShell() {
   const activePreset = presets.find((preset) => preset.id === activePresetId)
   const displayedPresetId = activePreset && snapshotEqual(snapshotFromPreset(activePreset), history.present) ? activePreset.id : 'custom'
   const activeExpressionPreset = selectableExpressions.find((preset) => preset.id === activeExpressionPresetId)
-  const activeExpressionId = activeExpressionPreset && expressionEqual(activeExpressionPreset.expression, model.expression) ? activeExpressionPreset.id : matchExpressionPreset(model.expression)
+  const activeExpressionId = singleEye
+    ? 'expression:neutral'
+    : activeExpressionPreset && expressionEqual(activeExpressionPreset.expression, model.expression)
+      ? activeExpressionPreset.id
+      : matchExpressionPreset(model.expression)
 
   return (
     <main className="editor-shell">
@@ -347,9 +401,9 @@ export function EditorShell() {
             <AnimationPanel model={model} animationDefaults={animationDefaults} playback={playback} reducedMotion={reducedMotion} onAnimationDefaultsChange={updateAnimationDefaults} onPlay={() => setPlayback(playAnimationPlayback)} onPause={() => setPlayback(pauseAnimationPlayback)} onStop={() => { setRuntimeEvents([]); runtimeEventOrder.current = 0; setPlayback(stopAnimationPlayback) }} onRestart={() => { setRuntimeEvents([]); runtimeEventOrder.current = 0; setPlayback(restartAnimationPlayback) }} onPlaybackRateChange={(rate) => setPlayback((current) => setAnimationPlaybackRate(current, rate))} onTrigger={triggerAnimation} onPreviewSequenceStep={previewSequenceStep} />
             <PresetPanel presets={presets} activePresetId={displayedPresetId} status={presetStatus} onApply={applyPreset} onSaveCurrent={saveCurrentPreset} onImport={importPreset} onExport={exportPreset} onDelete={deletePreset} />
             {presetError && <p className="preset-error" role="alert">{presetError}</p>}
-            <ExpressionPresetPanel presets={selectableExpressions} activePresetId={activeExpressionId} status={expressionPresetStatus} onApply={applyExpressionPreset} onSaveCurrent={saveCurrentExpressionPreset} onImport={importExpressionPreset} onExport={exportExpressionPreset} onDelete={deleteExpressionPreset} />
+            <ExpressionPresetPanel presets={selectableExpressions} activePresetId={activeExpressionId} status={expressionPresetStatus} disabled={singleEye} onApply={applyExpressionPreset} onSaveCurrent={saveCurrentExpressionPreset} onImport={importExpressionPreset} onExport={exportExpressionPreset} onDelete={deleteExpressionPreset} />
             {expressionPresetError && <p className="preset-error" role="alert">{expressionPresetError}</p>}
-            <ParameterPanel model={model} linkedEyes={linkedEyes} onChange={updateModel} onLinkedEyesChange={setLinkedEyes} />
+            <ParameterPanel model={model} linkedEyes={linkedEyes} onChange={updateModel} onLinkedEyesChange={setLinkedEyes} onSingleEyeLayoutChange={setSingleEyeLayout} />
             <ExportPanel model={model} transparentBackground={transparentBackground} resolveAnimationFrame={resolveAnimationFrame} />
           </div>
         </section>
