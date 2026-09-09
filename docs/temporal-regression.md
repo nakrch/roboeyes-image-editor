@@ -46,4 +46,4 @@ A test failure caused only by an unintended refactor or redraw cadence change sh
 
 The temporal suite does not replace the Phase 2 Visual Regression Gallery. Static gallery fixtures remain static, and evaluating a model with animation absent must preserve the same standalone SVG output. Existing static SVG/PNG export parity remains a separate contract.
 
-Raster animation goldens should be added only when model/geometry signatures cannot express a user-visible temporal regression clearly enough. This keeps the core suite small, reviewable, renderer-independent, and suitable for lower-redraw embedded targets as well as desktop browsers.
+Raster animation goldens should be added only when model/geometry signatures cannot express a user-visible temporal regression clearly enough. This keeps the core suite small, reviewable, renderer-independent, and suitable across low-refresh and desktop-browser playback cadences.
