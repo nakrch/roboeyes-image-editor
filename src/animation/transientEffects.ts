@@ -250,9 +250,9 @@ function sweatMotionScale(model: FaceModel): number {
 }
 
 function sweatSizeScale(model: FaceModel): number {
-  // Size follows the face rather than the canvas, but deliberately weakly so
-  // large eyes do not turn the transient symbol into a dominant foreground blob.
-  return clamp(0.75 + eyeReferenceRatio(model) * 0.25, 0.65, 1.4)
+  // Sweat is a face-relative symbol: scale directly with the average eye size,
+  // while clamping only pathological extremes so normal edits remain proportional.
+  return clamp(eyeReferenceRatio(model), 0.5, 2.5)
 }
 
 function eyeVerticalHalfExtent(geometry: EyeGeometry): number {
