@@ -20,6 +20,8 @@ type ExportPanelProps = {
   resolveAnimationFrame: AnimatedExportFrameResolver
 }
 
+type NumberDraft = number | ''
+
 const sizePresets = [
   { key: 'current', label: 'Current canvas' },
   { key: '128x64', label: '128 × 64', width: 128, height: 64 },
@@ -30,22 +32,27 @@ const sizePresets = [
   { key: 'custom', label: 'Custom' },
 ] as const
 
-function safeDimension(value: number): number {
-  if (!Number.isFinite(value)) return 1
-  return Math.max(1, Math.round(value))
+function parseNumberDraft(value: string): NumberDraft {
+  return value === '' ? '' : Number(value)
 }
 
-function safePositive(value: number, fallback: number): number {
-  return Number.isFinite(value) && value > 0 ? value : fallback
+function safeDimension(value: NumberDraft): number {
+  const numericValue = value === '' ? Number.NaN : value
+  if (!Number.isFinite(numericValue)) return 1
+  return Math.max(1, Math.round(numericValue))
+}
+
+function safePositive(value: NumberDraft, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback
 }
 
 export function ExportPanel({ model, transparentBackground, resolveAnimationFrame }: ExportPanelProps) {
   const [sizeKey, setSizeKey] = useState('current')
-  const [width, setWidth] = useState(model.canvas.width)
-  const [height, setHeight] = useState(model.canvas.height)
-  const [durationMs, setDurationMs] = useState(2000)
-  const [fps, setFps] = useState(20)
-  const [loopCount, setLoopCount] = useState(0)
+  const [width, setWidth] = useState<NumberDraft>(model.canvas.width)
+  const [height, setHeight] = useState<NumberDraft>(model.canvas.height)
+  const [durationMs, setDurationMs] = useState<NumberDraft>(2000)
+  const [fps, setFps] = useState<NumberDraft>(20)
+  const [loopCount, setLoopCount] = useState<NumberDraft>(0)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -82,7 +89,7 @@ export function ExportPanel({ model, transparentBackground, resolveAnimationFram
     transparentBackground,
     durationMs: safePositive(durationMs, 2000),
     fps: safePositive(fps, 20),
-    loopCount: Math.max(0, Math.round(loopCount || 0)),
+    loopCount: Math.max(0, Math.round(typeof loopCount === 'number' && Number.isFinite(loopCount) ? loopCount : 0)),
   }
 
   const exportSvg = () => {
@@ -141,14 +148,14 @@ export function ExportPanel({ model, transparentBackground, resolveAnimationFram
           <span>Width</span>
           <input className="number-input" type="number" min={1} value={width} onChange={(event) => {
             setSizeKey('custom')
-            setWidth(Number(event.target.value))
+            setWidth(parseNumberDraft(event.target.value))
           }} />
         </label>
         <label className="control-field">
           <span>Height</span>
           <input className="number-input" type="number" min={1} value={height} onChange={(event) => {
             setSizeKey('custom')
-            setHeight(Number(event.target.value))
+            setHeight(parseNumberDraft(event.target.value))
           }} />
         </label>
       </div>
@@ -169,16 +176,16 @@ export function ExportPanel({ model, transparentBackground, resolveAnimationFram
       <div className="export-dimensions">
         <label className="control-field">
           <span>Duration (ms)</span>
-          <input className="number-input" type="number" min={1} step={100} value={durationMs} onChange={(event) => setDurationMs(Number(event.target.value))} />
+          <input className="number-input" type="number" min={1} step={100} value={durationMs} onChange={(event) => setDurationMs(parseNumberDraft(event.target.value))} />
         </label>
         <label className="control-field">
           <span>FPS</span>
-          <input className="number-input" type="number" min={1} max={60} step={1} value={fps} onChange={(event) => setFps(Number(event.target.value))} />
+          <input className="number-input" type="number" min={1} max={60} step={1} value={fps} onChange={(event) => setFps(parseNumberDraft(event.target.value))} />
         </label>
       </div>
       <label className="control-field">
         <span>GIF loop count <small>(0 = forever)</small></span>
-        <input className="number-input" type="number" min={0} max={65535} step={1} value={loopCount} onChange={(event) => setLoopCount(Number(event.target.value))} />
+        <input className="number-input" type="number" min={0} max={65535} step={1} value={loopCount} onChange={(event) => setLoopCount(parseNumberDraft(event.target.value))} />
       </label>
       <p className="export-note">Frames are sampled from authored animation time, not screen refresh timing.</p>
       <div className="export-actions">
