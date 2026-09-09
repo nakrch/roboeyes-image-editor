@@ -29,6 +29,10 @@ const resolutionPresets = [
 const CANVAS_MIN = 16
 const CANVAS_MAX = 640
 
+export function normalizeCanvasDimension(value: number, minimum: number): number {
+  return Math.min(CANVAS_MAX, Math.max(minimum, Math.round(value)))
+}
+
 export function ParameterPanel({
   model,
   linkedEyes,
@@ -97,10 +101,15 @@ export function ParameterPanel({
               value={model.canvas.width}
               min={minCanvasWidth}
               max={CANVAS_MAX}
+              step={1}
               onChange={(value) =>
                 onChange((current) => {
                   const minimum = Math.max(CANVAS_MIN, Math.ceil(minimumCanvasSize(current).width))
-                  return resizeCanvasFromCenter(current, Math.max(value, minimum), current.canvas.height)
+                  return resizeCanvasFromCenter(
+                    current,
+                    normalizeCanvasDimension(value, minimum),
+                    current.canvas.height,
+                  )
                 })
               }
             />
@@ -109,10 +118,15 @@ export function ParameterPanel({
               value={model.canvas.height}
               min={minCanvasHeight}
               max={CANVAS_MAX}
+              step={1}
               onChange={(value) =>
                 onChange((current) => {
                   const minimum = Math.max(CANVAS_MIN, Math.ceil(minimumCanvasSize(current).height))
-                  return resizeCanvasFromCenter(current, current.canvas.width, Math.max(value, minimum))
+                  return resizeCanvasFromCenter(
+                    current,
+                    current.canvas.width,
+                    normalizeCanvasDimension(value, minimum),
+                  )
                 })
               }
             />
