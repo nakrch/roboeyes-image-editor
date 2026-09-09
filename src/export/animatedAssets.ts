@@ -35,6 +35,12 @@ function gifDelay(durationMs: number): number {
   return Math.max(10, Math.round(durationMs / 10) * 10)
 }
 
+function ownedBytes(source: Uint8Array | Uint8ClampedArray): Uint8Array<ArrayBuffer> {
+  const copy = new Uint8Array(source.byteLength)
+  copy.set(source)
+  return copy
+}
+
 async function rasterizeSvg(svg: string, width: number, height: number): Promise<Uint8ClampedArray> {
   const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' })
   const url = URL.createObjectURL(blob)
@@ -99,13 +105,13 @@ export async function encodeAnimatedGif(
     maxColors: 255,
     premultipliedAlpha: false,
     frames: frames.map((frame) => ({
-      data: frame.rgba,
+      data: ownedBytes(frame.rgba),
       delay: gifDelay(frame.durationMs),
       transparent: options.transparentBackground,
       disposal: 2,
     })),
   })
-  return new Blob([bytes], { type: 'image/gif' })
+  return new Blob([ownedBytes(bytes)], { type: 'image/gif' })
 }
 
 export async function encodeAnimatedWebp(
@@ -121,13 +127,13 @@ export async function encodeAnimatedWebp(
     height,
     options.transparentBackground,
     frames.map((frame) => ({
-      data: new Uint8Array(frame.rgba.buffer, frame.rgba.byteOffset, frame.rgba.byteLength),
+      data: ownedBytes(frame.rgba),
       duration: Math.max(1, Math.round(frame.durationMs)),
       config: { lossless: 1, quality: 100 },
     })),
   )
   if (bytes == null) throw new Error('Animated WebP encoder returned no data')
-  return new Blob([bytes], { type: 'image/webp' })
+  return new Blob([ownedBytes(bytes)], { type: 'image/webp' })
 }
 
 export const animatedExportLimitations = {
