@@ -31,8 +31,6 @@ import {
   type GeometryKey,
 } from '../editor/modelEditing'
 import {
-  disableSingleEyeLayout,
-  enableSingleEyeLayout,
   isSingleEyeLayout,
   moveSingleEye,
   preserveSingleEyeSpacing,
@@ -44,6 +42,7 @@ type EyeControlsProps = {
   linkedEyes: boolean
   onChange: (updater: (current: FaceModel) => FaceModel) => void
   onLinkedEyesChange: (value: boolean) => void
+  onSingleEyeLayoutChange: (enabled: boolean) => void
 }
 
 export function EyeControls({
@@ -51,6 +50,7 @@ export function EyeControls({
   linkedEyes,
   onChange,
   onLinkedEyesChange,
+  onSingleEyeLayoutChange,
 }: EyeControlsProps) {
   const left = model.leftEye.geometry
   const right = model.rightEye.geometry
@@ -166,7 +166,7 @@ export function EyeControls({
               type="button"
               className={!singleEye ? 'active' : ''}
               aria-pressed={!singleEye}
-              onClick={() => onChange(disableSingleEyeLayout)}
+              onClick={() => onSingleEyeLayoutChange(false)}
             >
               Two eyes
             </button>
@@ -174,7 +174,7 @@ export function EyeControls({
               type="button"
               className={singleEye ? 'active' : ''}
               aria-pressed={singleEye}
-              onClick={() => onChange(enableSingleEyeLayout)}
+              onClick={() => onSingleEyeLayoutChange(true)}
             >
               Single eye
             </button>
