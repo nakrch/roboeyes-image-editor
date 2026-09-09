@@ -15,8 +15,13 @@ import {
   type AnimationRuntimeChannel,
   type JsonValue,
 } from './runtime'
+import {
+  normalizeGenericFaceTransitionDefinition,
+  normalizeSpringParameters,
+  SPRING_FACE_TRANSITION_KIND,
+} from './spring'
 import { normalizeTransientEffectLayerDefinition } from './transientEffects'
-import { normalizeFaceTransitionDefinition } from './transition'
+import { FACE_TRANSITION_KIND } from './transition'
 
 export const PRESET_ANIMATION_DEFAULTS_VERSION = 1 as const
 
@@ -116,11 +121,25 @@ function assertAnimationChannelStrict(channel: string, value: JsonValue): void {
   switch (channel) {
     case 'state-transition':
       // `from` is a runtime retarget/rebase snapshot and must never leak into persisted authoring data.
-      assertAllowedKeys(
-        value,
-        ['kind', 'id', 'startTimeMs', 'durationMs', 'easing', 'target'],
-        'Persisted state-transition definition',
-      )
+      if (value.kind === FACE_TRANSITION_KIND) {
+        assertAllowedKeys(
+          value,
+          ['kind', 'id', 'startTimeMs', 'durationMs', 'easing', 'target'],
+          'Persisted state-transition definition',
+        )
+      } else if (value.kind === SPRING_FACE_TRANSITION_KIND) {
+        assertAllowedKeys(
+          value,
+          ['kind', 'id', 'startTimeMs', 'durationMs', 'spring', 'target'],
+          'Persisted Spring state-transition definition',
+        )
+        if (isRecord(value.spring)) {
+          assertAllowedKeys(value.spring, ['stiffness', 'damping', 'mass'], 'Persisted Spring parameters')
+        }
+        normalizeSpringParameters(value.spring)
+      } else {
+        throw new RangeError(`Unsupported persisted state-transition kind: ${String(value.kind)}`)
+      }
       if (value.target !== undefined) assertFaceStateTargetStrict(value.target, 'Persisted state-transition target')
       return
     case 'gaze-pose':
@@ -165,7 +184,7 @@ function normalizeAnimationChannelDefinition(channel: string, value: JsonValue):
   assertAnimationChannelStrict(channel, value)
   switch (channel) {
     case 'state-transition':
-      return normalizeFaceTransitionDefinition(value) as unknown as JsonValue
+      return normalizeGenericFaceTransitionDefinition(value) as unknown as JsonValue
     case 'gaze-pose':
       return normalizeIdleGazeDefinition(value) as unknown as JsonValue
     case 'eye-openness':
@@ -217,11 +236,21 @@ function assertProgramShapeStrict(value: unknown): void {
     if (!isRecord(step)) continue
     assertAllowedKeys(
       step,
-      ['id', 'target', 'transitionDurationMs', 'easing', 'holdDurationMs', 'actions'],
+      ['id', 'target', 'transitionDurationMs', 'easing', 'spring', 'holdDurationMs', 'actions'],
       `Persisted animation program step ${stepIndex}`,
     )
     if (step.target !== undefined) {
       assertFaceStateTargetStrict(step.target, `Persisted animation program step ${stepIndex} target`)
+    }
+    if (step.spring !== undefined) {
+      if (isRecord(step.spring)) {
+        assertAllowedKeys(
+          step.spring,
+          ['stiffness', 'damping', 'mass'],
+          `Persisted animation program step ${stepIndex} Spring parameters`,
+        )
+      }
+      normalizeSpringParameters(step.spring)
     }
     if (!Array.isArray(step.actions)) continue
     for (let actionIndex = 0; actionIndex < step.actions.length; actionIndex += 1) {
