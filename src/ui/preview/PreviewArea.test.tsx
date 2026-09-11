@@ -12,24 +12,28 @@ const model = {
 }
 
 describe('PreviewArea', () => {
-  it('renders pixel-perfect mode at the authored canvas size inside a scrollable stage', () => {
+  it('renders pixel-perfect canvas at authored size inside a separate fixed viewport', () => {
     const html = renderToStaticMarkup(
       <PreviewArea model={model} transparentBackground={false} pixelPerfect />,
     )
 
     expect(html).toContain('preview-stage pixel-perfect-stage')
-    expect(html).toContain('svg-preview pixel-perfect')
+    expect(html).toContain('preview-viewport pixel-perfect')
+    expect(html).toContain('preview-viewport-content')
+    expect(html).toContain('class="svg-preview"')
     expect(html).toContain('width:640px')
     expect(html).toContain('height:480px')
   })
 
-  it('leaves scaled preview sizing to the viewport CSS', () => {
+  it('uses the same viewport wrapper in scaled mode without authored pixel dimensions', () => {
     const html = renderToStaticMarkup(
       <PreviewArea model={model} transparentBackground={false} pixelPerfect={false} />,
     )
 
     expect(html).toContain('preview-stage scaled-stage')
-    expect(html).toContain('svg-preview scaled')
+    expect(html).toContain('preview-viewport scaled')
+    expect(html).toContain('preview-viewport-content')
+    expect(html).toContain('class="svg-preview"')
     expect(html).not.toContain('width:640px')
     expect(html).not.toContain('height:480px')
   })
