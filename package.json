@@ -13,6 +13,7 @@
     "modern-gif": "^2.1.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "react-resizable-panels": "^4.12.4",
     "wasm-webp": "^0.1.0"
   },
   "devDependencies": {
