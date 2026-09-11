@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
-import type { ExpressionPreset, UserExpressionPreset } from '../../core/presets'
+import {
+  builtInPresets,
+  type ExpressionPreset,
+  type UserExpressionPreset,
+} from '../../core/presets'
+import { renderFaceToSvg } from '../../renderers/svg'
 import { useToast } from '../feedback/ToastProvider'
 
 type SelectableExpressionPreset = ExpressionPreset | UserExpressionPreset
@@ -15,6 +20,8 @@ type Props = {
   onExport: (preset: UserExpressionPreset) => void
   onDelete: (preset: UserExpressionPreset) => void
 }
+
+const previewBaseModel = builtInPresets[0].model
 
 export function ExpressionPresetPanel({
   presets,
@@ -47,6 +54,7 @@ export function ExpressionPresetPanel({
   }
 
   const applyPreset = (preset: SelectableExpressionPreset) => {
+    if (disabled) return
     try {
       onApply(preset)
       notify('success', `Applied “${preset.name}”.`)
@@ -75,9 +83,70 @@ export function ExpressionPresetPanel({
 
   return (
     <aside className="panel preset-panel" aria-label="Expression presets" aria-disabled={disabled}>
-      <div className="panel-heading">
-        <p className="eyebrow">Expression Presets</p>
-        <h2>Reusable expressions</h2>
+      <div className="panel-heading preset-dock-heading">
+        <p className="eyebrow">Expression</p>
+        <h2>Expression library</h2>
+      </div>
+
+      <div className="preset-thumbnail-strip" role="listbox" aria-label="Expression presets">
+        {presets.map((preset) => {
+          const selected = preset.id === activePresetId
+          const svg = renderFaceToSvg(
+            { ...previewBaseModel, expression: preset.expression },
+            { transparentBackground: false },
+          )
+          return (
+            <button
+              type="button"
+              className={`preset-thumbnail ${selected ? 'active' : ''}`}
+              role="option"
+              aria-selected={selected}
+              key={preset.id}
+              disabled={disabled}
+              onClick={() => applyPreset(preset)}
+            >
+              <span
+                className="preset-thumbnail-preview"
+                aria-hidden="true"
+                dangerouslySetInnerHTML={{ __html: svg }}
+              />
+              <span className="preset-thumbnail-label">{preset.name}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="preset-management">
+        <label className="control-field preset-select-field">
+          <span>Selected</span>
+          <select disabled={disabled} value={activePreset?.id ?? 'custom'} onChange={(event) => {
+            const preset = presets.find((item) => item.id === event.target.value)
+            if (preset) applyPreset(preset)
+          }}>
+            <option value="custom" disabled>Custom</option>
+            {presets.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+          </select>
+        </label>
+
+        <div className="preset-actions">
+          <input
+            disabled={disabled}
+            className="number-input"
+            type="text"
+            placeholder="Expression preset name"
+            value={name}
+            aria-label="Expression preset name"
+            onChange={(event) => setName(event.target.value)}
+          />
+          <button type="button" disabled={disabled} onClick={() => onSaveCurrent(name)}>Save expression</button>
+        </div>
+
+        <div className="preset-file-actions">
+          <button type="button" disabled={disabled} onClick={() => inputRef.current?.click()}>Import</button>
+          <button type="button" disabled={disabled || !customPreset} onClick={() => customPreset && exportPreset(customPreset)}>Export JSON</button>
+          <button type="button" disabled={disabled || !customPreset} onClick={() => customPreset && deletePreset(customPreset)}>Delete</button>
+          <input ref={inputRef} className="visually-hidden" type="file" accept="application/json,.json" disabled={disabled} onChange={importFile} />
+        </div>
       </div>
 
       {disabled && (
@@ -86,30 +155,7 @@ export function ExpressionPresetPanel({
         </p>
       )}
 
-      <label className="control-field">
-        <span>Expression</span>
-        <select disabled={disabled} value={activePreset?.id ?? 'custom'} onChange={(event) => {
-          const preset = presets.find((item) => item.id === event.target.value)
-          if (preset) applyPreset(preset)
-        }}>
-          <option value="custom" disabled>Custom</option>
-          {presets.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
-        </select>
-      </label>
-
-      <div className="preset-actions">
-        <input disabled={disabled} className="number-input" type="text" placeholder="Expression preset name" value={name} onChange={(event) => setName(event.target.value)} />
-        <button type="button" disabled={disabled} onClick={() => onSaveCurrent(name)}>Save expression</button>
-      </div>
-
       {status && <p className="preset-status" role="status" aria-live="polite">{status}</p>}
-
-      <div className="preset-file-actions">
-        <button type="button" disabled={disabled} onClick={() => inputRef.current?.click()}>Import JSON</button>
-        <button type="button" disabled={disabled || !customPreset} onClick={() => customPreset && exportPreset(customPreset)}>Export JSON</button>
-        <button type="button" disabled={disabled || !customPreset} onClick={() => customPreset && deletePreset(customPreset)}>Delete</button>
-        <input ref={inputRef} className="visually-hidden" type="file" accept="application/json,.json" disabled={disabled} onChange={importFile} />
-      </div>
     </aside>
   )
 }
