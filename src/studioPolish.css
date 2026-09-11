@@ -1,10 +1,11 @@
 /* Final layout polish for the Embedded Face Studio variant. */
 
 /*
- * The preview viewport is a fixed UI surface and must never inherit the
- * authored canvas dimensions. Scaled mode fits the SVG into that viewport.
- * Pixel-perfect mode instead renders the authored canvas at 1 CSS px per
- * canvas unit inside the same viewport and scrolls the inner content.
+ * Preview viewport and authored canvas are deliberately separate surfaces.
+ * The viewport keeps a stable 2:1 footprint. Scaled mode lets the SVG fill
+ * that viewport (the SVG viewBox preserves the authored aspect ratio).
+ * Pixel-perfect mode leaves the SVG at the renderer's native width/height and
+ * scrolls the viewport whenever that native canvas is larger than the window.
  */
 .editor-preview-column .preview-stage {
   overflow: hidden;
@@ -12,9 +13,12 @@
 
 .editor-preview-column .preview-viewport {
   width: min(88%, 720px);
+  min-width: 0;
+  min-height: 0;
   aspect-ratio: 2 / 1;
   flex: 0 0 auto;
   overflow: hidden;
+  contain: size layout paint;
   border: 1px solid #242a2b;
   background: #111516;
   box-shadow: 0 0 0 1px #242a2b, 0 10px 32px rgb(0 0 0 / 0.28);
@@ -46,6 +50,7 @@
 .editor-preview-column .preview-viewport.pixel-perfect {
   overflow: auto;
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .editor-preview-column .preview-viewport.pixel-perfect .preview-viewport-content {
@@ -57,18 +62,27 @@
   place-items: center;
 }
 
+/*
+ * Do not assign a CSS width/height to the pixel-perfect SVG. renderFaceToSvg()
+ * already emits width/height equal to the authored canvas dimensions. Keeping
+ * those intrinsic dimensions is what guarantees 1 canvas unit = 1 CSS pixel.
+ */
 .editor-preview-column .preview-viewport.pixel-perfect .svg-preview {
+  width: max-content;
+  height: max-content;
   max-width: none;
   max-height: none;
-  flex: 0 0 auto;
-  overflow: hidden;
+  overflow: visible;
+  line-height: 0;
   box-shadow: none;
 }
 
 .editor-preview-column .preview-viewport.pixel-perfect .svg-preview svg {
   display: block;
-  width: 100%;
-  height: 100%;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
