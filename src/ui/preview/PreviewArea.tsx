@@ -27,18 +27,17 @@ export function PreviewArea({
         <p className="eyebrow">Preview</p>
       </div>
 
-      <div className="preview-stage">
-        <div
-          className={`svg-preview ${pixelPerfect ? 'pixel-perfect' : 'scaled'}`}
-          style={
-            pixelPerfect
-              ? { width: model.canvas.width, height: model.canvas.height }
-              : { aspectRatio: `${model.canvas.width} / ${model.canvas.height}` }
-          }
-          role="img"
-          aria-label="Robot face SVG preview"
-          dangerouslySetInnerHTML={{ __html: svg }}
-        />
+      <div className={`preview-stage ${pixelPerfect ? 'pixel-perfect-stage' : 'scaled-stage'}`}>
+        <div className={`preview-viewport ${pixelPerfect ? 'pixel-perfect' : 'scaled'}`}>
+          <div className="preview-viewport-content">
+            <div
+              className="svg-preview"
+              role="img"
+              aria-label="Robot face SVG preview"
+              dangerouslySetInnerHTML={{ __html: svg }}
+            />
+          </div>
+        </div>
       </div>
 
       <details className="svg-source">

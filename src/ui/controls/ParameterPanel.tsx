@@ -130,6 +130,17 @@ export function ParameterPanel({
                 })
               }
             />
+            <label className="control-field color-control">
+              <span>Background</span>
+              <input
+                type="color"
+                value={model.colors.background}
+                onChange={(event) => onChange((current) => ({
+                  ...current,
+                  colors: { ...current.colors, background: event.target.value },
+                }))}
+              />
+            </label>
             <div className="display-control-options" aria-label="Preview display options">
               <label>
                 <input
@@ -159,8 +170,6 @@ export function ParameterPanel({
           onSingleEyeLayoutChange={onSingleEyeLayoutChange}
         />
 
-        <ExpressionControls model={model} linkedEyes={linkedEyes} disabled={singleEye} onChange={onChange} />
-
         <details className="control-group collapsible-control-group" open>
           <summary className="control-group-summary">Gaze</summary>
           <div className="nested-controls control-group-body">
@@ -183,20 +192,32 @@ export function ParameterPanel({
           </div>
         </details>
 
+        <ExpressionControls model={model} linkedEyes={linkedEyes} disabled={singleEye} onChange={onChange} />
+
         <details className="control-group collapsible-control-group" open>
           <summary className="control-group-summary">Appearance</summary>
           <div className="nested-controls control-group-body">
             <label className="control-field color-control">
               <span>Eye fill</span>
-              <input type="color" value={model.colors.eye} onChange={(event) => onChange((current) => ({ ...current, colors: { ...current.colors, eye: event.target.value } }))} />
+              <input
+                type="color"
+                value={model.colors.eye}
+                onChange={(event) => onChange((current) => ({
+                  ...current,
+                  colors: { ...current.colors, eye: event.target.value },
+                }))}
+              />
             </label>
             <label className="control-field color-control">
               <span>Eye stroke</span>
-              <input type="color" value={model.colors.stroke ?? model.colors.eye} onChange={(event) => onChange((current) => ({ ...current, colors: { ...current.colors, stroke: event.target.value } }))} />
-            </label>
-            <label className="control-field color-control">
-              <span>Background</span>
-              <input type="color" value={model.colors.background} onChange={(event) => onChange((current) => ({ ...current, colors: { ...current.colors, background: event.target.value } }))} />
+              <input
+                type="color"
+                value={model.colors.stroke ?? model.colors.eye}
+                onChange={(event) => onChange((current) => ({
+                  ...current,
+                  colors: { ...current.colors, stroke: event.target.value },
+                }))}
+              />
             </label>
           </div>
         </details>

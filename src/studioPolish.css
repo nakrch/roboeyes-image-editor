@@ -1,0 +1,183 @@
+/* Final layout polish for the Embedded Face Studio variant. */
+
+/*
+ * Preview viewport and authored canvas are deliberately separate surfaces.
+ * The viewport keeps a stable 2:1 footprint. Scaled mode lets the SVG fill
+ * that viewport (the SVG viewBox preserves the authored aspect ratio).
+ * Pixel-perfect mode leaves the SVG at the renderer's native width/height and
+ * scrolls the viewport whenever that native canvas is larger than the window.
+ */
+.editor-preview-column {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.editor-preview-column .preview-panel {
+  height: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.editor-preview-column .preview-stage {
+  overflow: hidden;
+}
+
+.editor-preview-column .preview-viewport {
+  width: min(88%, 720px);
+  min-width: 0;
+  min-height: 0;
+  aspect-ratio: 2 / 1;
+  flex: 0 0 auto;
+  overflow: hidden;
+  contain: size layout paint;
+  border: 1px solid #242a2b;
+  background: #111516;
+  box-shadow: 0 0 0 1px #242a2b, 0 10px 32px rgb(0 0 0 / 0.28);
+}
+
+.editor-preview-column .preview-viewport-content {
+  min-width: 0;
+  min-height: 0;
+}
+
+.editor-preview-column .preview-viewport.scaled .preview-viewport-content,
+.editor-preview-column .preview-viewport.scaled .svg-preview {
+  width: 100%;
+  height: 100%;
+}
+
+.editor-preview-column .preview-viewport.scaled .svg-preview {
+  display: block;
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.editor-preview-column .preview-viewport.scaled .svg-preview svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.editor-preview-column .preview-viewport.pixel-perfect {
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.editor-preview-column .preview-viewport.pixel-perfect .preview-viewport-content {
+  display: grid;
+  width: max-content;
+  min-width: 100%;
+  height: max-content;
+  min-height: 100%;
+  place-items: center;
+}
+
+/*
+ * Do not assign a CSS width/height to the pixel-perfect SVG. renderFaceToSvg()
+ * already emits width/height equal to the authored canvas dimensions. Keeping
+ * those intrinsic dimensions is what guarantees 1 canvas unit = 1 CSS pixel.
+ */
+.editor-preview-column .preview-viewport.pixel-perfect .svg-preview {
+  width: max-content;
+  height: max-content;
+  max-width: none;
+  max-height: none;
+  overflow: visible;
+  line-height: 0;
+  box-shadow: none;
+}
+
+.editor-preview-column .preview-viewport.pixel-perfect .svg-preview svg {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* History belongs to the preview/editing surface, while Export remains a
+   global app-bar action. Keep this bar attached to the preview pane so it
+   follows desktop resizing and the narrow stacked layout naturally. */
+.preview-history-actions {
+  display: flex;
+  min-height: 36px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 5px 10px;
+  border-top: 1px solid #1e2324;
+  background: #0d1011;
+}
+
+.preview-history-actions button {
+  min-height: 26px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  padding: 3px 8px;
+  color: #b9c0bf;
+  background: transparent;
+  font-size: 0.66rem;
+}
+
+.preview-history-actions button:hover:not(:disabled) {
+  border-color: var(--studio-border);
+  color: var(--studio-text);
+  background: var(--studio-elevated);
+}
+
+.preview-history-actions button:disabled {
+  color: #505857;
+  opacity: 1;
+}
+
+/* The visual regression fixtures stay available to automated tests, but the
+   old user-facing gallery is superseded by the Face / Expression libraries. */
+.studio-diagnostics {
+  display: none;
+}
+
+/* Expression differences need a little more visual area than full-face preset
+   thumbnails. The library stays compact but the eyelid/tilt shapes remain legible. */
+.expression-preset-panel .preset-thumbnail {
+  width: 94px;
+  min-width: 94px;
+  height: 88px;
+  grid-template-rows: 64px minmax(0, 1fr);
+}
+
+.expression-preset-panel .preset-thumbnail-preview {
+  height: 64px;
+}
+
+@media (max-width: 820px) {
+  .workspace-narrow .editor-preview-column .preview-panel {
+    height: auto;
+    flex: 1 1 auto;
+  }
+
+  .editor-preview-column .preview-viewport {
+    width: min(92%, 620px);
+    aspect-ratio: 2 / 1;
+  }
+
+  .preview-history-actions {
+    min-height: 34px;
+    padding: 4px 8px;
+  }
+
+  .expression-preset-panel .preset-thumbnail {
+    width: 88px;
+    min-width: 88px;
+    height: 84px;
+    grid-template-rows: 60px minmax(0, 1fr);
+  }
+
+  .expression-preset-panel .preset-thumbnail-preview {
+    height: 60px;
+  }
+}

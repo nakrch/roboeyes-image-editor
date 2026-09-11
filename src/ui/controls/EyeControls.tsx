@@ -189,135 +189,155 @@ export function EyeControls({
   const singleDerived = independentDerived?.left
 
   return (
-    <details className="control-group collapsible-control-group" open>
-      <summary className="control-group-summary">
-        <span>Eyes</span>
-        {!singleEye && (
-          <span className="segmented-control" aria-label="Eye editing mode" onClick={(event) => event.stopPropagation()}>
-            <button
-              type="button"
-              className={linkedEyes ? 'active' : ''}
-              aria-pressed={linkedEyes}
-              onClick={() => onLinkedEyesChange(true)}
-            >
-              Linked
-            </button>
-            <button
-              type="button"
-              className={!linkedEyes ? 'active' : ''}
-              aria-pressed={!linkedEyes}
-              onClick={() => onLinkedEyesChange(false)}
-            >
-              Independent
-            </button>
-          </span>
-        )}
-      </summary>
+    <>
+      <details className="control-group collapsible-control-group" open>
+        <summary className="control-group-summary">
+          <span className="eyes-geometry-title">Eyes</span>
+          {!singleEye && (
+            <span className="segmented-control" aria-label="Eye editing mode" onClick={(event) => event.stopPropagation()}>
+              <button
+                type="button"
+                className={linkedEyes ? 'active' : ''}
+                aria-pressed={linkedEyes}
+                onClick={() => onLinkedEyesChange(true)}
+              >
+                Linked
+              </button>
+              <button
+                type="button"
+                className={!linkedEyes ? 'active' : ''}
+                aria-pressed={!linkedEyes}
+                onClick={() => onLinkedEyesChange(false)}
+              >
+                Independent
+              </button>
+            </span>
+          )}
+        </summary>
 
-      <div className="nested-controls control-group-body">
-        <div className="control-row">
-          <span className="control-label">Layout</span>
-          <span className="segmented-control" aria-label="Eye layout">
-            <button
-              type="button"
-              className={!singleEye ? 'active' : ''}
-              aria-pressed={!singleEye}
-              onClick={() => onSingleEyeLayoutChange(false)}
-            >
-              Two eyes
-            </button>
-            <button
-              type="button"
-              className={singleEye ? 'active' : ''}
-              aria-pressed={singleEye}
-              onClick={() => onSingleEyeLayoutChange(true)}
-            >
-              Single eye
-            </button>
-          </span>
+        <div className="nested-controls control-group-body">
+          <div className="control-row">
+            <span className="control-label">Layout</span>
+            <span className="segmented-control" aria-label="Eye layout">
+              <button
+                type="button"
+                className={!singleEye ? 'active' : ''}
+                aria-pressed={!singleEye}
+                onClick={() => onSingleEyeLayoutChange(false)}
+              >
+                Two eyes
+              </button>
+              <button
+                type="button"
+                className={singleEye ? 'active' : ''}
+                aria-pressed={singleEye}
+                onClick={() => onSingleEyeLayoutChange(true)}
+              >
+                Single eye
+              </button>
+            </span>
+          </div>
+
+          {singleEye ? (
+            <div className="nested-controls">
+              <p className="animation-note">
+                Single-eye mode edits the visible primary eye. The hidden eye is retained so switching back to two eyes restores the paired layout around the current center.
+              </p>
+              <NumericControl label="Eye width" value={left.width} min={singleDerived!.dimensionRanges.width.min} max={singleDerived!.dimensionRanges.width.max} step="any" onChange={(value) => updateIndependentGeometry('left', 'width', value)} />
+              <NumericControl label="Eye height" value={left.height} min={singleDerived!.dimensionRanges.height.min} max={singleDerived!.dimensionRanges.height.max} step="any" onChange={(value) => updateIndependentGeometry('left', 'height', value)} />
+              <NumericControl label="Corner radius" value={left.cornerRadius} min={0} max={80} onChange={(value) => updateIndependentGeometry('left', 'cornerRadius', value)} />
+              <NumericControl label="Rotation" value={left.rotation} min={singleDerived!.rotationRange.min} max={singleDerived!.rotationRange.max} step="any" onChange={(value) => updateIndependentGeometry('left', 'rotation', value)} />
+            </div>
+          ) : linkedEyes ? (
+            <div className="nested-controls">
+              <NumericControl label="Eye width" value={(left.width + right.width) / 2} min={linkedDerived.dimensionRanges.width.min} max={linkedDerived.dimensionRanges.width.max} step="any" onChange={(value) => updateLinkedGeometry('width', value)} />
+              <NumericControl label="Eye height" value={(left.height + right.height) / 2} min={linkedDerived.dimensionRanges.height.min} max={linkedDerived.dimensionRanges.height.max} step="any" onChange={(value) => updateLinkedGeometry('height', value)} />
+              <NumericControl label="Corner radius" value={(left.cornerRadius + right.cornerRadius) / 2} min={0} max={80} onChange={(value) => updateLinkedGeometry('cornerRadius', value)} />
+              <NumericControl label="Rotation" value={pairRotation(model)} min={linkedDerived.rotationLimits.min} max={linkedDerived.rotationLimits.max} step="any" onChange={(value) => onChange((current) => rotatePairSafely(current, value))} />
+            </div>
+          ) : (
+            <div className="eye-columns">
+              {(['left', 'right'] as const).map((side) => {
+                const geometry = side === 'left' ? left : right
+                const derived = independentDerived![side]
+                return (
+                  <fieldset className="eye-fieldset" key={side}>
+                    <legend>{side === 'left' ? 'Left eye' : 'Right eye'}</legend>
+                    <NumericControl label="Width" value={geometry.width} min={derived.dimensionRanges.width.min} max={derived.dimensionRanges.width.max} step="any" onChange={(value) => updateIndependentGeometry(side, 'width', value)} />
+                    <NumericControl label="Height" value={geometry.height} min={derived.dimensionRanges.height.min} max={derived.dimensionRanges.height.max} step="any" onChange={(value) => updateIndependentGeometry(side, 'height', value)} />
+                    <NumericControl label="Corner radius" value={geometry.cornerRadius} min={0} max={80} onChange={(value) => updateIndependentGeometry(side, 'cornerRadius', value)} />
+                    <NumericControl label="Rotation" value={geometry.rotation} min={derived.rotationRange.min} max={derived.rotationRange.max} step="any" onChange={(value) => updateIndependentGeometry(side, 'rotation', value)} />
+                  </fieldset>
+                )
+              })}
+            </div>
+          )}
+
+          {!singleEye && (
+            <NumericControl
+              label="Eye spacing"
+              value={spacingDerived.spacing}
+              min={spacingDerived.min}
+              max={spacingDerived.max}
+              step="any"
+              onChange={(value) => onChange((current) => setCanvasSafeAnchoredPairSpacing(current, value))}
+            />
+          )}
         </div>
+      </details>
 
-        {singleEye ? (
-          <div className="nested-controls">
-            <p className="animation-note">
-              Single-eye mode edits the visible primary eye. The hidden eye is retained so switching back to two eyes restores the paired layout around the current center.
-            </p>
-            <NumericControl label="Eye width" value={left.width} min={singleDerived!.dimensionRanges.width.min} max={singleDerived!.dimensionRanges.width.max} step="any" onChange={(value) => updateIndependentGeometry('left', 'width', value)} />
-            <NumericControl label="Eye height" value={left.height} min={singleDerived!.dimensionRanges.height.min} max={singleDerived!.dimensionRanges.height.max} step="any" onChange={(value) => updateIndependentGeometry('left', 'height', value)} />
-            <NumericControl label="Corner radius" value={left.cornerRadius} min={0} max={80} onChange={(value) => updateIndependentGeometry('left', 'cornerRadius', value)} />
-            <NumericControl label="Position X" value={toCenterRelativePosition(model, 'x', left.position.x)} min={singleDerived!.positionRanges.x.min} max={singleDerived!.positionRanges.x.max} step="any" onChange={(value) => updateEyePosition('left', 'x', value)} />
-            <NumericControl label="Position Y" value={toCenterRelativePosition(model, 'y', left.position.y)} min={singleDerived!.positionRanges.y.min} max={singleDerived!.positionRanges.y.max} step="any" onChange={(value) => updateEyePosition('left', 'y', value)} />
-            <NumericControl label="Rotation" value={left.rotation} min={singleDerived!.rotationRange.min} max={singleDerived!.rotationRange.max} step="any" onChange={(value) => updateIndependentGeometry('left', 'rotation', value)} />
-          </div>
-        ) : linkedEyes ? (
-          <div className="nested-controls">
-            <NumericControl label="Eye width" value={(left.width + right.width) / 2} min={linkedDerived.dimensionRanges.width.min} max={linkedDerived.dimensionRanges.width.max} step="any" onChange={(value) => updateLinkedGeometry('width', value)} />
-            <NumericControl label="Eye height" value={(left.height + right.height) / 2} min={linkedDerived.dimensionRanges.height.min} max={linkedDerived.dimensionRanges.height.max} step="any" onChange={(value) => updateLinkedGeometry('height', value)} />
-            <NumericControl label="Corner radius" value={(left.cornerRadius + right.cornerRadius) / 2} min={0} max={80} onChange={(value) => updateLinkedGeometry('cornerRadius', value)} />
-            <NumericControl
-              label="Position X"
-              value={toCenterRelativePosition(model, 'x', pairCenterX(model))}
-              min={linkedDerived.positionRanges.x.min}
-              max={linkedDerived.positionRanges.x.max}
-              step="any"
-              onChange={(value) => onChange((current) => movePair(
-                current,
-                fromCenterRelativePosition(current, 'x', value),
-                undefined,
-              ))}
-            />
-            <NumericControl
-              label="Position Y"
-              value={toCenterRelativePosition(model, 'y', pairCenterY(model))}
-              min={linkedDerived.positionRanges.y.min}
-              max={linkedDerived.positionRanges.y.max}
-              step="any"
-              onChange={(value) => onChange((current) => movePair(
-                current,
-                undefined,
-                fromCenterRelativePosition(current, 'y', value),
-              ))}
-            />
-            <NumericControl
-              label="Rotation"
-              value={pairRotation(model)}
-              min={linkedDerived.rotationLimits.min}
-              max={linkedDerived.rotationLimits.max}
-              step="any"
-              onChange={(value) => onChange((current) => rotatePairSafely(current, value))}
-            />
-          </div>
-        ) : (
-          <div className="eye-columns">
-            {(['left', 'right'] as const).map((side) => {
-              const geometry = side === 'left' ? left : right
-              const derived = independentDerived![side]
-              return (
-                <fieldset className="eye-fieldset" key={side}>
-                  <legend>{side === 'left' ? 'Left eye' : 'Right eye'}</legend>
-                  <NumericControl label="Width" value={geometry.width} min={derived.dimensionRanges.width.min} max={derived.dimensionRanges.width.max} step="any" onChange={(value) => updateIndependentGeometry(side, 'width', value)} />
-                  <NumericControl label="Height" value={geometry.height} min={derived.dimensionRanges.height.min} max={derived.dimensionRanges.height.max} step="any" onChange={(value) => updateIndependentGeometry(side, 'height', value)} />
-                  <NumericControl label="Corner radius" value={geometry.cornerRadius} min={0} max={80} onChange={(value) => updateIndependentGeometry(side, 'cornerRadius', value)} />
-                  <NumericControl label="Position X" value={toCenterRelativePosition(model, 'x', geometry.position.x)} min={derived.positionRanges.x.min} max={derived.positionRanges.x.max} step="any" onChange={(value) => updateEyePosition(side, 'x', value)} />
-                  <NumericControl label="Position Y" value={toCenterRelativePosition(model, 'y', geometry.position.y)} min={derived.positionRanges.y.min} max={derived.positionRanges.y.max} step="any" onChange={(value) => updateEyePosition(side, 'y', value)} />
-                  <NumericControl label="Rotation" value={geometry.rotation} min={derived.rotationRange.min} max={derived.rotationRange.max} step="any" onChange={(value) => updateIndependentGeometry(side, 'rotation', value)} />
-                </fieldset>
-              )
-            })}
-          </div>
-        )}
-
-        {!singleEye && (
-          <NumericControl
-            label="Eye spacing"
-            value={spacingDerived.spacing}
-            min={spacingDerived.min}
-            max={spacingDerived.max}
-            step="any"
-            onChange={(value) => onChange((current) => setCanvasSafeAnchoredPairSpacing(current, value))}
-          />
-        )}
-      </div>
-    </details>
+      <details className="control-group collapsible-control-group" open>
+        <summary className="control-group-summary">Position</summary>
+        <div className="nested-controls control-group-body">
+          {singleEye ? (
+            <>
+              <NumericControl label="Position X" value={toCenterRelativePosition(model, 'x', left.position.x)} min={singleDerived!.positionRanges.x.min} max={singleDerived!.positionRanges.x.max} step="any" onChange={(value) => updateEyePosition('left', 'x', value)} />
+              <NumericControl label="Position Y" value={toCenterRelativePosition(model, 'y', left.position.y)} min={singleDerived!.positionRanges.y.min} max={singleDerived!.positionRanges.y.max} step="any" onChange={(value) => updateEyePosition('left', 'y', value)} />
+            </>
+          ) : linkedEyes ? (
+            <>
+              <NumericControl
+                label="Position X"
+                value={toCenterRelativePosition(model, 'x', pairCenterX(model))}
+                min={linkedDerived.positionRanges.x.min}
+                max={linkedDerived.positionRanges.x.max}
+                step="any"
+                onChange={(value) => onChange((current) => movePair(
+                  current,
+                  fromCenterRelativePosition(current, 'x', value),
+                  undefined,
+                ))}
+              />
+              <NumericControl
+                label="Position Y"
+                value={toCenterRelativePosition(model, 'y', pairCenterY(model))}
+                min={linkedDerived.positionRanges.y.min}
+                max={linkedDerived.positionRanges.y.max}
+                step="any"
+                onChange={(value) => onChange((current) => movePair(
+                  current,
+                  undefined,
+                  fromCenterRelativePosition(current, 'y', value),
+                ))}
+              />
+            </>
+          ) : (
+            <div className="eye-columns position-eye-columns">
+              {(['left', 'right'] as const).map((side) => {
+                const geometry = side === 'left' ? left : right
+                const derived = independentDerived![side]
+                return (
+                  <fieldset className="eye-fieldset" key={side}>
+                    <legend>{side === 'left' ? 'Left eye' : 'Right eye'}</legend>
+                    <NumericControl label="X" value={toCenterRelativePosition(model, 'x', geometry.position.x)} min={derived.positionRanges.x.min} max={derived.positionRanges.x.max} step="any" onChange={(value) => updateEyePosition(side, 'x', value)} />
+                    <NumericControl label="Y" value={toCenterRelativePosition(model, 'y', geometry.position.y)} min={derived.positionRanges.y.min} max={derived.positionRanges.y.max} step="any" onChange={(value) => updateEyePosition(side, 'y', value)} />
+                  </fieldset>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </details>
+    </>
   )
 }

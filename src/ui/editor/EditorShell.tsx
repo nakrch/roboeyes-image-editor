@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Group, Panel, Separator } from 'react-resizable-panels'
 import { clampGaze, type FaceModel } from '../../core/model'
 import {
   builtInPresets,
@@ -78,8 +79,11 @@ type GalleryApplyPreview = {
   selection: GalleryExpressionSelection
 }
 
+type InspectorTab = 'face' | 'motion'
+
 const HISTORY_LIMIT = 100
 const GALLERY_APPLY_TRANSITION_MS = 280
+const NARROW_VIEWPORT_QUERY = '(max-width: 820px)'
 const initialPreset = builtInPresets[0]
 
 function snapshotFromPreset(preset: FacePreset): EditorSnapshot {
@@ -129,6 +133,11 @@ export function EditorShell() {
   const [reducedMotion, setReducedMotion] = useState(() =>
     window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
   )
+  const [narrowViewport, setNarrowViewport] = useState(() =>
+    window.matchMedia?.(NARROW_VIEWPORT_QUERY).matches ?? false,
+  )
+  const [inspectorTab, setInspectorTab] = useState<InspectorTab>('face')
+  const [exportOpen, setExportOpen] = useState(false)
   const presets: FacePreset[] = [...builtInPresets.map(clonePreset), ...customPresets]
   const selectableExpressions: SelectableExpressionPreset[] = [...expressionPresets, ...customExpressionPresets]
 
@@ -140,6 +149,24 @@ export function EditorShell() {
     query.addEventListener?.('change', update)
     return () => query.removeEventListener?.('change', update)
   }, [])
+
+  useEffect(() => {
+    const query = window.matchMedia?.(NARROW_VIEWPORT_QUERY)
+    if (query === undefined) return
+    const update = () => setNarrowViewport(query.matches)
+    update()
+    query.addEventListener?.('change', update)
+    return () => query.removeEventListener?.('change', update)
+  }, [])
+
+  useEffect(() => {
+    if (!exportOpen) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setExportOpen(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [exportOpen])
 
   useEffect(() => {
     const onVisibilityChange = () => {
@@ -457,41 +484,235 @@ export function EditorShell() {
     }))
   }
 
+  const previewPane = (
+    <div className="editor-preview-column">
+      <PreviewArea
+        model={displayedModel}
+        overlays={displayedFrame.transientEffects.overlays}
+        transparentBackground={transparentBackground}
+        pixelPerfect={pixelPerfect}
+      />
+      <div className="preview-history-actions" aria-label="Preview history actions">
+        <button type="button" onClick={undo} disabled={history.past.length === 0} aria-label="Undo last edit">
+          Undo
+        </button>
+        <button type="button" onClick={redo} disabled={history.future.length === 0} aria-label="Redo edit">
+          Redo
+        </button>
+        <button type="button" onClick={reset}>Reset</button>
+      </div>
+    </div>
+  )
+
+  const faceInspector = (
+    <ParameterPanel
+      model={model}
+      linkedEyes={linkedEyes}
+      transparentBackground={transparentBackground}
+      pixelPerfect={pixelPerfect}
+      onChange={updateModel}
+      onLinkedEyesChange={setLinkedEyes}
+      onSingleEyeLayoutChange={setSingleEyeLayout}
+      onTransparentBackgroundChange={(value) => commit((current) => ({ ...current, transparentBackground: value }))}
+      onPixelPerfectChange={setPixelPerfect}
+    />
+  )
+
+  const motionInspector = (
+    <AnimationPanel
+      model={model}
+      animationDefaults={animationDefaults}
+      playback={playback}
+      reducedMotion={reducedMotion}
+      onAnimationDefaultsChange={updateAnimationDefaults}
+      onPlay={() => setPlayback(playAnimationPlayback)}
+      onPause={() => setPlayback(pauseAnimationPlayback)}
+      onStop={() => {
+        setRuntimeEvents([])
+        runtimeEventOrder.current = 0
+        setPlayback(stopAnimationPlayback)
+      }}
+      onRestart={() => {
+        setRuntimeEvents([])
+        runtimeEventOrder.current = 0
+        setPlayback(restartAnimationPlayback)
+      }}
+      onPlaybackRateChange={(rate) => setPlayback((current) => setAnimationPlaybackRate(current, rate))}
+      onTrigger={triggerAnimation}
+      onPreviewSequenceStep={previewSequenceStep}
+    />
+  )
+
+  const inspectorPane = (
+    <aside className="editor-inspector" aria-label="Inspector">
+      <div className="inspector-tabs" role="tablist" aria-label="Inspector mode">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={inspectorTab === 'face'}
+          aria-controls="face-inspector"
+          onClick={() => setInspectorTab('face')}
+        >
+          Face
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={inspectorTab === 'motion'}
+          aria-controls="motion-inspector"
+          onClick={() => setInspectorTab('motion')}
+        >
+          Motion
+        </button>
+      </div>
+      <div className="inspector-scroll">
+        <div
+          id="face-inspector"
+          role="tabpanel"
+          hidden={inspectorTab !== 'face'}
+          aria-label="Face parameters"
+        >
+          {faceInspector}
+        </div>
+        <div
+          id="motion-inspector"
+          role="tabpanel"
+          hidden={inspectorTab !== 'motion'}
+          aria-label="Motion parameters"
+        >
+          {motionInspector}
+        </div>
+      </div>
+    </aside>
+  )
+
   return (
     <main className="editor-shell">
-      <header className="editor-header">
-        <div><p className="eyebrow">Parametric Robot Face Editor</p><h1>RoboEyes Image Editor</h1></div>
-        <span className="phase-badge">Realtime SVG + Animation</span>
+      <header className="editor-app-bar">
+        <div className="editor-brand">
+          <span className="editor-eye-mark" aria-hidden="true" />
+          <span className="editor-brand-copy">
+            <strong>RoboEyes</strong>
+            <span>Embedded Face Studio</span>
+          </span>
+        </div>
+        <div className="editor-app-actions" aria-label="Editor actions">
+          <button
+            className="editor-export-action"
+            type="button"
+            aria-haspopup="dialog"
+            aria-expanded={exportOpen}
+            onClick={() => setExportOpen(true)}
+          >
+            Export
+          </button>
+        </div>
       </header>
 
       <ContinuousEditProvider value={{ begin: beginContinuousEdit, end: endContinuousEdit }}>
-        <section className="editor-workspace" aria-label="Editor workspace">
-          <div className="editor-preview-column">
-            <PreviewArea model={displayedModel} overlays={displayedFrame.transientEffects.overlays} transparentBackground={transparentBackground} pixelPerfect={pixelPerfect} />
-            <div className="preview-history-actions" aria-label="Editor history">
-              <button type="button" onClick={undo} disabled={history.past.length === 0}>Undo</button>
-              <button type="button" onClick={redo} disabled={history.future.length === 0}>Redo</button>
-              <button type="button" onClick={reset}>Reset</button>
-            </div>
-          </div>
+        <section
+          className={`studio-workspace ${narrowViewport ? 'workspace-narrow' : ''}`}
+          aria-label="Editor workspace"
+        >
+          {narrowViewport ? (
+            <>
+              {previewPane}
+              {inspectorPane}
+            </>
+          ) : (
+            <Group id="editor-workspace-split" orientation="horizontal" className="editor-split">
+              <Panel id="preview-workspace" minSize="420px">
+                {previewPane}
+              </Panel>
+              <Separator
+                id="preview-inspector-resizer"
+                className="editor-resize-handle"
+                aria-label="Resize Preview and Inspector"
+              />
+              <Panel
+                id="editor-inspector"
+                defaultSize="320px"
+                minSize="280px"
+                maxSize="440px"
+                groupResizeBehavior="preserve-pixel-size"
+              >
+                {inspectorPane}
+              </Panel>
+            </Group>
+          )}
+        </section>
 
-          <div className="editor-sidebar">
-            <AnimationPanel model={model} animationDefaults={animationDefaults} playback={playback} reducedMotion={reducedMotion} onAnimationDefaultsChange={updateAnimationDefaults} onPlay={() => setPlayback(playAnimationPlayback)} onPause={() => setPlayback(pauseAnimationPlayback)} onStop={() => { setRuntimeEvents([]); runtimeEventOrder.current = 0; setPlayback(stopAnimationPlayback) }} onRestart={() => { setRuntimeEvents([]); runtimeEventOrder.current = 0; setPlayback(restartAnimationPlayback) }} onPlaybackRateChange={(rate) => setPlayback((current) => setAnimationPlaybackRate(current, rate))} onTrigger={triggerAnimation} onPreviewSequenceStep={previewSequenceStep} />
-            <PresetPanel presets={presets} activePresetId={displayedPresetId} status={presetStatus} onApply={applyPreset} onSaveCurrent={saveCurrentPreset} onImport={importPreset} onExport={exportPreset} onDelete={deletePreset} />
+        <section className="preset-dock" aria-label="Preset library">
+          <div className="preset-dock-cell">
+            <PresetPanel
+              presets={presets}
+              activePresetId={displayedPresetId}
+              status={presetStatus}
+              onApply={applyPreset}
+              onSaveCurrent={saveCurrentPreset}
+              onImport={importPreset}
+              onExport={exportPreset}
+              onDelete={deletePreset}
+            />
             {presetError && <p className="preset-error" role="alert">{presetError}</p>}
-            <ExpressionPresetPanel presets={selectableExpressions} activePresetId={activeExpressionId} status={expressionPresetStatus} disabled={singleEye} onApply={applyExpressionPreset} onSaveCurrent={saveCurrentExpressionPreset} onImport={importExpressionPreset} onExport={exportExpressionPreset} onDelete={deleteExpressionPreset} />
+          </div>
+          <div className="preset-dock-cell">
+            <ExpressionPresetPanel
+              presets={selectableExpressions}
+              activePresetId={activeExpressionId}
+              status={expressionPresetStatus}
+              disabled={singleEye}
+              onApply={applyExpressionPreset}
+              onSaveCurrent={saveCurrentExpressionPreset}
+              onImport={importExpressionPreset}
+              onExport={exportExpressionPreset}
+              onDelete={deleteExpressionPreset}
+            />
             {expressionPresetError && <p className="preset-error" role="alert">{expressionPresetError}</p>}
-            <ParameterPanel model={model} linkedEyes={linkedEyes} transparentBackground={transparentBackground} pixelPerfect={pixelPerfect} onChange={updateModel} onLinkedEyesChange={setLinkedEyes} onSingleEyeLayoutChange={setSingleEyeLayout} onTransparentBackgroundChange={(value) => commit((current) => ({ ...current, transparentBackground: value }))} onPixelPerfectChange={setPixelPerfect} />
-            <ExportPanel model={model} transparentBackground={transparentBackground} resolveAnimationFrame={resolveAnimationFrame} />
           </div>
         </section>
       </ContinuousEditProvider>
 
-      <VisualRegressionGallery
-        activeExpressionId={activeExpressionId}
-        disabled={singleEye}
-        onApplySelection={applyGallerySelectionToEditor}
-      />
+      {exportOpen && (
+        <div
+          className="export-layer"
+          onMouseDown={(event) => {
+            if (event.currentTarget === event.target) setExportOpen(false)
+          }}
+        >
+          <section
+            className="export-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="export-dialog-title"
+          >
+            <header className="export-dialog-header">
+              <strong id="export-dialog-title">Export assets</strong>
+              <button
+                className="export-dialog-close"
+                type="button"
+                aria-label="Close export dialog"
+                onClick={() => setExportOpen(false)}
+              >
+                ×
+              </button>
+            </header>
+            <ExportPanel
+              model={model}
+              transparentBackground={transparentBackground}
+              resolveAnimationFrame={resolveAnimationFrame}
+            />
+          </section>
+        </div>
+      )}
+
+      <section className="studio-diagnostics" aria-label="Visual regression tools">
+        <VisualRegressionGallery
+          activeExpressionId={activeExpressionId}
+          disabled={singleEye}
+          onApplySelection={applyGallerySelectionToEditor}
+        />
+      </section>
     </main>
   )
 }
