@@ -32,14 +32,6 @@ export function PreviewArea({
           <div className="preview-viewport-content">
             <div
               className="svg-preview"
-              style={
-                pixelPerfect
-                  ? {
-                      width: model.canvas.width,
-                      height: model.canvas.height,
-                    }
-                  : undefined
-              }
               role="img"
               aria-label="Robot face SVG preview"
               dangerouslySetInnerHTML={{ __html: svg }}
