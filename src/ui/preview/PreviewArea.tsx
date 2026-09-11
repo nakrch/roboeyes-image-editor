@@ -30,7 +30,6 @@ export function PreviewArea({
       <div className="preview-stage">
         <div
           className={`svg-preview ${pixelPerfect ? 'pixel-perfect' : 'scaled'}`}
-          style={pixelPerfect ? { width: model.canvas.width, height: model.canvas.height } : undefined}
           role="img"
           aria-label="Robot face SVG preview"
           dangerouslySetInnerHTML={{ __html: svg }}
