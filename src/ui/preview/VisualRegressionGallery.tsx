@@ -80,7 +80,7 @@ export function VisualRegressionGallery({
   }
 
   return (
-    <details className="visual-regression-gallery">
+    <details className="visual-regression-gallery" open>
       <summary className="visual-regression-summary">
         <span className="visual-regression-summary-copy">
           <span className="visual-regression-kicker">Diagnostics</span>
