@@ -492,6 +492,15 @@ export function EditorShell() {
         transparentBackground={transparentBackground}
         pixelPerfect={pixelPerfect}
       />
+      <div className="preview-history-actions" aria-label="Preview history actions">
+        <button type="button" onClick={undo} disabled={history.past.length === 0} aria-label="Undo last edit">
+          Undo
+        </button>
+        <button type="button" onClick={redo} disabled={history.future.length === 0} aria-label="Redo edit">
+          Redo
+        </button>
+        <button type="button" onClick={reset}>Reset</button>
+      </div>
     </div>
   )
 
@@ -588,13 +597,6 @@ export function EditorShell() {
           </span>
         </div>
         <div className="editor-app-actions" aria-label="Editor actions">
-          <button type="button" onClick={undo} disabled={history.past.length === 0} aria-label="Undo last edit">
-            Undo
-          </button>
-          <button type="button" onClick={redo} disabled={history.future.length === 0} aria-label="Redo edit">
-            Redo
-          </button>
-          <button type="button" onClick={reset}>Reset</button>
           <button
             className="editor-export-action"
             type="button"
