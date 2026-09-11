@@ -14,6 +14,10 @@ type PresetPanelProps = {
   onDelete: (preset: FacePreset) => void
 }
 
+function thumbnailIdPrefix(id: string): string {
+  return `face-thumbnail-${id.replace(/[^a-zA-Z0-9_-]/g, '-')}`
+}
+
 export function PresetPanel({
   presets,
   activePresetId,
@@ -80,6 +84,7 @@ export function PresetPanel({
           const selected = preset.id === activePresetId
           const svg = renderFaceToSvg(preset.model, {
             transparentBackground: preset.preview?.transparentBackground ?? false,
+            idPrefix: thumbnailIdPrefix(preset.id),
           })
           return (
             <button
