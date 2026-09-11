@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import type { FacePreset } from '../../core/presets'
+import { renderFaceToSvg } from '../../renderers/svg'
 import { useToast } from '../feedback/ToastProvider'
 
 type PresetPanelProps = {
@@ -69,62 +70,91 @@ export function PresetPanel({
 
   return (
     <aside className="panel preset-panel" aria-label="Presets">
-      <div className="panel-heading">
+      <div className="panel-heading preset-dock-heading">
         <p className="eyebrow">Presets</p>
-        <h2>Style defaults</h2>
+        <h2>Face library</h2>
       </div>
 
-      <label className="control-field">
-        <span>Preset</span>
-        <select
-          value={activePreset?.id ?? 'custom'}
-          onChange={(event) => {
-            const preset = presets.find((item) => item.id === event.target.value)
-            if (preset) applyPreset(preset)
-          }}
-        >
-          <option value="custom" disabled>Custom</option>
-          {presets.map((preset) => (
-            <option key={preset.id} value={preset.id}>
-              {preset.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="preset-thumbnail-strip" role="listbox" aria-label="Face presets">
+        {presets.map((preset) => {
+          const selected = preset.id === activePresetId
+          const svg = renderFaceToSvg(preset.model, {
+            transparentBackground: preset.preview?.transparentBackground ?? false,
+          })
+          return (
+            <button
+              type="button"
+              className={`preset-thumbnail ${selected ? 'active' : ''}`}
+              role="option"
+              aria-selected={selected}
+              key={preset.id}
+              onClick={() => applyPreset(preset)}
+            >
+              <span
+                className="preset-thumbnail-preview"
+                aria-hidden="true"
+                dangerouslySetInnerHTML={{ __html: svg }}
+              />
+              <span className="preset-thumbnail-label">{preset.name}</span>
+            </button>
+          )
+        })}
+      </div>
 
-      <div className="preset-actions">
-        <input
-          className="number-input"
-          type="text"
-          placeholder="Custom preset name"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-        />
-        <button type="button" onClick={() => onSaveCurrent(name)}>
-          Save current
-        </button>
+      <div className="preset-management">
+        <label className="control-field preset-select-field">
+          <span>Selected</span>
+          <select
+            value={activePreset?.id ?? 'custom'}
+            onChange={(event) => {
+              const preset = presets.find((item) => item.id === event.target.value)
+              if (preset) applyPreset(preset)
+            }}
+          >
+            <option value="custom" disabled>Custom</option>
+            {presets.map((preset) => (
+              <option key={preset.id} value={preset.id}>
+                {preset.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div className="preset-actions">
+          <input
+            className="number-input"
+            type="text"
+            placeholder="Custom preset name"
+            value={name}
+            aria-label="Custom preset name"
+            onChange={(event) => setName(event.target.value)}
+          />
+          <button type="button" onClick={() => onSaveCurrent(name)}>
+            Save current
+          </button>
+        </div>
+
+        <div className="preset-file-actions">
+          <button type="button" onClick={() => inputRef.current?.click()}>
+            Import
+          </button>
+          <button type="button" disabled={!customPreset} onClick={() => customPreset && exportPreset(customPreset)}>
+            Export JSON
+          </button>
+          <button type="button" disabled={!customPreset} onClick={() => customPreset && deletePreset(customPreset)}>
+            Delete
+          </button>
+          <input
+            ref={inputRef}
+            className="visually-hidden"
+            type="file"
+            accept="application/json,.json"
+            onChange={importFile}
+          />
+        </div>
       </div>
 
       {status && <p className="preset-status" role="status" aria-live="polite">{status}</p>}
-
-      <div className="preset-file-actions">
-        <button type="button" onClick={() => inputRef.current?.click()}>
-          Import JSON
-        </button>
-        <button type="button" disabled={!customPreset} onClick={() => customPreset && exportPreset(customPreset)}>
-          Export JSON
-        </button>
-        <button type="button" disabled={!customPreset} onClick={() => customPreset && deletePreset(customPreset)}>
-          Delete
-        </button>
-        <input
-          ref={inputRef}
-          className="visually-hidden"
-          type="file"
-          accept="application/json,.json"
-          onChange={importFile}
-        />
-      </div>
     </aside>
   )
 }
