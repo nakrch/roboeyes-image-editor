@@ -23,6 +23,10 @@ type Props = {
 
 const previewBaseModel = builtInPresets[0].model
 
+function thumbnailIdPrefix(id: string): string {
+  return `expression-thumbnail-${id.replace(/[^a-zA-Z0-9_-]/g, '-')}`
+}
+
 export function ExpressionPresetPanel({
   presets,
   activePresetId,
@@ -82,7 +86,7 @@ export function ExpressionPresetPanel({
   }
 
   return (
-    <aside className="panel preset-panel" aria-label="Expression presets" aria-disabled={disabled}>
+    <aside className="panel preset-panel expression-preset-panel" aria-label="Expression presets" aria-disabled={disabled}>
       <div className="panel-heading preset-dock-heading">
         <p className="eyebrow">Expression</p>
         <h2>Expression library</h2>
@@ -93,7 +97,10 @@ export function ExpressionPresetPanel({
           const selected = preset.id === activePresetId
           const svg = renderFaceToSvg(
             { ...previewBaseModel, expression: preset.expression },
-            { transparentBackground: false },
+            {
+              transparentBackground: false,
+              idPrefix: thumbnailIdPrefix(preset.id),
+            },
           )
           return (
             <button
