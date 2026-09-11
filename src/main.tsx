@@ -7,6 +7,7 @@ import './historyControls.css'
 import './animationControls.css'
 import './previewCompact.css'
 import './ui/feedback/toast.css'
+import './studio.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
