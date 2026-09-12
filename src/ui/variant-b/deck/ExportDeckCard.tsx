@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { minimumCanvasSize, type FaceModel } from '../../../core/model'
 import {
-  animatedExportLimitations,
   encodeAnimatedGif,
   encodeAnimatedWebp,
   rasterizeAnimationExportFrames,
@@ -19,7 +18,6 @@ import {
   firstGifValidationError,
   firstStaticValidationError,
   firstWebpValidationError,
-  parseNumberDraft,
   validateExportNumericDrafts,
   type NumberDraft,
 } from '../../export/exportNumericValidation'
@@ -97,26 +95,26 @@ export function ExportDeckCard({
       fps,
       loopCount,
     })
-    const validationError = firstStaticValidationError(validation)
-    if (validationError) {
-      setError(validationError)
+    const values = validation.staticValues
+    if (values === null) {
+      const err = firstStaticValidationError(validation)
+      setError(err)
+      notify('error', err)
       return
     }
 
-    const targetWidth = parseNumberDraft(exportWidth, model.canvas.width)
-    const targetHeight = parseNumberDraft(exportHeight, model.canvas.height)
     setError('')
-    const svg = renderExportSvg(model, {
-      transparentBackground,
-      targetWidth,
-      targetHeight,
-    })
-    downloadBlob(svgToBlob(svg), 'roboeyes-face.svg')
-    notify({
-      title: 'SVG Handed Off',
-      message: `Exported ${targetWidth}×${targetHeight} SVG.`,
-      variant: 'info',
-    })
+    const staticOptions = { dimensions: values, transparentBackground }
+    const baseName = `roboeyes-${values.width}x${values.height}`
+    try {
+      const svg = renderExportSvg(model, staticOptions)
+      downloadBlob(svgToBlob(svg), `${baseName}.svg`)
+      notify('success', 'Downloading SVG…')
+    } catch {
+      const msg = 'Could not export SVG in this browser.'
+      setError(msg)
+      notify('error', msg)
+    }
   }
 
   const exportPng = async () => {
@@ -127,36 +125,32 @@ export function ExportDeckCard({
       fps,
       loopCount,
     })
-    const validationError = firstStaticValidationError(validation)
-    if (validationError) {
-      setError(validationError)
+    const values = validation.staticValues
+    if (values === null) {
+      const err = firstStaticValidationError(validation)
+      setError(err)
+      notify('error', err)
       return
     }
 
-    const targetWidth = parseNumberDraft(exportWidth, model.canvas.width)
-    const targetHeight = parseNumberDraft(exportHeight, model.canvas.height)
     setError('')
     setBusy(true)
+    const staticOptions = { dimensions: values, transparentBackground }
+    const baseName = `roboeyes-${values.width}x${values.height}`
     try {
-      const blob = await renderExportPng(model, {
-        transparentBackground,
-        targetWidth,
-        targetHeight,
-      })
-      downloadBlob(blob, 'roboeyes-face.png')
-      notify({
-        title: 'PNG Handed Off',
-        message: `Exported ${targetWidth}×${targetHeight} PNG.`,
-        variant: 'info',
-      })
+      const png = await renderExportPng(model, staticOptions)
+      downloadBlob(png, `${baseName}.png`)
+      notify('success', 'Downloading PNG…')
     } catch {
-      setError('Failed to export PNG.')
+      const msg = 'Could not export PNG in this browser.'
+      setError(msg)
+      notify('error', msg)
     } finally {
       setBusy(false)
     }
   }
 
-  const exportWebp = async () => {
+  const exportAnimation = async (format: 'gif' | 'webp') => {
     const validation = validateExportNumericDrafts({
       width: exportWidth,
       height: exportHeight,
@@ -164,87 +158,39 @@ export function ExportDeckCard({
       fps,
       loopCount,
     })
-    const validationError = firstWebpValidationError(validation)
-    if (validationError) {
-      setError(validationError)
+    const values = format === 'gif' ? validation.gifValues : validation.webpValues
+    if (values === null) {
+      const err = format === 'gif'
+        ? firstGifValidationError(validation)
+        : firstWebpValidationError(validation)
+      setError(err)
+      notify('error', err)
       return
     }
 
-    const targetWidth = parseNumberDraft(exportWidth, model.canvas.width)
-    const targetHeight = parseNumberDraft(exportHeight, model.canvas.height)
-    const targetDuration = parseNumberDraft(durationMs, 2000)
-    const targetFps = parseNumberDraft(fps, 20)
-    const targetLoop = parseNumberDraft(loopCount, 0)
-
     setError('')
     setBusy(true)
-    try {
-      const frames = await rasterizeAnimationExportFrames(model, {
-        targetWidth,
-        targetHeight,
-        durationMs: targetDuration,
-        fps: targetFps,
-        transparentBackground,
-        resolveAnimationFrame,
-      })
-      const webpBlob = await encodeAnimatedWebp(frames, {
-        loopCount: targetLoop,
-      })
-      downloadBlob(webpBlob, 'roboeyes-animation.webp')
-      notify({
-        title: 'WebP Handed Off',
-        message: `Exported animated WebP (${targetWidth}×${targetHeight}, ${targetFps}fps).`,
-        variant: 'info',
-      })
-    } catch {
-      setError('Failed to encode animated WebP.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const exportGif = async () => {
-    const validation = validateExportNumericDrafts({
-      width: exportWidth,
-      height: exportHeight,
-      durationMs,
-      fps,
-      loopCount,
-    })
-    const validationError = firstGifValidationError(validation)
-    if (validationError) {
-      setError(validationError)
-      return
+    const dimensions = { width: values.width, height: values.height }
+    const baseName = `roboeyes-${dimensions.width}x${dimensions.height}`
+    const animationOptions = {
+      dimensions,
+      transparentBackground,
+      durationMs: values.durationMs,
+      fps: values.fps,
+      ...(format === 'gif' ? { loopCount: validation.gifValues!.loopCount } : {}),
     }
 
-    const targetWidth = parseNumberDraft(exportWidth, model.canvas.width)
-    const targetHeight = parseNumberDraft(exportHeight, model.canvas.height)
-    const targetDuration = parseNumberDraft(durationMs, 2000)
-    const targetFps = parseNumberDraft(fps, 20)
-    const targetLoop = parseNumberDraft(loopCount, 0)
-
-    setError('')
-    setBusy(true)
     try {
-      const frames = await rasterizeAnimationExportFrames(model, {
-        targetWidth,
-        targetHeight,
-        durationMs: targetDuration,
-        fps: targetFps,
-        transparentBackground,
-        resolveAnimationFrame,
-      })
-      const gifBlob = await encodeAnimatedGif(frames, {
-        loopCount: targetLoop,
-      })
-      downloadBlob(gifBlob, 'roboeyes-animation.gif')
-      notify({
-        title: 'GIF Handed Off',
-        message: `Exported animated GIF (${targetWidth}×${targetHeight}, ${targetFps}fps).`,
-        variant: 'info',
-      })
+      const frames = await rasterizeAnimationExportFrames(animationOptions, resolveAnimationFrame)
+      const blob = format === 'gif'
+        ? await encodeAnimatedGif(frames, animationOptions)
+        : await encodeAnimatedWebp(frames, animationOptions)
+      downloadBlob(blob, `${baseName}.${format}`)
+      notify('success', `Downloading ${format.toUpperCase()}…`)
     } catch {
-      setError('Failed to encode animated GIF.')
+      const msg = `Could not export animated ${format.toUpperCase()} in this browser.`
+      setError(msg)
+      notify('error', msg)
     } finally {
       setBusy(false)
     }
@@ -340,7 +286,7 @@ export function ExportDeckCard({
             label="Duration"
             value={Number(durationMs)}
             min={200}
-            max={animatedExportLimitations.maxDurationMs}
+            max={10000}
             step={100}
             unit="ms"
             onChange={(val) => setDurationMs(val)}
@@ -349,7 +295,7 @@ export function ExportDeckCard({
             label="Framerate"
             value={Number(fps)}
             min={5}
-            max={animatedExportLimitations.maxFps}
+            max={60}
             step={1}
             unit="fps"
             onChange={(val) => setFps(val)}
@@ -372,7 +318,7 @@ export function ExportDeckCard({
             type="button"
             className="vb-export-action-btn vb-btn-accent"
             disabled={busy}
-            onClick={exportWebp}
+            onClick={() => exportAnimation('webp')}
           >
             {busy ? 'Encoding WebP...' : '🎬 Export Animated WebP'}
           </button>
@@ -380,7 +326,7 @@ export function ExportDeckCard({
             type="button"
             className="vb-export-action-btn vb-btn-accent"
             disabled={busy}
-            onClick={exportGif}
+            onClick={() => exportAnimation('gif')}
           >
             {busy ? 'Encoding GIF...' : '🎞 Export Animated GIF'}
           </button>

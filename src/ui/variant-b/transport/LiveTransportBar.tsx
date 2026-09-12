@@ -111,7 +111,7 @@ export function LiveTransportBar({
             <button
               key={rate}
               type="button"
-              className={`vb-speed-btn ${playback.clock.rate === rate ? 'active' : ''}`}
+              className={`vb-speed-btn ${playback.clock.playbackRate === rate ? 'active' : ''}`}
               onClick={() => onPlaybackRateChange(rate)}
             >
               {rate}x

@@ -28,19 +28,16 @@ import {
 import { setGazeSafely } from '../../editor/gazeSafety'
 import {
   movePair,
-  moveSingleEye,
   pairCenterX,
   pairCenterY,
   pairRotation,
   pairRotationLimits,
   rotatePairSafely,
-  updateEyeGeometry,
   type EyeSide,
-  type GeometryKey,
 } from '../../editor/modelEditing'
 import {
   isSingleEyeLayout,
-  preserveSingleEyeSpacing,
+  moveSingleEye,
 } from '../../editor/singleEyeLayout'
 import {
   canvasSafeAnchoredPairSpacingMax,
@@ -103,10 +100,10 @@ export function FaceDeckCard({
     const deriveSide = (side: EyeSide) => {
       const geometry = side === 'left' ? model.leftEye.geometry : model.rightEye.geometry
       const xAbsolutePositionRange = singleEye && side === 'left'
-        ? rigidEyePositionRange(model, 'x', geometry.x)
+        ? rigidEyePositionRange(model, 'x', geometry.position.x)
         : independentEyePositionRange(model, side, 'x')
       const yAbsolutePositionRange = singleEye && side === 'left'
-        ? rigidEyePositionRange(model, 'y', geometry.y)
+        ? rigidEyePositionRange(model, 'y', geometry.position.y)
         : independentEyePositionRange(model, side, 'y')
 
       return {
@@ -118,14 +115,12 @@ export function FaceDeckCard({
             'x',
             xAbsolutePositionRange.min,
             xAbsolutePositionRange.max,
-            geometry.width,
           ),
           y: centerRelativePositionRange(
             model,
             'y',
             yAbsolutePositionRange.min,
             yAbsolutePositionRange.max,
-            geometry.height,
           ),
         },
       }
@@ -158,6 +153,34 @@ export function FaceDeckCard({
       if (singleEye) onSingleEyeLayoutChange(false)
       onLinkedEyesChange(false)
     }
+  }
+
+  const updateCornerRadius = (val: number, side?: EyeSide) => {
+    onChange((current) => {
+      if (side === undefined || linkedEyes) {
+        return {
+          ...current,
+          leftEye: {
+            ...current.leftEye,
+            geometry: { ...current.leftEye.geometry, cornerRadius: val },
+          },
+          rightEye: {
+            ...current.rightEye,
+            geometry: { ...current.rightEye.geometry, cornerRadius: val },
+          },
+        }
+      }
+      return {
+        ...current,
+        [side === 'left' ? 'leftEye' : 'rightEye']: {
+          ...current[side === 'left' ? 'leftEye' : 'rightEye'],
+          geometry: {
+            ...current[side === 'left' ? 'leftEye' : 'rightEye'].geometry,
+            cornerRadius: val,
+          },
+        },
+      }
+    })
   }
 
   return (
@@ -193,7 +216,11 @@ export function FaceDeckCard({
           onChange={(relX, relY) => {
             const nextAbsX = fromCenterRelativePosition(model, 'x', relX)
             const nextAbsY = fromCenterRelativePosition(model, 'y', relY)
-            onChange((current) => (singleEye ? moveSingleEye(current, nextAbsX, nextAbsY) : movePair(current, nextAbsX, nextAbsY)))
+            onChange((current) =>
+              singleEye
+                ? moveSingleEye(current, nextAbsX, nextAbsY)
+                : movePair(current, nextAbsX, nextAbsY),
+            )
           }}
         />
       </div>
@@ -260,11 +287,11 @@ export function FaceDeckCard({
             />
             <TactileSlider
               label="Corner Radius"
-              value={left.radius}
-              min={linkedDerived.dimensionRanges.radius.min}
-              max={linkedDerived.dimensionRanges.radius.max}
+              value={left.cornerRadius}
+              min={0}
+              max={Math.min(left.width, left.height) / 2}
               unit="px"
-              onChange={(val) => onChange((cur) => setLinkedEyeDimensionSafely(cur, 'radius', val))}
+              onChange={(val) => updateCornerRadius(val)}
             />
             {!singleEye && (
               <>
@@ -301,7 +328,9 @@ export function FaceDeckCard({
                     min={ranges.dimensionRanges.width.min}
                     max={ranges.dimensionRanges.width.max}
                     unit="px"
-                    onChange={(val) => onChange((cur) => setIndependentEyeDimensionSafely(cur, activeSide, 'width', val))}
+                    onChange={(val) =>
+                      onChange((cur) => setIndependentEyeDimensionSafely(cur, activeSide, 'width', val))
+                    }
                   />
                   <TactileSlider
                     label={`${activeSide === 'left' ? 'Left' : 'Right'} Height`}
@@ -309,15 +338,17 @@ export function FaceDeckCard({
                     min={ranges.dimensionRanges.height.min}
                     max={ranges.dimensionRanges.height.max}
                     unit="px"
-                    onChange={(val) => onChange((cur) => setIndependentEyeDimensionSafely(cur, activeSide, 'height', val))}
+                    onChange={(val) =>
+                      onChange((cur) => setIndependentEyeDimensionSafely(cur, activeSide, 'height', val))
+                    }
                   />
                   <TactileSlider
-                    label={`${activeSide === 'left' ? 'Left' : 'Right'} Radius`}
-                    value={geom.radius}
-                    min={ranges.dimensionRanges.radius.min}
-                    max={ranges.dimensionRanges.radius.max}
+                    label={`${activeSide === 'left' ? 'Left' : 'Right'} Corner Radius`}
+                    value={geom.cornerRadius}
+                    min={0}
+                    max={Math.min(geom.width, geom.height) / 2}
                     unit="px"
-                    onChange={(val) => onChange((cur) => setIndependentEyeDimensionSafely(cur, activeSide, 'radius', val))}
+                    onChange={(val) => updateCornerRadius(val, activeSide)}
                   />
                   <TactileSlider
                     label={`${activeSide === 'left' ? 'Left' : 'Right'} Rotation`}
@@ -325,7 +356,9 @@ export function FaceDeckCard({
                     min={ranges.rotationRange.min}
                     max={ranges.rotationRange.max}
                     unit="°"
-                    onChange={(val) => onChange((cur) => setIndependentEyeRotationSafely(cur, activeSide, val))}
+                    onChange={(val) =>
+                      onChange((cur) => setIndependentEyeRotationSafely(cur, activeSide, val))
+                    }
                   />
                 </>
               )
@@ -345,7 +378,9 @@ export function FaceDeckCard({
                 type="color"
                 className="vb-color-input"
                 value={model.colors.eye}
-                onChange={(e) => onChange((cur) => ({ ...cur, colors: { ...cur.colors, eye: e.target.value } }))}
+                onChange={(e) =>
+                  onChange((cur) => ({ ...cur, colors: { ...cur.colors, eye: e.target.value } }))
+                }
               />
               <span className="vb-color-code">{model.colors.eye.toUpperCase()}</span>
             </div>
@@ -358,9 +393,13 @@ export function FaceDeckCard({
                 type="color"
                 className="vb-color-input"
                 value={model.colors.stroke ?? model.colors.eye}
-                onChange={(e) => onChange((cur) => ({ ...cur, colors: { ...cur.colors, stroke: e.target.value } }))}
+                onChange={(e) =>
+                  onChange((cur) => ({ ...cur, colors: { ...cur.colors, stroke: e.target.value } }))
+                }
               />
-              <span className="vb-color-code">{(model.colors.stroke ?? model.colors.eye).toUpperCase()}</span>
+              <span className="vb-color-code">
+                {(model.colors.stroke ?? model.colors.eye).toUpperCase()}
+              </span>
             </div>
           </label>
 
@@ -371,7 +410,9 @@ export function FaceDeckCard({
                 type="color"
                 className="vb-color-input"
                 value={model.colors.background}
-                onChange={(e) => onChange((cur) => ({ ...cur, colors: { ...cur.colors, background: e.target.value } }))}
+                onChange={(e) =>
+                  onChange((cur) => ({ ...cur, colors: { ...cur.colors, background: e.target.value } }))
+                }
               />
               <span className="vb-color-code">{model.colors.background.toUpperCase()}</span>
             </div>

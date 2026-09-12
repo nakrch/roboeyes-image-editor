@@ -3,7 +3,6 @@ import type { FaceModel } from '../../../core/model'
 import {
   builtInBehaviorProfiles,
   type AnimationProgram,
-  type AnimationProgramStep,
   type PresetAnimationDefaults,
   type PresetAnimationDefaultsV1,
 } from '../../../animation'
@@ -51,7 +50,7 @@ export function MotionDeckCard({
   const { notify } = useToast()
 
   const currentDefaults = editable(animationDefaults)
-  const activeProfile = currentDefaults.behaviorProfile ?? 'profile:calm'
+  const activeProfileId = currentDefaults.behaviorProfile?.id ?? ''
 
   // Auto-blink channel data
   const eyeChannel = (currentDefaults.definition?.channels?.['eye-openness'] ?? {}) as Record<string, unknown>
@@ -79,18 +78,20 @@ export function MotionDeckCard({
 
   const handleProfileChange = (profileId: string) => {
     const matched = builtInBehaviorProfiles.find((p) => p.id === profileId)
-    if (!matched) return
+    if (!matched) {
+      const copy = { ...currentDefaults }
+      delete copy.behaviorProfile
+      onAnimationDefaultsChange(copy)
+      notify('info', 'Behavior profile cleared.')
+      return
+    }
+
     const next: PresetAnimationDefaultsV1 = {
-      version: 1,
-      behaviorProfile: matched.id,
-      definition: matched.defaults.definition,
+      ...currentDefaults,
+      behaviorProfile: structuredClone(matched),
     }
     onAnimationDefaultsChange(next)
-    notify({
-      title: 'Behavior Profile Applied',
-      message: `Switched to "${matched.name}" profile.`,
-      variant: 'info',
-    })
+    notify('info', `Switched to "${matched.name}" profile.`)
   }
 
   const updateAutoBlink = (partial: Record<string, unknown>) => {
@@ -134,19 +135,18 @@ export function MotionDeckCard({
           <div className="vb-section-label">BEHAVIOR PRESET PROFILES</div>
           <div className="vb-profile-grid">
             {builtInBehaviorProfiles.map((p) => {
-              const isSelected = p.id === activeProfile
+              const isSelected = p.id === activeProfileId
               return (
                 <button
                   key={p.id}
                   type="button"
                   className={`vb-profile-card ${isSelected ? 'active' : ''}`}
-                  onClick={() => handleProfileChange(p.id)}
+                  onClick={() => handleProfileChange(isSelected ? '' : p.id)}
                 >
                   <div className="vb-profile-header">
                     <span className="vb-profile-name">{p.name}</span>
                     {isSelected && <span className="vb-profile-badge">ACTIVE</span>}
                   </div>
-                  <p className="vb-profile-desc">{p.description}</p>
                 </button>
               )
             })}
