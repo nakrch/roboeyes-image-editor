@@ -54,14 +54,15 @@ export function MotionDeckCard({
 
   // Auto-blink channel data
   const eyeChannel = (currentDefaults.definition?.channels?.['eye-openness'] ?? {}) as Record<string, unknown>
-  const autoBlinkEnabled = eyeChannel.kind === 'eye-openness' && typeof eyeChannel.autoBlink === 'object' && eyeChannel.autoBlink !== null
-    ? ((eyeChannel.autoBlink as Record<string, unknown>).enabled !== false)
-    : false
-  const autoBlinkConfig = (eyeChannel.autoBlink as Record<string, unknown>) ?? {
-    enabled: false,
-    intervalMs: 3000,
-    variationMs: 2000,
-    durationMs: 150,
+  const rawAutoBlink = (eyeChannel.autoBlink && typeof eyeChannel.autoBlink === 'object' && !Array.isArray(eyeChannel.autoBlink))
+    ? (eyeChannel.autoBlink as Record<string, unknown>)
+    : undefined
+
+  const autoBlinkEnabled = rawAutoBlink ? Boolean(rawAutoBlink.enabled) : false
+  const autoBlinkConfig = {
+    enabled: autoBlinkEnabled,
+    intervalMs: typeof rawAutoBlink?.intervalMs === 'number' ? rawAutoBlink.intervalMs : 2500,
+    variationMs: typeof rawAutoBlink?.variationMs === 'number' ? rawAutoBlink.variationMs : 1500,
   }
 
   // Idle-gaze channel data
@@ -94,21 +95,26 @@ export function MotionDeckCard({
     notify('success', `Switched to "${matched.name}" profile.`)
   }
 
-  const updateAutoBlink = (partial: Record<string, unknown>) => {
-    const nextAutoBlink = { ...autoBlinkConfig, ...partial }
+  const updateAutoBlink = (partial: { enabled?: boolean; intervalMs?: number; variationMs?: number }) => {
+    const nextAutoBlink = {
+      enabled: partial.enabled ?? autoBlinkConfig.enabled,
+      intervalMs: partial.intervalMs ?? autoBlinkConfig.intervalMs,
+      variationMs: partial.variationMs ?? autoBlinkConfig.variationMs,
+    }
     const nextEyeChannel = {
       kind: 'eye-openness',
-      ...eyeChannel,
       autoBlink: nextAutoBlink,
     }
     onAnimationDefaultsChange(withDefinitionChannel(animationDefaults, 'eye-openness', nextEyeChannel))
   }
 
-  const updateIdleGaze = (partial: Record<string, unknown>) => {
+  const updateIdleGaze = (partial: { enabled?: boolean; intervalMs?: number; transitionDurationMs?: number }) => {
     const nextGazeChannel = {
       kind: 'idle-gaze',
-      ...idleGazeConfig,
-      ...partial,
+      enabled: partial.enabled ?? idleGazeConfig.enabled,
+      intervalMs: partial.intervalMs ?? (typeof idleGazeConfig.intervalMs === 'number' ? idleGazeConfig.intervalMs : 2000),
+      variationMs: typeof idleGazeConfig.variationMs === 'number' ? idleGazeConfig.variationMs : 2500,
+      transitionDurationMs: partial.transitionDurationMs ?? (typeof idleGazeConfig.transitionDurationMs === 'number' ? idleGazeConfig.transitionDurationMs : 300),
     }
     onAnimationDefaultsChange(withDefinitionChannel(animationDefaults, 'gaze-pose', nextGazeChannel))
   }
@@ -172,8 +178,8 @@ export function MotionDeckCard({
           <div className="vb-sliders-grid">
             <TactileSlider
               label="Interval Mean"
-              value={Number(autoBlinkConfig.intervalMs ?? 3000)}
-              min={500}
+              value={autoBlinkConfig.intervalMs}
+              min={200}
               max={10000}
               step={100}
               unit="ms"
@@ -182,23 +188,13 @@ export function MotionDeckCard({
             />
             <TactileSlider
               label="Interval Variation (Jitter)"
-              value={Number(autoBlinkConfig.variationMs ?? 2000)}
+              value={autoBlinkConfig.variationMs}
               min={0}
               max={6000}
               step={100}
               unit="ms"
               disabled={!autoBlinkEnabled}
               onChange={(val) => updateAutoBlink({ variationMs: val })}
-            />
-            <TactileSlider
-              label="Blink Duration"
-              value={Number(autoBlinkConfig.durationMs ?? 150)}
-              min={50}
-              max={500}
-              step={10}
-              unit="ms"
-              disabled={!autoBlinkEnabled}
-              onChange={(val) => updateAutoBlink({ durationMs: val })}
             />
           </div>
         </div>
