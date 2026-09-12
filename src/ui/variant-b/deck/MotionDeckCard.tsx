@@ -82,7 +82,7 @@ export function MotionDeckCard({
       const copy = { ...currentDefaults }
       delete copy.behaviorProfile
       onAnimationDefaultsChange(copy)
-      notify('info', 'Behavior profile cleared.')
+      notify('success', 'Behavior profile cleared.')
       return
     }
 
@@ -91,7 +91,7 @@ export function MotionDeckCard({
       behaviorProfile: structuredClone(matched),
     }
     onAnimationDefaultsChange(next)
-    notify('info', `Switched to "${matched.name}" profile.`)
+    notify('success', `Switched to "${matched.name}" profile.`)
   }
 
   const updateAutoBlink = (partial: Record<string, unknown>) => {
