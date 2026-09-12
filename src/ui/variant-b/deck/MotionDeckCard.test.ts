@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizePresetAnimationDefaults } from '../../../animation'
+import { normalizePresetAnimationDefaults, type PresetAnimationDefaultsV1 } from '../../../animation'
 
 describe('Variant B MotionDeckCard safety', () => {
   it('allows auto-blink enabled configuration without throwing assertAllowedKeys error', () => {
@@ -22,7 +22,7 @@ describe('Variant B MotionDeckCard safety', () => {
     }
 
     expect(() => normalizePresetAnimationDefaults(rawDefaults)).not.toThrow()
-    const normalized = normalizePresetAnimationDefaults(rawDefaults)
+    const normalized = normalizePresetAnimationDefaults(rawDefaults) as PresetAnimationDefaultsV1
     expect(normalized.definition?.channels?.['eye-openness']).toBeDefined()
   })
 
@@ -45,7 +45,7 @@ describe('Variant B MotionDeckCard safety', () => {
     }
 
     expect(() => normalizePresetAnimationDefaults(rawDefaults)).not.toThrow()
-    const normalized = normalizePresetAnimationDefaults(rawDefaults)
+    const normalized = normalizePresetAnimationDefaults(rawDefaults) as PresetAnimationDefaultsV1
     expect(normalized.definition?.channels?.['gaze-pose']).toBeDefined()
   })
 })
