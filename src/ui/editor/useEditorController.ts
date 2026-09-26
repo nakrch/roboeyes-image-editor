@@ -511,10 +511,21 @@ export function useEditorController(): EditorController {
   }
 
   const setTransparentBackground = (value: boolean) => commit((current) => ({ ...current, transparentBackground: value }))
-  const setDisplayMask = (value: DisplayMask) => commit((current) => ({ ...current, displayMask: value }))
-  const setLensStrength = (value: number) => updateModel((current) => {
-    const { lens: _lens, ...withoutLens } = current
-    return value <= 0 ? withoutLens : { ...withoutLens, lens: { kind: 'sphere', strength: Math.min(1, value) } }
+  const setDisplayMask = (value: DisplayMask) => commit((current) => ({
+    ...current,
+    displayMask: value,
+    model: current.model.lens
+      ? { ...current.model, lens: { ...current.model.lens, fit: value === 'circle' ? 'circle' : 'rect' } }
+      : current.model,
+  }))
+  const setLensStrength = (value: number) => commit((current) => {
+    const { lens: _lens, ...withoutLens } = current.model
+    return {
+      ...current,
+      model: value <= 0
+        ? withoutLens
+        : { ...withoutLens, lens: { kind: 'sphere', strength: Math.min(1, value), fit: current.displayMask === 'circle' ? 'circle' : 'rect' } },
+    }
   })
   const play = () => setPlayback(playAnimationPlayback)
   const pause = () => setPlayback(pauseAnimationPlayback)

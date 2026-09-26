@@ -13,4 +13,4 @@ export type { CanvasModel, ColorModel, EyeVisibilityModel, FaceModel } from './f
 export { DISPLAY_MASKS, displayMaskCircle, isDisplayMask } from './display'
 export type { DisplayMask } from './display'
 export { isLensModel, resolveLensStrength, lensRadialMap, warpPointThroughLens } from './lens'
-export type { LensModel } from './lens'
+export type { LensFit, LensModel } from './lens'

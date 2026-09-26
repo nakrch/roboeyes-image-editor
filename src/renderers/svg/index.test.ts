@@ -43,9 +43,9 @@ function horizontalExtent(path: string): number {
 describe('sphere lens SVG output', () => {
   it('retains byte-identical output when disabled and produces deterministic transformed paths when enabled', () => {
     const baseline = renderFaceToSvg(model)
-    expect(renderFaceToSvg({ ...model, lens: { kind: 'sphere', strength: 0 } })).toBe(baseline)
-    const distorted = renderFaceToSvg({ ...model, lens: { kind: 'sphere', strength: 1 } })
-    expect(distorted).toBe(renderFaceToSvg({ ...model, lens: { kind: 'sphere', strength: 1 } }))
+    expect(renderFaceToSvg({ ...model, lens: { kind: 'sphere', strength: 0, fit: 'rect' } })).toBe(baseline)
+    const distorted = renderFaceToSvg({ ...model, lens: { kind: 'sphere', strength: 1, fit: 'rect' } })
+    expect(distorted).toBe(renderFaceToSvg({ ...model, lens: { kind: 'sphere', strength: 1, fit: 'rect' } }))
     expect(distorted).toContain('<path data-eye="left" d="M ')
     expect(distorted).toContain('<path data-eye-aperture="right" d="M ')
     expect(distorted).not.toContain('transform="rotate(')
@@ -61,7 +61,7 @@ describe('sphere lens SVG output', () => {
   })
 
   it('compresses an edge eye more radially than a centered eye of identical shape', () => {
-    const centered = { ...model, gaze: { x: 0, y: 0 }, expression: { upperLid: 0, lowerLid: 0, tilt: 0 }, leftEye: { geometry: { ...model.leftEye.geometry, position: { x: 64, y: 32 }, rotation: 0 } }, eyeVisibility: { left: true, right: false }, lens: { kind: 'sphere' as const, strength: 1 } }
+    const centered = { ...model, gaze: { x: 0, y: 0 }, expression: { upperLid: 0, lowerLid: 0, tilt: 0 }, leftEye: { geometry: { ...model.leftEye.geometry, position: { x: 64, y: 32 }, rotation: 0 } }, eyeVisibility: { left: true, right: false }, lens: { kind: 'sphere' as const, strength: 1, fit: 'rect' as const } }
     const edge = { ...centered, leftEye: { geometry: { ...centered.leftEye.geometry, position: { x: 108, y: 32 } } } }
     expect(horizontalExtent(eyePath(renderFaceToSvg(edge), 'left'))).toBeLessThan(horizontalExtent(eyePath(renderFaceToSvg(centered), 'left')))
   })

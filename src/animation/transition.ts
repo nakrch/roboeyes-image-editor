@@ -234,8 +234,8 @@ function parseEyeVisibility(value: unknown, label: string): EyeVisibilityModel {
 }
 
 function parseLens(value: unknown, label: string): NonNullable<FaceModel['lens']> {
-  if (!isLensModel(value)) throw new TypeError(`${label} must be a sphere lens with strength in [0, 1]`)
-  return { kind: 'sphere', strength: value.strength }
+  if (!isLensModel(value)) throw new TypeError(`${label} must be a sphere lens with strength in [0, 1] and fit circle or rect`)
+  return { kind: 'sphere', strength: value.strength, fit: value.fit }
 }
 
 function parseFaceModel(value: unknown, label: string): FaceModel {

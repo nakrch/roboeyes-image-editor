@@ -15,7 +15,7 @@
 
 - [`presets.md`](presets.md) — face / expression preset と永続化
 - [`architecture.md`](architecture.md#8-small-display-requirements) — 円形 display mask の inspection と明示的な clipped export
-- [`architecture.md`](architecture.md#2-layer-responsibilities) — generic sphere lens eye distortion (`FaceModel.lens`), sampled deterministically for preview and export
+- [`architecture.md`](architecture.md#2-layer-responsibilities) — generic sphere lens eye distortion (`FaceModel.lens`), with circular fit for a circular display mask and rectangular fit otherwise; sampled deterministically for preview and export
 - [`visual-regression.md`](visual-regression.md) — 静的 Visual Regression Gallery の方針
 
 ## Animation runtime

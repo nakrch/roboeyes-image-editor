@@ -294,7 +294,7 @@ describe('interruptible retargeting', () => {
 
 describe('lens animation sampling', () => {
   it('preserves the discrete lens through transition and runtime sampling while the eye moves', () => {
-    const source: FaceModel = { ...baseModel, lens: { kind: 'sphere', strength: 0.8 } }
+    const source: FaceModel = { ...baseModel, lens: { kind: 'sphere', strength: 0.8, fit: 'rect' } }
     const transition = createFaceTransition('transition:lens', { gaze: { x: 6 } }, 0, 400, 'linear', source)
     const midpoint = sampleFaceTransition(transition, source, 200)
     expect(midpoint.gaze.x).toBe(3)

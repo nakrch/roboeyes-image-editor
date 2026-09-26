@@ -44,7 +44,7 @@ function sanitizeIdPrefix(value: string | undefined): string {
   return value?.trim().replace(/[^A-Za-z0-9_-]+/g, '-') ?? ''
 }
 
-function sampledEyePath(points: Point[], centerX: number, centerY: number, rotation: number, model: FaceModel, strength: number): string {
+function sampledEyePath(points: Point[], centerX: number, centerY: number, rotation: number, model: FaceModel): string {
   const angle = rotation * Math.PI / 180
   const cosine = Math.cos(angle)
   const sine = Math.sin(angle)
@@ -54,7 +54,7 @@ function sampledEyePath(points: Point[], centerX: number, centerY: number, rotat
     const warped = warpPointThroughLens({
       x: centerX + dx * cosine - dy * sine,
       y: centerY + dx * sine + dy * cosine,
-    }, model.canvas, strength)
+    }, model.canvas, model.lens!)
     return `${index === 0 ? 'M' : 'L'} ${number(warped.x)} ${number(warped.y)}`
   }).join(' ') + ' Z'
 }
@@ -141,8 +141,8 @@ function renderEye(
   const stroke = model.colors.stroke ?? model.colors.eye
   const lensStrength = resolveLensStrength(model)
   if (lensStrength > 0 && model.canvas.width > 0 && model.canvas.height > 0) {
-    const outline = sampledEyePath(sampledRoundedRect(x, y, geometry.width, scaledHeight, radius), centerX, centerY, rotation, model, lensStrength)
-    const opening = sampledEyePath(sampledAperture(x, x + geometry.width, upperLeftY, upperRightY, lowerY, centerX, lowerMidY), centerX, centerY, rotation, model, lensStrength)
+    const outline = sampledEyePath(sampledRoundedRect(x, y, geometry.width, scaledHeight, radius), centerX, centerY, rotation, model)
+    const opening = sampledEyePath(sampledAperture(x, x + geometry.width, upperLeftY, upperRightY, lowerY, centerX, lowerMidY), centerX, centerY, rotation, model)
     return {
       clipPath: `<clipPath id="${clipId}"><path data-eye-aperture="${id}" d="${opening}" /></clipPath>`,
       shape: `<path data-eye="${id}" d="${outline}" fill="${escapeAttribute(model.colors.eye)}" stroke="${escapeAttribute(stroke)}" stroke-width="1" clip-path="url(#${clipId})" />`,
