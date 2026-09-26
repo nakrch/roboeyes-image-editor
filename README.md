@@ -6,6 +6,15 @@ Instead of drawing and editing fixed images directly, the editor represents eye 
 
 **Live editor:** https://nakrch.github.io/roboeyes-image-editor/
 
+## Editor layout
+
+The editor uses a calm, light "Quiet Precision" layout (dark mode follows the system setting):
+
+- **Specimen stage** in the center: the face shown at the largest integer zoom that fits, next to a true 1× view with its exact `W × H px` caption, plus a play / pause / stop / restart / speed transport.
+- **Outline** on the left: Display, Eyes, Expression, Motion, Presets, and Export. The right panel shows only the selected section.
+- **Header**: Undo / Redo / Reset (Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, Ctrl/Cmd+Y) and Export.
+- On narrow screens the stage stays at the top and sections become horizontal tabs.
+
 ## What you can do
 
 ### Parametric eye / face editing

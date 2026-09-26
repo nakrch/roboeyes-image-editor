@@ -1,0 +1,432 @@
+
+.export-field-pair {
+  display: grid;
+  gap: 6px;
+}
+
+.export-validation-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.export-field-error {
+  margin: 0;
+  color: var(--re-danger);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.export-panel .number-input[aria-invalid="true"] {
+  border-color: var(--re-danger);
+}
+
+.visual-regression-card-selected {
+  border-color: var(--re-accent);
+  box-shadow: inset 0 0 0 1px var(--re-accent-soft);
+}
+
+.visual-regression-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--re-line);
+}
+
+.visual-regression-actions button {
+  min-width: 0;
+  font-size: 0.7rem;
+  padding: 6px 7px;
+}
+
+.visual-regression-actions button:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.visual-regression-motion-block {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+  border: 1px solid var(--re-line);
+  border-radius: var(--re-radius);
+  padding: 8px;
+  background: var(--re-stage);
+}
+
+.visual-regression-motion-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--re-ink-2);
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+.visual-regression-motion-label span:last-child {
+  color: var(--re-ink-3);
+  font-size: 0.6rem;
+  font-weight: 600;
+}
+
+.visual-regression-motion-preview {
+  border: 1px dashed var(--re-line);
+}
+
+@media (max-width: 440px) {
+  .visual-regression-actions { grid-template-columns: 1fr; }
+  .visual-regression-actions button:last-child:nth-child(odd) { grid-column: auto; }
+  .visual-regression-motion-label { align-items: flex-start; flex-direction: column; }
+}
+
+.re-app .re-motion .animation-panel,
+.re-app .re-export .export-panel,
+.re-app .re-library .preset-panel,
+.re-app .re-library .visual-regression-gallery {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--re-ink);
+}
+
+.re-app .re-motion .animation-panel > .panel-heading,
+.re-app .re-export .export-panel > .panel-heading:first-child,
+.re-app .re-library .preset-panel > .panel-heading {
+  display: none;
+}
+
+.re-app .re-motion .animation-section,
+.re-app .re-export .export-animation-heading,
+.re-app .re-library .re-group {
+  margin: 0;
+  padding: var(--re-space-4) 0;
+  border: 0;
+  border-top: 1px solid var(--re-line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.re-app .re-motion .animation-section > h3,
+.re-app .re-motion .animation-section > summary,
+.re-app .re-export .export-animation-heading h3,
+.re-app .re-library .re-group-title {
+  margin: 0 0 var(--re-space-3);
+  color: var(--re-ink-2);
+  font-size: var(--re-text-xs);
+  font-weight: 700;
+  letter-spacing: .09em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.re-app .re-motion .animation-section > summary,
+.re-app .re-export .export-limitations > summary,
+.re-app .re-library .visual-regression-summary {
+  cursor: pointer;
+}
+
+.re-app .re-motion .animation-fields-grid,
+.re-app .re-motion .animation-inline-fields,
+.re-app .re-export .export-dimensions,
+.re-app .re-library .preset-actions,
+.re-app .re-library .preset-file-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--re-space-2);
+  min-width: 0;
+}
+
+.re-app .re-motion .animation-field,
+.re-app .re-motion .animation-inline-fields label,
+.re-app .re-export .control-field,
+.re-app .re-library .control-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(90px, 44%);
+  align-items: center;
+  gap: var(--re-space-2);
+  min-width: 0;
+  color: var(--re-ink-2);
+  font-size: var(--re-text-sm);
+}
+
+.re-app .re-motion .animation-field > span,
+.re-app .re-motion .animation-inline-fields label > span,
+.re-app .re-export .control-field > span,
+.re-app .re-library .control-field > span {
+  min-width: 0;
+}
+
+.re-app .re-motion input:not([type='checkbox']),
+.re-app .re-motion select,
+.re-app .re-export input,
+.re-app .re-export select,
+.re-app .re-library input:not([type='file']),
+.re-app .re-library select {
+  width: 100%;
+  min-width: 0;
+  height: var(--re-row);
+  padding: 2px var(--re-space-2);
+  border: 1px solid var(--re-line-strong);
+  border-radius: var(--re-radius-sm);
+  background: var(--re-surface);
+  color: var(--re-ink);
+  font: inherit;
+}
+
+.re-app .re-motion input[type='number'],
+.re-app .re-export input[type='number'],
+.re-app .re-library input[type='number'] {
+  font-family: var(--re-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.re-app .re-motion input[type='checkbox'] {
+  accent-color: var(--re-accent);
+}
+
+.re-app .re-motion button,
+.re-app .re-export button,
+.re-app .re-library button:not(.re-preset-thumbnail) {
+  min-height: var(--re-row);
+  border: 1px solid var(--re-line-strong);
+  border-radius: var(--re-radius-sm);
+  padding: 4px var(--re-space-2);
+  background: transparent;
+  color: var(--re-ink);
+  font: inherit;
+  font-size: var(--re-text-sm);
+  box-shadow: none;
+}
+
+.re-app .re-motion button:hover:not(:disabled),
+.re-app .re-export button:hover:not(:disabled),
+.re-app .re-library button:hover:not(:disabled) {
+  border-color: var(--re-accent);
+  color: var(--re-accent);
+  background: var(--re-accent-soft);
+}
+
+.re-app .re-motion button:disabled,
+.re-app .re-export button:disabled,
+.re-app .re-library button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.re-app .re-motion .animation-toolbar,
+.re-app .re-motion .animation-trigger-grid,
+.re-app .re-export .export-actions,
+.re-app .re-motion .sequence-step-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--re-space-2);
+}
+
+.re-app .re-motion .animation-note,
+.re-app .re-motion .animation-time,
+.re-app .re-export .export-note,
+.re-app .re-library .preset-status,
+.re-app .re-library .visual-regression-intro,
+.re-app .re-library .visual-regression-meta {
+  margin: var(--re-space-2) 0;
+  color: var(--re-ink-3);
+  font-size: var(--re-text-xs);
+  line-height: 1.5;
+}
+
+.re-app .re-motion .animation-status {
+  color: var(--re-ink-3);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font-size: var(--re-text-xs);
+  text-transform: uppercase;
+}
+
+.re-app .re-motion .animation-status.playing { color: var(--re-signal); }
+
+.re-app .re-motion .sequence-editor,
+.re-app .re-motion .sequence-step,
+.re-app .re-export .export-field-pair,
+.re-app .re-library .visual-regression-grid {
+  display: grid;
+  gap: var(--re-space-3);
+  min-width: 0;
+}
+
+.re-app .re-motion .sequence-step {
+  margin: var(--re-space-3) 0 0;
+  padding: var(--re-space-3) 0;
+  border: 0;
+  border-top: 1px solid var(--re-line);
+  border-radius: 0;
+  background: transparent;
+}
+
+.re-app .re-motion .sequence-step legend {
+  color: var(--re-ink-2);
+  font-size: var(--re-text-sm);
+}
+
+.re-app .re-motion .sequence-step-actions { margin: var(--re-space-2) 0; }
+.re-app .re-motion .animation-toolbar button {
+  border-color: var(--re-line);
+  color: var(--re-ink-2);
+  background: transparent;
+}
+.re-app .re-export .export-panel {
+  display: grid;
+  gap: var(--re-space-3);
+  align-content: start;
+}
+.re-app .re-export .export-animation-heading {
+  display: block;
+  margin: var(--re-space-2) 0 0;
+  padding: var(--re-space-3) 0 0;
+  min-height: 0;
+}
+.re-app .re-export .export-animation-heading .eyebrow { display: none; }
+.re-app .re-export .export-field-pair { margin: 0; }
+.re-app .re-export .export-actions { margin: var(--re-space-3) 0; }
+.re-app .re-export .export-field-error,
+.re-app .re-export .preset-error { color: var(--re-danger); }
+.re-app .re-export .export-panel .number-input[aria-invalid='true'] { border-color: var(--re-danger); }
+.re-app .re-export .export-limitations { border-top: 1px solid var(--re-line); padding-top: var(--re-space-3); }
+
+.re-app .re-library .re-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--re-space-3);
+  margin: var(--re-space-3) 0 var(--re-space-4);
+}
+
+.re-app .re-library .re-preset-thumbnail {
+  display: grid;
+  gap: var(--re-space-2);
+  align-content: start;
+  min-width: 0;
+  padding: var(--re-space-2);
+  border: 1px solid var(--re-line);
+  border-radius: var(--re-radius-sm);
+  text-align: left;
+  background: transparent;
+  color: var(--re-ink);
+  box-shadow: none;
+}
+
+.re-app .re-library .re-preset-thumbnail[aria-pressed='true'] { border-color: var(--re-accent); }
+.re-app .re-library .re-preset-image { display: block; width: 100%; overflow: hidden; background: var(--re-stage); }
+.re-app .re-library .re-preset-image svg { display: block; width: 100%; height: 100%; }
+.re-app .re-library .re-preset-name { font-size: var(--re-text-sm); overflow-wrap: anywhere; }
+.re-app .re-library .preset-panel { display: grid; gap: var(--re-space-3); }
+.re-app .re-library .preset-actions { grid-template-columns: minmax(0, 1fr) auto; }
+.re-app .re-library .preset-file-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.re-app .re-library .preset-file-actions button { min-width: 0; }
+.re-app .re-library button:disabled {
+  border-color: var(--re-line);
+  color: var(--re-ink-3);
+}
+.re-app .re-library .visual-regression-gallery {
+  border-top: 0;
+  padding: 0;
+}
+.re-app .re-library .visual-regression-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--re-space-2);
+  min-height: var(--re-row);
+  color: var(--re-ink-2);
+  cursor: pointer;
+  list-style: none;
+}
+.re-app .re-library .visual-regression-summary::-webkit-details-marker { display: none; }
+.re-app .re-library .visual-regression-summary::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-right: 1px solid currentColor;
+  border-bottom: 1px solid currentColor;
+  transform: rotate(-45deg);
+}
+.re-app .re-library .visual-regression-gallery[open] > .visual-regression-summary::before {
+  transform: rotate(45deg);
+}
+.re-app .re-library .visual-regression-summary > span:first-child { flex: 1; }
+.re-app .re-library .visual-regression-summary .eyebrow { display: none; }
+.re-app .re-library .visual-regression-summary strong {
+  color: var(--re-ink-2);
+  font-size: var(--re-text-xs);
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.re-app .re-library .visual-regression-count {
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--re-ink-3);
+  font: var(--re-text-xs) var(--re-font-mono);
+  white-space: nowrap;
+}
+.re-app .re-library .visual-regression-grid { grid-template-columns: minmax(0, 1fr); }
+.re-app .re-library .visual-regression-intro { margin: var(--re-space-3) 0; }
+.re-app .re-library .visual-regression-card {
+  min-width: 0;
+  padding: var(--re-space-3) 0;
+  border: 0;
+  border-top: 1px solid var(--re-line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.re-app .re-library .visual-regression-card-selected { border-top-color: var(--re-accent); box-shadow: none; }
+.re-app .re-library .visual-regression-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--re-space-2);
+}
+.re-app .re-library .visual-regression-card-header > div { min-width: 0; }
+.re-app .re-library .visual-regression-card-header h3 {
+  margin: 0;
+  color: var(--re-ink);
+  font-size: var(--re-text-sm);
+}
+.re-app .re-library .visual-regression-card-header p { color: var(--re-ink-3); font: var(--re-text-xs) var(--re-font-mono); overflow-wrap: anywhere; }
+.re-app .re-library .fixture-status {
+  flex: 0 0 auto;
+  padding: 0;
+  color: var(--re-ink-3);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font-size: var(--re-text-xs);
+  font-weight: 400;
+  white-space: nowrap;
+}
+.re-app .re-library .fixture-status-changed { color: var(--re-danger); }
+.re-app .re-library .visual-regression-card-preview { display: grid; place-items: center; width: 100%; max-width: 100%; overflow: hidden; background: var(--re-stage); border: 1px solid var(--re-line); border-radius: 0; }
+.re-app .re-library .visual-regression-card-preview svg { display: block; width: 100%; height: 100%; }
+.re-app .re-library .visual-regression-meta { display: flex; gap: var(--re-space-4); margin: var(--re-space-2) 0 0; font-size: var(--re-text-xs); }
+.re-app .re-library .visual-regression-meta div { display: flex; gap: var(--re-space-2); }
+.re-app .re-library .visual-regression-meta dd { margin: 0; font-variant-numeric: tabular-nums; }
+.re-app .re-library .visual-regression-actions { border-top-color: var(--re-line); }
+.re-app .re-library .visual-regression-motion-block { border-color: var(--re-line); border-radius: var(--re-radius-sm); background: var(--re-stage); }
+.re-app .re-library .visual-regression-motion-label,
+.re-app .re-library .visual-regression-motion-label span:last-child { color: var(--re-ink-2); }
+.re-app .re-library .visual-regression-motion-preview { border-color: var(--re-line-strong); }
+
+@media (max-width: 440px) {
+  .re-app .re-library .preset-actions,
+  .re-app .re-library .preset-file-actions { grid-template-columns: minmax(0, 1fr); }
+}

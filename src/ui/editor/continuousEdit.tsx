@@ -1,5 +1,4 @@
 import { createContext, useContext, type ReactNode } from 'react'
-import './historyControls.css'
 
 type ContinuousEditController = {
   begin: () => void

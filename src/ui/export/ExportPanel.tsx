@@ -22,7 +22,6 @@ import {
   validateExportNumericDrafts,
   type NumberDraft,
 } from './exportNumericValidation'
-import './exportPanel.css'
 
 type ExportPanelProps = {
   model: FaceModel
