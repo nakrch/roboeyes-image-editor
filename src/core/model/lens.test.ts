@@ -11,17 +11,30 @@ describe('sphere lens geometry', () => {
     expect(resolveLensStrength({ lens: { kind: 'sphere', strength: 2 } })).toBe(1)
   })
 
-  it('fixes the center and rim, increases strictly and compresses only outside the rim', () => {
+  it('fixes the center and rim, increases strictly inside the rim and never expands outside it', () => {
     expect(lensRadialMap(0, 1)).toBe(0)
     expect(lensRadialMap(1, 1)).toBe(1)
-    let previous = -1
-    for (let i = 0; i <= 200; i += 1) {
-      const rho = i / 100
-      const mapped = lensRadialMap(rho, 1)
-      expect(mapped).toBeGreaterThan(previous)
-      expect(mapped >= rho).toBe(rho <= 1)
-      expect(lensRadialMap(rho, 0)).toBeCloseTo(rho, 12)
-      previous = mapped
+    for (const strength of [0.25, 0.5, 1]) {
+      let previous = -1
+      for (let i = 0; i <= 200; i += 1) {
+        const rho = i / 100
+        const mapped = lensRadialMap(rho, strength)
+        if (rho <= 1) expect(mapped).toBeGreaterThan(previous)
+        else expect(mapped).toBeGreaterThanOrEqual(previous)
+        expect(mapped >= rho).toBe(rho <= 1)
+        expect(lensRadialMap(rho, 0)).toBeCloseTo(rho, 12)
+        previous = mapped
+      }
+    }
+  })
+
+  it('presses content beyond the rim onto it at full strength, so eyes stay inside a circular display', () => {
+    const canvas = { width: 240, height: 240 }
+    for (let x = 0; x <= canvas.width; x += 8) {
+      for (let y = 0; y <= canvas.height; y += 8) {
+        const point = warpPointThroughLens({ x, y }, canvas, 1)
+        expect(Math.hypot(point.x - 120, point.y - 120)).toBeLessThanOrEqual(120 + 1e-9)
+      }
     }
   })
 

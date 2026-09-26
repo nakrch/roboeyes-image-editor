@@ -17,8 +17,9 @@ export function resolveLensStrength(model: { lens?: LensModel }): number {
 /**
  * Orthographic sphere-cap projection with the edge fixed: θ = strength · 0.45π,
  * f(ρ) = sin(θρ) / sin(θ) inside the inscribed ellipse (barrel: the center
- * magnifies by θ / sin θ, the rim compresses), then a linear continuation with
- * slope θ·cot θ < 1 so rectangle corners only move inward.
+ * magnifies by θ / sin θ, the rim compresses). Outside it (rectangle corners)
+ * the slope θ·cot θ is faded by (1 − strength), so at full strength content
+ * beyond the rim is pressed onto it and never leaves a circular display.
  */
 export function lensRadialMap(rho: number, strength: number): number {
   const theta = strength * 0.45 * Math.PI
@@ -26,7 +27,7 @@ export function lensRadialMap(rho: number, strength: number): number {
   const sine = Math.sin(theta)
   return rho <= 1
     ? Math.sin(theta * rho) / sine
-    : 1 + (theta * Math.cos(theta) / sine) * (rho - 1)
+    : 1 + (1 - strength) * (theta * Math.cos(theta) / sine) * (rho - 1)
 }
 
 export function warpPointThroughLens(point: Point, canvas: CanvasModel, strength: number): Point {
