@@ -33,13 +33,6 @@ import {
   type PresetAnimationDefaults,
   type RuntimeAnimationEvent,
 } from '../../animation'
-import { AnimationPanel } from '../controls/AnimationPanel'
-import { ExpressionPresetPanel } from '../controls/ExpressionPresetPanel'
-import { ParameterPanel } from '../controls/ParameterPanel'
-import { PresetPanel } from '../controls/PresetPanel'
-import { ExportPanel } from '../export/ExportPanel'
-import { PreviewArea } from '../preview/PreviewArea'
-import { VisualRegressionGallery } from '../preview/VisualRegressionGallery'
 import {
   applyGallerySelection,
   type GalleryExpressionSelection,

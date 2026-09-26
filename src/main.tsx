@@ -2,11 +2,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
 import { App } from './App'
-import './styles.css'
-import './historyControls.css'
-import './animationControls.css'
-import './previewCompact.css'
-import './ui/feedback/toast.css'
+import './styles/tokens.css'
+import './styles/shell.css'
+import './styles/controls.css'
+import './styles/sections.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

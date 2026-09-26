@@ -13,7 +13,6 @@ import {
   selectionForFixture,
   type GalleryExpressionSelection,
 } from './visualRegressionGalleryModel'
-import './visualRegressionGallery.css'
 
 function aperturePath(svg: string, side: 'left' | 'right'): string | undefined {
   return svg.match(new RegExp(`data-eye-aperture="${side}" d="([^"]+)"`))?.[1]

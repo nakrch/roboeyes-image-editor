@@ -1,61 +1,68 @@
-import { AnimationPanel } from '../controls/AnimationPanel'
-import { ExpressionPresetPanel } from '../controls/ExpressionPresetPanel'
-import { ParameterPanel } from '../controls/ParameterPanel'
-import { PresetPanel } from '../controls/PresetPanel'
-import { ExportPanel } from '../export/ExportPanel'
-import { PreviewArea } from '../preview/PreviewArea'
-import { VisualRegressionGallery } from '../preview/VisualRegressionGallery'
+import { useEffect, useState } from 'react'
 import { ContinuousEditProvider } from './continuousEdit'
 import { useEditorController } from './useEditorController'
+import { DisplaySection, EyesSection, ExpressionSection } from '../sections/FaceSections'
+import { MotionSection } from '../sections/MotionSection'
+import { LibrarySection } from '../sections/LibrarySection'
+import { ExportSection } from '../sections/ExportSection'
+import type { EditorSectionId } from '../sections/sectionIds'
+import { SpecimenStage } from '../stage/SpecimenStage'
+
+type NavigationGroup = { label: string; sections: { id: EditorSectionId; name: string; number: string }[] }
+
+const navigation: NavigationGroup[] = [
+  { label: 'FACE', sections: [{ id: 'display', name: 'Display', number: '01' }, { id: 'eyes', name: 'Eyes', number: '02' }, { id: 'expression', name: 'Expression', number: '03' }] },
+  { label: 'MOTION', sections: [{ id: 'motion', name: 'Motion', number: '04' }] },
+  { label: 'LIBRARY', sections: [{ id: 'library', name: 'Presets', number: '05' }] },
+  { label: 'OUTPUT', sections: [{ id: 'export', name: 'Export', number: '06' }] },
+]
 
 export function EditorShell() {
   const controller = useEditorController()
-  const { model, transparentBackground, animationDefaults, displayedModel, displayedOverlays,
-    resolveAnimationFrame, pixelPerfect, canUndo, canRedo, undo, redo, reset, continuousEdit,
-    playback, reducedMotion, updateAnimationDefaults, play, pause, stop, restart, setPlaybackRate,
-    triggerAnimation, previewSequenceStep, presets, displayedPresetId, presetStatus, presetError,
-    applyPreset, saveCurrentPreset, importPreset, exportPreset, deletePreset, selectableExpressions,
-    activeExpressionId, expressionPresetStatus, expressionPresetError, singleEye, applyExpressionPreset,
-    saveCurrentExpressionPreset, importExpressionPreset, exportExpressionPreset, deleteExpressionPreset,
-    linkedEyes, updateModel, setLinkedEyes, setSingleEyeLayout, setTransparentBackground,
-    setPixelPerfect, applyGallerySelection,
-  } = controller
+  const [selected, setSelected] = useState<EditorSectionId>('eyes')
+  const preset = controller.presets.find((item) => item.id === controller.displayedPresetId)
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) return
+      const target = event.target
+      if (target instanceof HTMLElement && (target.isContentEditable || target.closest('textarea, select, [contenteditable="true"]') || (target instanceof HTMLInputElement && !['range', 'checkbox', 'color', 'radio'].includes(target.type)))) return
+      const key = event.key.toLowerCase()
+      if (key !== 'z' && key !== 'y') return
+      if (key === 'y' && event.shiftKey) return
+      event.preventDefault()
+      if (key === 'y' || event.shiftKey) controller.redo()
+      else controller.undo()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [controller.undo, controller.redo])
+
+  const content = (() => {
+    switch (selected) {
+      case 'display': return <DisplaySection controller={controller} />
+      case 'eyes': return <EyesSection controller={controller} />
+      case 'expression': return <ExpressionSection controller={controller} />
+      case 'motion': return <MotionSection controller={controller} />
+      case 'library': return <LibrarySection controller={controller} />
+      case 'export': return <ExportSection controller={controller} />
+    }
+  })()
 
   return (
-    <main className="editor-shell">
-      <header className="editor-header">
-        <div><p className="eyebrow">Parametric Robot Face Editor</p><h1>RoboEyes Image Editor</h1></div>
-        <span className="phase-badge">Realtime SVG + Animation</span>
-      </header>
-
-      <ContinuousEditProvider value={continuousEdit}>
-        <section className="editor-workspace" aria-label="Editor workspace">
-          <div className="editor-preview-column">
-            <PreviewArea model={displayedModel} overlays={displayedOverlays} transparentBackground={transparentBackground} pixelPerfect={pixelPerfect} />
-            <div className="preview-history-actions" aria-label="Editor history">
-              <button type="button" onClick={undo} disabled={!canUndo}>Undo</button>
-              <button type="button" onClick={redo} disabled={!canRedo}>Redo</button>
-              <button type="button" onClick={reset}>Reset</button>
-            </div>
-          </div>
-
-          <div className="editor-sidebar">
-            <AnimationPanel model={model} animationDefaults={animationDefaults} playback={playback} reducedMotion={reducedMotion} onAnimationDefaultsChange={updateAnimationDefaults} onPlay={play} onPause={pause} onStop={stop} onRestart={restart} onPlaybackRateChange={setPlaybackRate} onTrigger={triggerAnimation} onPreviewSequenceStep={previewSequenceStep} />
-            <PresetPanel presets={presets} activePresetId={displayedPresetId} status={presetStatus} onApply={applyPreset} onSaveCurrent={saveCurrentPreset} onImport={importPreset} onExport={exportPreset} onDelete={deletePreset} />
-            {presetError && <p className="preset-error" role="alert">{presetError}</p>}
-            <ExpressionPresetPanel presets={selectableExpressions} activePresetId={activeExpressionId} status={expressionPresetStatus} disabled={singleEye} onApply={applyExpressionPreset} onSaveCurrent={saveCurrentExpressionPreset} onImport={importExpressionPreset} onExport={exportExpressionPreset} onDelete={deleteExpressionPreset} />
-            {expressionPresetError && <p className="preset-error" role="alert">{expressionPresetError}</p>}
-            <ParameterPanel model={model} linkedEyes={linkedEyes} transparentBackground={transparentBackground} pixelPerfect={pixelPerfect} onChange={updateModel} onLinkedEyesChange={setLinkedEyes} onSingleEyeLayoutChange={setSingleEyeLayout} onTransparentBackgroundChange={setTransparentBackground} onPixelPerfectChange={setPixelPerfect} />
-            <ExportPanel model={model} transparentBackground={transparentBackground} resolveAnimationFrame={resolveAnimationFrame} />
-          </div>
-        </section>
+    <div className="re-app">
+      <ContinuousEditProvider value={controller.continuousEdit}>
+        <header className="re-header">
+          <div className="re-brand"><svg width="30" height="22" viewBox="0 0 30 22" fill="none" aria-hidden="true"><rect x="2" y="5" width="11" height="12" rx="4" fill="currentColor" /><rect x="17" y="5" width="11" height="12" rx="4" fill="currentColor" /></svg><strong>RoboEyes</strong><span className="re-brand-edition">/ EDITOR</span></div>
+          <div className="re-document"><span>{preset?.name ?? 'Custom'}</span><span className="re-document-dims">{controller.model.canvas.width} × {controller.model.canvas.height}</span></div>
+          <div className="re-header-actions"><button type="button" className="re-button re-button--quiet" onClick={controller.undo} disabled={!controller.canUndo} aria-label="Undo" title="Undo (Ctrl+Z)"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 5 3 9l4 4M3 9h9a5 5 0 0 1 5 5v1" /></svg></button><button type="button" className="re-button re-button--quiet" onClick={controller.redo} disabled={!controller.canRedo} aria-label="Redo" title="Redo (Ctrl+Shift+Z)"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m13 5 4 4-4 4m4-4H8a5 5 0 0 0-5 5v1" /></svg></button><button type="button" className="re-button re-button--quiet re-reset" onClick={controller.reset} aria-label="Reset" title="Reset to preset">Reset</button><button type="button" className="re-button re-button--primary" onClick={() => setSelected('export')}>Export <span aria-hidden="true">↗</span></button></div>
+        </header>
+        <main className="re-workspace">
+          <nav className="re-outline" aria-label="Editor sections">{navigation.map((group) => <div className="re-outline-group" key={group.label}><span className="re-outline-label">{group.label}</span>{group.sections.map((item) => <button type="button" key={item.id} className="re-outline-link" aria-current={selected === item.id ? 'page' : undefined} onClick={() => setSelected(item.id)}><span>{item.name}</span><span className="re-outline-number">{item.number}</span></button>)}</div>)}</nav>
+          <SpecimenStage controller={controller} />
+          <aside className="re-inspector" aria-label="Selected editor section">{content}</aside>
+        </main>
       </ContinuousEditProvider>
-
-      <VisualRegressionGallery
-        activeExpressionId={activeExpressionId}
-        disabled={singleEye}
-        onApplySelection={applyGallerySelection}
-      />
-    </main>
+    </div>
   )
 }

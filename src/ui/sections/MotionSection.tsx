@@ -1,12 +1,11 @@
-import { AnimationPanel } from '../../controls/AnimationPanel'
-import type { EditorController } from '../../editor/useEditorController'
-import '../variant-c-sections.css'
+import { AnimationPanel } from '../controls/AnimationPanel'
+import type { EditorController } from '../editor/useEditorController'
 
 export function MotionSection({ controller }: { controller: EditorController }) {
   return (
-    <section className="vc-section vc-motion" aria-labelledby="vc-motion-title">
-      <header className="vc-section-header">
-        <h2 id="vc-motion-title">Motion</h2>
+    <section className="re-section re-motion" aria-labelledby="re-motion-title">
+      <header className="re-section-header">
+        <h2 id="re-motion-title">Motion</h2>
         <p>Time, behavior, and authored sequences.</p>
       </header>
       <AnimationPanel
