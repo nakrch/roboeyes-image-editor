@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { AnimatedExportFrameResolver } from '../../export/animatedAssets'
 import type { TransientOverlay } from '../../animation'
-import { clampGaze, type FaceModel } from '../../core/model'
+import { clampGaze, type DisplayMask, type FaceModel } from '../../core/model'
 import {
   builtInPresets,
   clonePreset,
@@ -63,6 +63,7 @@ import {
 export type EditorSnapshot = {
   model: FaceModel
   transparentBackground: boolean
+  displayMask: DisplayMask
   animationDefaults: PresetAnimationDefaults
 }
 
@@ -71,6 +72,7 @@ export type SelectableExpressionPreset = ExpressionPreset | UserExpressionPreset
 export type EditorController = {
   model: FaceModel
   transparentBackground: boolean
+  displayMask: DisplayMask
   animationDefaults: PresetAnimationDefaults
   singleEye: boolean
   displayedModel: FaceModel
@@ -89,6 +91,7 @@ export type EditorController = {
   continuousEdit: { begin: () => void; end: () => void }
   updateModel: (updater: (current: FaceModel) => FaceModel) => void
   setTransparentBackground: (value: boolean) => void
+  setDisplayMask: (value: DisplayMask) => void
   setSingleEyeLayout: (enabled: boolean) => void
   updateAnimationDefaults: (next: PresetAnimationDefaults) => void
   presets: FacePreset[]
@@ -134,6 +137,7 @@ function snapshotFromPreset(preset: FacePreset): EditorSnapshot {
   return {
     model: clampGaze(enforceSingleEyeNeutralExpression(structuredClone(preset.model))),
     transparentBackground: preset.preview?.transparentBackground ?? false,
+    displayMask: preset.preview?.displayMask ?? 'none',
     animationDefaults: normalizePresetAnimationDefaults(preset.animationDefaults),
   }
 }
@@ -339,7 +343,7 @@ export function useEditorController(): EditorController {
   }
 
   const saveCurrentPreset = (name: string) => {
-    const preset = createCustomPreset(name, history.present.model, history.present.transparentBackground, presets, history.present.animationDefaults)
+    const preset = createCustomPreset(name, history.present.model, history.present.transparentBackground, presets, history.present.animationDefaults, history.present.displayMask)
     persistCustomPresets([...customPresets, preset])
     setActivePresetId(preset.id)
     setPresetError('')
@@ -444,7 +448,7 @@ export function useEditorController(): EditorController {
     setPlayback((current) => previewAnimationProgramStep(current, program, stepId))
   }
 
-  const { model, transparentBackground, animationDefaults } = history.present
+  const { model, transparentBackground, displayMask, animationDefaults } = history.present
   const singleEye = isSingleEyeLayout(model)
   const displayedFrame = evaluateEditorAnimationPreviewFrame(model, animationDefaults, {
     timeMs: playback.clock.positionMs,
@@ -506,18 +510,19 @@ export function useEditorController(): EditorController {
   }
 
   const setTransparentBackground = (value: boolean) => commit((current) => ({ ...current, transparentBackground: value }))
+  const setDisplayMask = (value: DisplayMask) => commit((current) => ({ ...current, displayMask: value }))
   const play = () => setPlayback(playAnimationPlayback)
   const pause = () => setPlayback(pauseAnimationPlayback)
   const stop = () => { setRuntimeEvents([]); runtimeEventOrder.current = 0; setPlayback(stopAnimationPlayback) }
   const restart = () => { setRuntimeEvents([]); runtimeEventOrder.current = 0; setPlayback(restartAnimationPlayback) }
   const setPlaybackRate = (rate: number) => setPlayback((current) => setAnimationPlaybackRate(current, rate))
 
-  return { model, transparentBackground, animationDefaults, singleEye, displayedModel,
+  return { model, transparentBackground, displayMask, animationDefaults, singleEye, displayedModel,
     displayedOverlays: displayedFrame.transientEffects.overlays, resolveAnimationFrame, reducedMotion,
     linkedEyes, setLinkedEyes, pixelPerfect, setPixelPerfect,
     canUndo: history.past.length !== 0, canRedo: history.future.length !== 0, undo, redo, reset,
     continuousEdit: { begin: beginContinuousEdit, end: endContinuousEdit },
-    updateModel, setTransparentBackground, setSingleEyeLayout, updateAnimationDefaults,
+    updateModel, setTransparentBackground, setDisplayMask, setSingleEyeLayout, updateAnimationDefaults,
     presets, displayedPresetId, presetStatus, presetError, applyPreset, saveCurrentPreset,
     importPreset, exportPreset, deletePreset, selectableExpressions, activeExpressionId,
     expressionPresetStatus, expressionPresetError, applyExpressionPreset,

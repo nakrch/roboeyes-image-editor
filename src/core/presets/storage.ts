@@ -2,7 +2,7 @@ import {
   normalizePresetAnimationDefaults,
   type PresetAnimationDefaults,
 } from '../../animation/persistence'
-import type { FaceModel } from '../model'
+import type { DisplayMask, FaceModel } from '../model'
 import { isFacePreset, type FacePreset } from './schema'
 
 export const CUSTOM_PRESET_STORAGE_KEY = 'roboeyes-image-editor.custom-presets.v1'
@@ -46,6 +46,7 @@ export function createCustomPreset(
   transparentBackground = false,
   existingPresets: readonly { name: string }[] = [],
   animationDefaults: PresetAnimationDefaults = {},
+  displayMask: DisplayMask = 'none',
 ): FacePreset {
   return {
     id: `custom:${crypto.randomUUID()}`,
@@ -54,7 +55,7 @@ export function createCustomPreset(
     model: structuredClone(model),
     constraints: {},
     animationDefaults: normalizePresetAnimationDefaults(animationDefaults),
-    preview: { transparentBackground },
+    preview: { transparentBackground, ...(displayMask === 'none' ? {} : { displayMask }) },
   }
 }
 

@@ -8,6 +8,8 @@
   --re-paper: #f2f0e9; --re-surface: #f9f8f3; --re-stage: #fffefa;
   --re-ink: #222c33; --re-ink-2: #526067; --re-ink-3: #7b8588;
   --re-line: #dadbd4; --re-line-strong: #aeb7b5;
+  /* Neutral veil: must stay visible over both dark and light face backgrounds. */
+  --re-mask-dim: rgb(128 128 128 / 55%); --re-mask-line: var(--re-line-strong);
   --re-accent: #314c5d; --re-accent-soft: #e9efef; --re-signal: #378765;
   --re-danger: #a0473c; --re-focus: #426b87; --re-radius-sm: 4px; --re-radius: 6px;
   --re-row: 28px; --re-space-1: 4px; --re-space-2: 8px; --re-space-3: 12px;
@@ -24,6 +26,7 @@
     --re-paper: #1a2022; --re-surface: #202729; --re-stage: #252c2e;
     --re-ink: #e6e7e0; --re-ink-2: #b1b9b7; --re-ink-3: #899593;
     --re-line: #3b4646; --re-line-strong: #61706e;
+    --re-mask-line: var(--re-ink-2);
     --re-accent: #b6ced2; --re-accent-soft: #344448; --re-signal: #79bb94;
     --re-danger: #ee988c; --re-focus: #a8c9e0;
     --re-shadow-overlay: 0 12px 36px rgb(0 0 0 / 35%);

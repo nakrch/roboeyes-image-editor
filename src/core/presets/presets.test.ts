@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { minimalPreset } from './minimal'
+import { isFacePreset } from './schema'
 import { roboEyesPreset } from './roboeyes'
 import {
   CUSTOM_PRESET_STORAGE_KEY,
@@ -54,6 +55,21 @@ describe('preset system', () => {
     const model = malformed.model as Record<string, unknown>
     model.eyeVisibility = { left: true, right: 'no' }
     expect(() => parsePreset(JSON.stringify(malformed))).toThrow('Invalid preset JSON')
+  })
+
+  it('validates optional display masks and round-trips a saved circular custom preset', () => {
+    expect(isFacePreset(minimalPreset)).toBe(true)
+    expect(isFacePreset({ ...minimalPreset, preview: { displayMask: 'none' } })).toBe(true)
+    expect(isFacePreset({ ...minimalPreset, preview: { displayMask: 'circle' } })).toBe(true)
+    expect(isFacePreset({ ...minimalPreset, preview: { displayMask: 'square' } })).toBe(false)
+    expect(isFacePreset({ ...minimalPreset, preview: { displayMask: null } })).toBe(false)
+
+    const storage = memoryStorage()
+    const circular = createCustomPreset('Round', minimalPreset.model, false, [], {}, 'circle')
+    saveCustomPresets(storage, [circular])
+    expect(loadCustomPresets(storage)).toEqual([circular])
+    expect(parsePreset(serializePreset(circular)).preview?.displayMask).toBe('circle')
+    expect(createCustomPreset('Plain', minimalPreset.model).preview).toEqual({ transparentBackground: false })
   })
 
   it('rejects JSON that does not match the preset schema', () => {

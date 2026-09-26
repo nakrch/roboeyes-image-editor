@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { displayMaskCircle } from '../../core/model'
 import { renderFaceToSvg } from '../../renderers/svg'
 import type { EditorController } from '../editor/useEditorController'
 
@@ -11,12 +12,16 @@ function formatTime(positionMs: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(centiseconds % 100).padStart(2, '0')}`
 }
 
+function MaskOverlay({ width, height, cx, cy, r }: { width: number; height: number; cx: number; cy: number; r: number }) {
+  return <svg className="re-mask-overlay" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d={`M0 0H${width}V${height}H0Z M${cx + r} ${cy}A${r} ${r} 0 1 0 ${cx - r} ${cy}A${r} ${r} 0 1 0 ${cx + r} ${cy}Z`} fillRule="evenodd" className="re-mask-outside" /><circle cx={cx} cy={cy} r={r} className="re-mask-outline" /></svg>
+}
 export function SpecimenStage({ controller }: Props) {
-  const { displayedModel: model, displayedOverlays: overlays, transparentBackground } = controller
+  const { displayedModel: model, displayedOverlays: overlays, transparentBackground, displayMask } = controller
   const svg = useMemo(() => renderFaceToSvg(model, { transparentBackground, overlays }), [model, overlays, transparentBackground])
   const specimenRef = useRef<HTMLDivElement>(null)
   const [available, setAvailable] = useState({ width: 0, height: 0 })
   const { width, height } = model.canvas
+  const circle = displayMask === 'circle' ? displayMaskCircle(model.canvas) : null
   const playing = controller.playback.clock.status === 'playing'
 
   useEffect(() => {
@@ -36,11 +41,11 @@ export function SpecimenStage({ controller }: Props) {
     <div className="re-stage" aria-label="Face specimen">
       <div className="re-stage-heading"><span>SPECIMEN / LIVE VIEW</span></div>
       <div ref={specimenRef} className={`re-specimen ${transparentBackground ? 're-checkerboard' : ''}`}>
-        <div className="re-specimen-frame" role="img" aria-label="Enlarged robot face preview" style={{ width: width * scale, height: height * scale }} dangerouslySetInnerHTML={{ __html: svg }} />
+        <div className="re-specimen-frame" role="img" aria-label="Enlarged robot face preview" style={{ width: width * scale, height: height * scale }}><div dangerouslySetInnerHTML={{ __html: svg }} />{circle && <MaskOverlay width={width} height={height} {...circle} />}</div>
       </div>
       <div className="re-stage-foot">
-        <div className="re-native-view"><span className="re-native-label">1× / ACTUAL SIZE</span><div className={`re-native-frame ${transparentBackground ? 're-checkerboard' : ''}`} role="img" aria-label="Actual pixel size robot face preview" style={{ width, height }} dangerouslySetInnerHTML={{ __html: svg }} /></div>
-        <div className="re-stage-caption"><span>Canvas specimen</span><strong>{width} × {height} px · {transparentBackground ? 'transparent' : 'opaque'} · {Number(scale.toFixed(2))}×</strong><span>{controller.pixelPerfect ? 'Pixel perfect' : 'Scaled view'} / SVG</span></div>
+        <div className="re-native-view"><span className="re-native-label">1× / ACTUAL SIZE</span><div className={`re-native-frame ${transparentBackground ? 're-checkerboard' : ''}`} role="img" aria-label="Actual pixel size robot face preview" style={{ width, height }}><div dangerouslySetInnerHTML={{ __html: svg }} />{circle && <MaskOverlay width={width} height={height} {...circle} />}</div></div>
+        <div className="re-stage-caption"><span>Canvas specimen</span><strong>{width} × {height} px · {transparentBackground ? 'transparent' : 'opaque'} · {Number(scale.toFixed(2))}×{circle ? ' · circle mask' : ''}</strong><span>{controller.pixelPerfect ? 'Pixel perfect' : 'Scaled view'} / SVG</span></div>
       </div>
       <div className="re-transport" aria-label="Animation playback">
         <span className={`re-live-dot ${playing ? 're-live-dot--playing' : ''}`} aria-label={playing ? 'Playing' : 'Stopped'} />
