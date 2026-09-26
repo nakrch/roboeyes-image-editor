@@ -25,6 +25,16 @@ describe('sphere lens geometry', () => {
     }
   })
 
+  it('is barrel-shaped so straight eye edges bulge outward instead of denting toward the center', () => {
+    let previousScale = Infinity
+    for (let i = 1; i <= 100; i += 1) {
+      const rho = i / 100
+      const tangentialScale = lensRadialMap(rho, 1) / rho
+      expect(tangentialScale).toBeLessThan(previousScale)
+      previousScale = tangentialScale
+    }
+  })
+
   it('keeps all sampled canvas points, including corners, within the rectangle', () => {
     const canvas = { width: 128, height: 64 }
     for (let x = 0; x <= canvas.width; x += 4) {
