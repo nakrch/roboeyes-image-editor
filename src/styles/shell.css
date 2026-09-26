@@ -65,6 +65,10 @@ body {
 .re-app .re-stage-heading { display: flex; justify-content: space-between; color: var(--re-ink-3); font: 10px var(--re-font-mono); letter-spacing: .1em; padding-bottom: 18px; }
 .re-app .re-specimen { min-height: 370px; height: clamp(370px, 54vh, 650px); width: 100%; display: grid; place-items: center; overflow: hidden; background: var(--re-stage); border: 1px solid var(--re-line); }
 .re-app .re-specimen-frame { flex: none; }
+.re-app .re-specimen-frame, .re-app .re-native-frame { position: relative; }
+.re-app .re-mask-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.re-app .re-mask-outside { fill: var(--re-mask-dim); }
+.re-app .re-mask-outline { fill: none; stroke: var(--re-mask-line); stroke-width: 1px; vector-effect: non-scaling-stroke; }
 .re-app .re-specimen-frame svg, .re-app .re-native-frame svg { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
 .re-app .re-checkerboard { background-color: var(--re-stage); background-image: repeating-conic-gradient(var(--re-line) 0% 25%, var(--re-stage) 0% 50%); background-size: 16px 16px; }
 .re-app .re-stage-foot { display: flex; align-items: flex-end; gap: 24px; padding: 20px 0 24px; border-bottom: 1px solid var(--re-line); overflow-x: auto; }

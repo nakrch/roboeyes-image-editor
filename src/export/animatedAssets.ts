@@ -1,5 +1,5 @@
 import type { TransientOverlay } from '../animation'
-import type { FaceModel } from '../core/model'
+import type { DisplayMask, FaceModel } from '../core/model'
 import { renderFaceToSvg } from '../renderers/svg'
 import { animationExportSchedule, type AnimationExportSamplingOptions } from './animationFrames'
 import type { ExportDimensions } from './staticAssets'
@@ -14,6 +14,7 @@ export type AnimatedExportFrameResolver = (timeMs: number) => AnimatedExportVisu
 export type AnimatedImageExportOptions = AnimationExportSamplingOptions & {
   dimensions: ExportDimensions
   transparentBackground: boolean
+  clipToDisplayMask?: DisplayMask
   loopCount?: number
 }
 
@@ -80,6 +81,7 @@ export async function rasterizeAnimationExportFrames(
     const visual = resolveFrame(sample.timeMs)
     const svg = renderFaceToSvg(visual.model, {
       transparentBackground: options.transparentBackground,
+      clipToDisplayMask: options.clipToDisplayMask,
       overlays: visual.overlays,
     })
       .replace(/width="[^"]+"/, `width="${width}"`)
@@ -108,7 +110,7 @@ export async function encodeAnimatedGif(
     frames: frames.map((frame) => ({
       data: ownedBytes(frame.rgba),
       delay: gifDelay(frame.durationMs),
-      transparent: options.transparentBackground,
+      transparent: options.transparentBackground || options.clipToDisplayMask === 'circle',
       disposal: 2,
     })),
   })

@@ -11,6 +11,7 @@ export function ExportSection({ controller }: { controller: EditorController }) 
       <ExportPanel
         model={controller.model}
         transparentBackground={controller.transparentBackground}
+        displayMask={controller.displayMask}
         resolveAnimationFrame={controller.resolveAnimationFrame}
       />
     </section>

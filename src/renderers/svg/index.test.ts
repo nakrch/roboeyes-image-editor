@@ -39,6 +39,27 @@ describe('renderFaceToSvg', () => {
     expect(svg).toContain('data-background="true"')
   })
 
+  it('clips the background, both eyes, and overlays to the centered circle on a non-square canvas', () => {
+    const svg = renderFaceToSvg({ ...model, canvas: { width: 320, height: 240 } }, {
+      idPrefix: 'display mask/1',
+      clipToDisplayMask: 'circle',
+      overlays: [{ id: 'flash', kind: 'rounded-rect', x: 0, y: 0, width: 8, height: 8, radius: 0, paint: { role: 'eye' } }],
+    })
+    expect(svg).toContain('<clipPath id="display-mask-1display-mask"><circle cx="160" cy="120" r="120" /></clipPath>')
+    const clipped = svg.match(/<g clip-path="url\(#display-mask-1display-mask\)">([\s\S]*?)<\/g><\/svg>/)?.[1]
+    expect(clipped).toBeDefined()
+    expect(clipped).toContain('data-background="true"')
+    expect(clipped).toContain('data-eye="left"')
+    expect(clipped).toContain('data-eye="right"')
+    expect(clipped).toContain('data-transient-overlay="flash"')
+  })
+
+  it('preserves byte-identical renderer output for an omitted or none display mask', () => {
+    const baseline = renderFaceToSvg(model, { idPrefix: 'baseline', transparentBackground: false })
+    expect(renderFaceToSvg(model, { idPrefix: 'baseline', transparentBackground: false, clipToDisplayMask: 'none' })).toBe(baseline)
+    expect(renderFaceToSvg(model, { idPrefix: 'baseline', transparentBackground: false, clipToDisplayMask: undefined })).toBe(baseline)
+  })
+
   it('supports transparent background', () => {
     const svg = renderFaceToSvg(model, { transparentBackground: true })
 

@@ -1,15 +1,18 @@
 import {
+  displayMaskCircle,
   isEyeVisible,
   resolveEyeExpression,
   resolveEyeLidAperture,
   resolveGazeReactiveHeightScale,
   type EyeGeometry,
+  type DisplayMask,
   type FaceModel,
 } from '../../core/model'
 import type { TransientOverlay, TransientOverlayPaint } from '../../animation/transientEffects'
 
 export type SvgRenderOptions = {
   transparentBackground?: boolean
+  clipToDisplayMask?: DisplayMask
   /** Optional stable prefix for inline-SVG definition IDs to avoid document-level collisions. */
   idPrefix?: string
   /** Optional renderer-independent overlays resolved by the animation/effect layer. */
@@ -145,13 +148,17 @@ export function renderFaceToSvg(
     : `<rect data-background="true" x="0" y="0" width="${number(width)}" height="${number(height)}" fill="${escapeAttribute(model.colors.background)}" />`
   const overlays = (options.overlays ?? []).map((overlay) => renderOverlay(overlay, model)).join('')
 
+  const clipCircle = options.clipToDisplayMask === 'circle' ? displayMaskCircle(model.canvas) : undefined
+  const clipId = `${idPrefix}display-mask`
+  const maskDefinition = clipCircle
+    ? `<clipPath id="${clipId}"><circle cx="${number(clipCircle.cx)}" cy="${number(clipCircle.cy)}" r="${number(clipCircle.r)}" /></clipPath>`
+    : ''
+
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${number(width)}" height="${number(height)}" viewBox="0 0 ${number(width)} ${number(height)}">`,
-    background,
-    `<defs>${left?.clipPath ?? ''}${right?.clipPath ?? ''}</defs>`,
-    left?.shape ?? '',
-    right?.shape ?? '',
-    overlays,
+    clipCircle ? '' : background,
+    `<defs>${left?.clipPath ?? ''}${right?.clipPath ?? ''}${maskDefinition}</defs>`,
+    clipCircle ? `<g clip-path="url(#${clipId})">${background}${left?.shape ?? ''}${right?.shape ?? ''}${overlays}</g>` : `${left?.shape ?? ''}${right?.shape ?? ''}${overlays}`,
     '</svg>',
   ].join('')
 }

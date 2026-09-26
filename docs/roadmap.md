@@ -111,6 +111,7 @@ Phase 1–3 の完了後、プロジェクトの基準機能は次の通りで�
 - animated WebP/GIF export
 - basic Pixel perfect preview
 - deterministic static/temporal regression
+- [#171](https://github.com/nakrch/roboeyes-image-editor/issues/171) — circular display-mask inspection and opt-in clipped export
 
 今後の変更は、この baseline を壊さない個別 Issue として管理します。
 
@@ -120,7 +121,7 @@ Phase 1–3 の完了後、プロジェクトの基準機能は次の通りで�
 
 - static WebP export
 - advanced pixel-perfect / nearest-neighbor inspection tools beyond the existing basic Pixel perfect preview
-- safe-area overlays
+- safe-area overlays beyond the delivered circular display mask
 - additional adapters/styles
 - additional face/expression/behavior preset packages
 - pupil / highlight support

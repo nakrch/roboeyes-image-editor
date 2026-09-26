@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { FaceModel } from '../../core/model'
+import type { DisplayMask, FaceModel } from '../../core/model'
 import {
   animatedExportLimitations,
   encodeAnimatedGif,
@@ -26,6 +26,7 @@ import {
 type ExportPanelProps = {
   model: FaceModel
   transparentBackground: boolean
+  displayMask: DisplayMask
   resolveAnimationFrame: AnimatedExportFrameResolver
 }
 
@@ -64,7 +65,7 @@ function pairedFieldErrors(
   )
 }
 
-export function ExportPanel({ model, transparentBackground, resolveAnimationFrame }: ExportPanelProps) {
+export function ExportPanel({ model, transparentBackground, displayMask, resolveAnimationFrame }: ExportPanelProps) {
   const [sizeKey, setSizeKey] = useState('current')
   const [width, setWidth] = useState<NumberDraft>(model.canvas.width)
   const [height, setHeight] = useState<NumberDraft>(model.canvas.height)
@@ -72,6 +73,7 @@ export function ExportPanel({ model, transparentBackground, resolveAnimationFram
   const [fps, setFps] = useState<NumberDraft>(20)
   const [loopCount, setLoopCount] = useState<NumberDraft>(0)
   const [busy, setBusy] = useState(false)
+  const [clipToDisplayMask, setClipToDisplayMask] = useState(false)
   const [error, setError] = useState('')
   const { notify } = useToast()
 
@@ -103,6 +105,7 @@ export function ExportPanel({ model, transparentBackground, resolveAnimationFram
   const staticDisabled = busy || dimensions === null
   const webpDisabled = busy || validation.webpValues === null
   const gifDisabled = busy || validation.gifValues === null
+  const clipOption = displayMask !== 'none' && clipToDisplayMask ? { clipToDisplayMask: displayMask } : {}
 
   const reportValidationFailure = (message: string) => {
     setError(message)
@@ -117,7 +120,7 @@ export function ExportPanel({ model, transparentBackground, resolveAnimationFram
       return
     }
 
-    const staticOptions = { dimensions: values, transparentBackground }
+    const staticOptions = { dimensions: values, transparentBackground, ...clipOption }
     const baseName = `roboeyes-${values.width}x${values.height}`
     try {
       const svg = renderExportSvg(model, staticOptions)
@@ -139,7 +142,7 @@ export function ExportPanel({ model, transparentBackground, resolveAnimationFram
     }
 
     setBusy(true)
-    const staticOptions = { dimensions: values, transparentBackground }
+    const staticOptions = { dimensions: values, transparentBackground, ...clipOption }
     const baseName = `roboeyes-${values.width}x${values.height}`
     try {
       const png = await renderExportPng(model, staticOptions)
@@ -170,6 +173,7 @@ export function ExportPanel({ model, transparentBackground, resolveAnimationFram
     const animationOptions = {
       dimensions,
       transparentBackground,
+      ...clipOption,
       durationMs: values.durationMs,
       fps: values.fps,
       ...(format === 'gif' ? { loopCount: validation.gifValues!.loopCount } : {}),
@@ -251,6 +255,7 @@ export function ExportPanel({ model, transparentBackground, resolveAnimationFram
           validation.errors.height,
         )}
       </div>
+      {displayMask !== 'none' && <label className="re-row re-export-mask"><span>Clip to display mask</span><input type="checkbox" checked={clipToDisplayMask} onChange={(event) => setClipToDisplayMask(event.target.checked)} /></label>}
 
       <p className="export-note">
         {dimensions === null

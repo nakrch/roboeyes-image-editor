@@ -284,6 +284,8 @@ animated export は explicit timestamp schedule を使用し、monitor refresh r
 - predictable rasterization
 - pixel-perfect / nearest-neighbor inspection を追加しやすい構造
 
+円形 display mask は `FaceModel` / `CanvasModel` に含めず、透明背景と並ぶ editor の inspection metadata として preset preview に保持します。canvas / framebuffer は長方形のままです。stage の拡大表示と 1× 表示では円外を暗くし輪郭を表示しますが、通常の renderer 出力は変えません。SVG / PNG / GIF / animated WebP の円外を透明化する export は別途 opt-in です。円形領域に合わせた gaze・eye layout・animation の制限はしません。
+
 ## 9. Extensibility rules
 
 新機能を追加する際は以下を確認します。

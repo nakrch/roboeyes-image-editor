@@ -12,7 +12,7 @@ The editor applies a face preset by replacing the authored generic `FaceModel` a
 - `model` — generic `FaceModel` defaults, including geometry, expression and colors
 - `constraints` — optional numeric editing constraints keyed by generic property path
 - `animationDefaults` — versioned deterministic animation authoring data; `{}` remains valid for static-only presets
-- `preview` — optional editor preview defaults such as transparent background
+- `preview` — optional editor preview defaults such as transparent background and display mask (`none` by omission, or `circle`); the mask is inspection metadata, not part of `FaceModel`
 
 `animationDefaults` may contain authored seed, generic channel definitions, a behavior profile, and an ordered animation program. Playback position, playing/paused state, runtime trigger events, and random cursors are runtime-only and are not persisted. See [`animation-persistence.md`](animation-persistence.md).
 

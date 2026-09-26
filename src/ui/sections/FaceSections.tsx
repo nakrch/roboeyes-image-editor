@@ -1,4 +1,5 @@
 import { gazeLimits, minimumCanvasSize } from '../../core/model'
+import type { DisplayMask } from '../../core/model'
 import { setGazeSafely } from '../editor/gazeSafety'
 import { resizeCanvasFromCenter } from '../editor/modelEditing'
 import type { EditorController } from '../editor/useEditorController'
@@ -39,6 +40,7 @@ export function DisplaySection({ controller }: Props) {
       <div className="re-group">
         <h3 className="re-group-title">Surface</h3>
         <label className="re-row"><span>Transparent</span><input type="checkbox" checked={controller.transparentBackground} onChange={(event) => controller.setTransparentBackground(event.target.checked)} /></label>
+        <label className="re-row"><span>Display mask</span><select className="re-field" aria-label="Display mask" value={controller.displayMask} onChange={(event) => controller.setDisplayMask(event.target.value as DisplayMask)}><option value="none">None</option><option value="circle">Circle</option></select></label>
         <label className="re-row"><span>Pixel perfect</span><input type="checkbox" checked={controller.pixelPerfect} onChange={(event) => controller.setPixelPerfect(event.target.checked)} /></label>
         {([['eye', 'Eye fill'], ['stroke', 'Eye stroke'], ['background', 'Background']] as const).map(([key, label]) => (
           <label className="re-row re-color-row" key={key}><span>{label}</span><input type="color" value={model.colors[key] ?? model.colors.eye} onChange={(event) => controller.updateModel((current) => ({ ...current, colors: { ...current.colors, [key]: event.target.value } }))} /><span className="re-color-value">{model.colors[key] ?? model.colors.eye}</span></label>

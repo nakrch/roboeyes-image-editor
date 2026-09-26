@@ -1,4 +1,4 @@
-import type { FaceModel } from '../core/model'
+import type { DisplayMask, FaceModel } from '../core/model'
 import { renderFaceToSvg } from '../renderers/svg'
 
 export type ExportDimensions = {
@@ -9,6 +9,7 @@ export type ExportDimensions = {
 export type StaticExportOptions = {
   dimensions?: ExportDimensions
   transparentBackground?: boolean
+  clipToDisplayMask?: DisplayMask
 }
 
 function sanitizeDimension(value: number, fallback: number): number {
@@ -22,6 +23,7 @@ export function renderExportSvg(
 ): string {
   const source = renderFaceToSvg(model, {
     transparentBackground: options.transparentBackground,
+    clipToDisplayMask: options.clipToDisplayMask,
   })
   const width = sanitizeDimension(options.dimensions?.width ?? model.canvas.width, model.canvas.width)
   const height = sanitizeDimension(options.dimensions?.height ?? model.canvas.height, model.canvas.height)
