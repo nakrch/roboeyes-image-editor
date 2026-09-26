@@ -1,0 +1,36 @@
+.vc-app .vc-section > .control-group { padding: 24px 0; border-top: 0; border-bottom: 1px solid var(--vc-line); }
+.vc-app .control-group { color: var(--vc-ink); }
+.vc-app .control-group > summary { color: var(--vc-ink-2); font-size: var(--vc-text-xs); font-weight: 680; letter-spacing: .11em; text-transform: uppercase; }
+.vc-app .control-group > summary::before { color: var(--vc-ink-3); }
+.vc-app .control-group-body { margin-top: 18px; }
+.vc-app .nested-controls { gap: 10px; }
+.vc-app .control-field { display: grid; grid-template-columns: minmax(92px, 1fr) minmax(0, 1.5fr); align-items: center; gap: 8px; min-height: var(--vc-row); color: var(--vc-ink-2); font-size: var(--vc-text-sm); font-weight: 400; }
+.vc-app .control-field > span { min-width: 0; }
+.vc-app .control-inputs { display: grid; grid-template-columns: minmax(0, 1fr) 58px; align-items: center; gap: 8px; }
+.vc-app .control-inputs input[type='range'] { width: 100%; min-width: 0; padding: 0; border: 0; accent-color: var(--vc-accent); }
+.vc-app .control-inputs .number-input { width: 100%; min-width: 0; height: var(--vc-row); padding: 2px 4px; background: var(--vc-surface); color: var(--vc-ink); text-align: right; font: var(--vc-text-xs) var(--vc-font-mono); font-variant-numeric: tabular-nums; }
+.vc-app .segmented-control { display: flex; flex-wrap: wrap; gap: 2px; }
+.vc-app .segmented-control button { min-height: 28px; font-size: 11px; border: 1px solid var(--vc-line); border-radius: var(--vc-radius-sm); background: transparent; }
+.vc-app .segmented-control button[aria-pressed='true'] { border-color: var(--vc-line-strong); background: var(--vc-accent-soft); color: var(--vc-accent); }
+.vc-app .control-group-summary { justify-content: flex-start; gap: 6px; }
+/* Keep the existing disclosure semantics while distinguishing its geometry group from the page title. */
+.vc-app .vc-section[aria-labelledby='vc-eyes-title'] .control-group-summary > span:first-child { font-size: 0; margin-right: auto; }
+.vc-app .vc-section[aria-labelledby='vc-eyes-title'] .control-group-summary > span:first-child::after { content: 'GEOMETRY'; font-size: var(--vc-text-xs); }
+.vc-app .control-group-summary .segmented-control { margin-left: auto; letter-spacing: normal; text-transform: none; }
+@media (max-width: 480px) {
+  .vc-app .control-group-summary { flex-wrap: nowrap; align-items: center; }
+  .vc-app .control-group-summary .segmented-control { width: auto; }
+  .vc-app .control-group-summary .segmented-control button { flex: none; }
+}
+.vc-app .control-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: var(--vc-text-sm); }
+.vc-app .eye-columns { display: grid; gap: 24px; }
+.vc-app .eye-fieldset { display: grid; gap: 10px; padding: 12px 0; border: 0; border-top: 1px solid var(--vc-line); border-radius: 0; }
+.vc-app .eye-fieldset legend { color: var(--vc-ink-2); font-size: var(--vc-text-xs); padding: 0 4px; }
+.vc-app .animation-note { color: var(--vc-ink-3); font-size: var(--vc-text-sm); line-height: 1.5; }
+.vc-app .vc-color-row input[type='color'] { width: 34px; height: 27px; padding: 2px; cursor: pointer; }
+.vc-app .vc-color-value { color: var(--vc-ink-3); font: 11px var(--vc-font-mono); }
+.vc-app .vc-row input[type='checkbox'] { justify-self: start; width: 15px; height: 15px; accent-color: var(--vc-accent); }
+.vc-app .vc-row select { grid-column: 2 / -1; }
+.vc-app .vc-expression-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.vc-app .vc-expression-list .vc-button { border: 1px solid var(--vc-line); }
+.vc-app .vc-expression-list .vc-button[aria-pressed='true'] { border-color: var(--vc-accent); color: var(--vc-accent); background: var(--vc-accent-soft); }
