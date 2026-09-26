@@ -4,9 +4,12 @@ import {
   resolveEyeExpression,
   resolveEyeLidAperture,
   resolveGazeReactiveHeightScale,
+  resolveLensStrength,
+  warpPointThroughLens,
   type EyeGeometry,
   type DisplayMask,
   type FaceModel,
+  type Point,
 } from '../../core/model'
 import type { TransientOverlay, TransientOverlayPaint } from '../../animation/transientEffects'
 
@@ -41,6 +44,70 @@ function sanitizeIdPrefix(value: string | undefined): string {
   return value?.trim().replace(/[^A-Za-z0-9_-]+/g, '-') ?? ''
 }
 
+function sampledEyePath(points: Point[], centerX: number, centerY: number, rotation: number, model: FaceModel, strength: number): string {
+  const angle = rotation * Math.PI / 180
+  const cosine = Math.cos(angle)
+  const sine = Math.sin(angle)
+  return points.map((point, index) => {
+    const dx = point.x - centerX
+    const dy = point.y - centerY
+    const warped = warpPointThroughLens({
+      x: centerX + dx * cosine - dy * sine,
+      y: centerY + dx * sine + dy * cosine,
+    }, model.canvas, strength)
+    return `${index === 0 ? 'M' : 'L'} ${number(warped.x)} ${number(warped.y)}`
+  }).join(' ') + ' Z'
+}
+
+function pushSampledLine(points: Point[], start: Point, end: Point): void {
+  const segments = Math.max(1, Math.ceil(Math.hypot(end.x - start.x, end.y - start.y) / 2))
+  for (let i = 0; i < segments; i += 1) {
+    const t = i / segments
+    points.push({ x: start.x + (end.x - start.x) * t, y: start.y + (end.y - start.y) * t })
+  }
+}
+
+function sampledRoundedRect(x: number, y: number, width: number, height: number, radius: number): Point[] {
+  const points: Point[] = []
+  const arc = (cx: number, cy: number, start: number) => {
+    for (let i = 0; i < 8; i += 1) {
+      const angle = start + i * Math.PI / 16
+      points.push({ x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) })
+    }
+  }
+  if (radius === 0) {
+    pushSampledLine(points, { x, y }, { x: x + width, y })
+    pushSampledLine(points, { x: x + width, y }, { x: x + width, y: y + height })
+    pushSampledLine(points, { x: x + width, y: y + height }, { x, y: y + height })
+    pushSampledLine(points, { x, y: y + height }, { x, y })
+  } else {
+    pushSampledLine(points, { x: x + radius, y }, { x: x + width - radius, y })
+    arc(x + width - radius, y + radius, -Math.PI / 2)
+    pushSampledLine(points, { x: x + width, y: y + radius }, { x: x + width, y: y + height - radius })
+    arc(x + width - radius, y + height - radius, 0)
+    pushSampledLine(points, { x: x + width - radius, y: y + height }, { x: x + radius, y: y + height })
+    arc(x + radius, y + height - radius, Math.PI / 2)
+    pushSampledLine(points, { x, y: y + height - radius }, { x, y: y + radius })
+    arc(x + radius, y + radius, Math.PI)
+  }
+  return points
+}
+
+function sampledAperture(x: number, right: number, upperLeftY: number, upperRightY: number, lowerY: number, centerX: number, lowerMidY: number): Point[] {
+  const points: Point[] = []
+  pushSampledLine(points, { x, y: upperLeftY }, { x: right, y: upperRightY })
+  pushSampledLine(points, { x: right, y: upperRightY }, { x: right, y: lowerY })
+  for (let i = 0; i < 16; i += 1) {
+    const t = i / 16
+    points.push({
+      x: (1 - t) ** 2 * right + 2 * (1 - t) * t * centerX + t ** 2 * x,
+      y: (1 - t) ** 2 * lowerY + 2 * (1 - t) * t * lowerMidY + t ** 2 * lowerY,
+    })
+  }
+  pushSampledLine(points, { x, y: lowerY }, { x, y: upperLeftY })
+  return points
+}
+
 function renderEye(
   id: 'left' | 'right',
   geometry: EyeGeometry,
@@ -72,6 +139,15 @@ function renderEye(
   const rotation = geometry.rotation + expressionRotation
   const clipId = `${idPrefix ? `${idPrefix}-` : ''}eye-clip-${id}`
   const stroke = model.colors.stroke ?? model.colors.eye
+  const lensStrength = resolveLensStrength(model)
+  if (lensStrength > 0 && model.canvas.width > 0 && model.canvas.height > 0) {
+    const outline = sampledEyePath(sampledRoundedRect(x, y, geometry.width, scaledHeight, radius), centerX, centerY, rotation, model, lensStrength)
+    const opening = sampledEyePath(sampledAperture(x, x + geometry.width, upperLeftY, upperRightY, lowerY, centerX, lowerMidY), centerX, centerY, rotation, model, lensStrength)
+    return {
+      clipPath: `<clipPath id="${clipId}"><path data-eye-aperture="${id}" d="${opening}" /></clipPath>`,
+      shape: `<path data-eye="${id}" d="${outline}" fill="${escapeAttribute(model.colors.eye)}" stroke="${escapeAttribute(stroke)}" stroke-width="1" clip-path="url(#${clipId})" />`,
+    }
+  }
   const aperturePath = [
     `M ${number(x)} ${number(upperLeftY)}`,
     `L ${number(x + geometry.width)} ${number(upperRightY)}`,

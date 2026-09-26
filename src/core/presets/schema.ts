@@ -1,5 +1,5 @@
 import type { PresetAnimationDefaults } from '../../animation/persistence'
-import { isDisplayMask, type DisplayMask, type FaceModel } from '../model'
+import { isDisplayMask, isLensModel, type DisplayMask, type FaceModel } from '../model'
 
 export type NumericConstraint = {
   min?: number
@@ -50,6 +50,7 @@ export function isFacePreset(value: unknown): value is FacePreset {
       model.expression &&
       model.colors &&
       hasValidEyeVisibility(model) &&
+      (model.lens === undefined || isLensModel(model.lens)) &&
       (preset.preview?.displayMask === undefined || isDisplayMask(preset.preview.displayMask)) &&
       preset.constraints &&
       typeof preset.constraints === 'object' &&

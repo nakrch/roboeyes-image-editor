@@ -28,6 +28,45 @@ const model: FaceModel = {
   colors: { eye: '#ffffff', stroke: '#00ffff', background: '#000000' },
 }
 
+function eyePath(svg: string, side: 'left' | 'right'): string {
+  const d = svg.match(new RegExp(`<path data-eye="${side}" d="([^"]+)"`))?.[1]
+  if (!d) throw new Error(`Missing ${side} eye path`)
+  return d
+}
+
+function horizontalExtent(path: string): number {
+  const coordinates = [...path.matchAll(/[ML] (-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/g)]
+  const xs = coordinates.map((match) => Number(match[1]))
+  return Math.max(...xs) - Math.min(...xs)
+}
+
+describe('sphere lens SVG output', () => {
+  it('retains byte-identical output when disabled and produces deterministic transformed paths when enabled', () => {
+    const baseline = renderFaceToSvg(model)
+    expect(renderFaceToSvg({ ...model, lens: { kind: 'sphere', strength: 0 } })).toBe(baseline)
+    const distorted = renderFaceToSvg({ ...model, lens: { kind: 'sphere', strength: 1 } })
+    expect(distorted).toBe(renderFaceToSvg({ ...model, lens: { kind: 'sphere', strength: 1 } }))
+    expect(distorted).toContain('<path data-eye="left" d="M ')
+    expect(distorted).toContain('<path data-eye-aperture="right" d="M ')
+    expect(distorted).not.toContain('transform="rotate(')
+    for (const side of ['left', 'right'] as const) {
+      const path = eyePath(distorted, side)
+      for (const coordinate of path.matchAll(/[ML] (-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/g)) {
+        expect(Number(coordinate[1])).toBeGreaterThanOrEqual(0)
+        expect(Number(coordinate[1])).toBeLessThanOrEqual(128)
+        expect(Number(coordinate[2])).toBeGreaterThanOrEqual(0)
+        expect(Number(coordinate[2])).toBeLessThanOrEqual(64)
+      }
+    }
+  })
+
+  it('compresses an edge eye more radially than a centered eye of identical shape', () => {
+    const centered = { ...model, gaze: { x: 0, y: 0 }, expression: { upperLid: 0, lowerLid: 0, tilt: 0 }, leftEye: { geometry: { ...model.leftEye.geometry, position: { x: 64, y: 32 }, rotation: 0 } }, eyeVisibility: { left: true, right: false }, lens: { kind: 'sphere' as const, strength: 1 } }
+    const edge = { ...centered, leftEye: { geometry: { ...centered.leftEye.geometry, position: { x: 108, y: 32 } } } }
+    expect(horizontalExtent(eyePath(renderFaceToSvg(edge), 'left'))).toBeLessThan(horizontalExtent(eyePath(renderFaceToSvg(centered), 'left')))
+  })
+})
+
 describe('renderFaceToSvg', () => {
   it('honors exact canvas dimensions and renders both eyes', () => {
     const svg = renderFaceToSvg(model)

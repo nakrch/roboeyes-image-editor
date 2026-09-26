@@ -84,6 +84,7 @@ Preserve these completed capabilities unless the active Issue deliberately chang
 - animation persistence/player controls
 - transient effects
 - circular display-mask inspection overlay and opt-in clipped export
+- optional generic sphere lens distortion for eyes near the display edge; disabled lenses preserve existing SVG output
 - SVG / PNG / animated WebP / GIF export
 - static and temporal regression coverage
 

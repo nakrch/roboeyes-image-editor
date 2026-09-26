@@ -1,5 +1,6 @@
 import type { ExpressionModel } from './expression'
 import type { EyeModel, Point } from './eye'
+import type { LensModel } from './lens'
 
 export type CanvasModel = {
   width: number
@@ -32,6 +33,8 @@ export type FaceModel = {
   colors: ColorModel
   /** Optional generic visibility mask; omitted means both eyes are visible. */
   eyeVisibility?: EyeVisibilityModel
+  /** Optional renderer-independent display lens; omission leaves eyes unchanged. */
+  lens?: LensModel
 }
 
 export function isEyeVisible(model: FaceModel, side: 'left' | 'right'): boolean {

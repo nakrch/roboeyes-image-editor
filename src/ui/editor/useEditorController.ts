@@ -92,6 +92,7 @@ export type EditorController = {
   updateModel: (updater: (current: FaceModel) => FaceModel) => void
   setTransparentBackground: (value: boolean) => void
   setDisplayMask: (value: DisplayMask) => void
+  setLensStrength: (value: number) => void
   setSingleEyeLayout: (enabled: boolean) => void
   updateAnimationDefaults: (next: PresetAnimationDefaults) => void
   presets: FacePreset[]
@@ -511,6 +512,10 @@ export function useEditorController(): EditorController {
 
   const setTransparentBackground = (value: boolean) => commit((current) => ({ ...current, transparentBackground: value }))
   const setDisplayMask = (value: DisplayMask) => commit((current) => ({ ...current, displayMask: value }))
+  const setLensStrength = (value: number) => updateModel((current) => {
+    const { lens: _lens, ...withoutLens } = current
+    return value <= 0 ? withoutLens : { ...withoutLens, lens: { kind: 'sphere', strength: Math.min(1, value) } }
+  })
   const play = () => setPlayback(playAnimationPlayback)
   const pause = () => setPlayback(pauseAnimationPlayback)
   const stop = () => { setRuntimeEvents([]); runtimeEventOrder.current = 0; setPlayback(stopAnimationPlayback) }
@@ -522,7 +527,7 @@ export function useEditorController(): EditorController {
     linkedEyes, setLinkedEyes, pixelPerfect, setPixelPerfect,
     canUndo: history.past.length !== 0, canRedo: history.future.length !== 0, undo, redo, reset,
     continuousEdit: { begin: beginContinuousEdit, end: endContinuousEdit },
-    updateModel, setTransparentBackground, setDisplayMask, setSingleEyeLayout, updateAnimationDefaults,
+    updateModel, setTransparentBackground, setDisplayMask, setLensStrength, setSingleEyeLayout, updateAnimationDefaults,
     presets, displayedPresetId, presetStatus, presetError, applyPreset, saveCurrentPreset,
     importPreset, exportPreset, deletePreset, selectableExpressions, activeExpressionId,
     expressionPresetStatus, expressionPresetError, applyExpressionPreset,

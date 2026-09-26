@@ -72,6 +72,20 @@ describe('preset system', () => {
     expect(createCustomPreset('Plain', minimalPreset.model).preview).toEqual({ transparentBackground: false })
   })
 
+  it('persists the lens through custom preset storage and rejects invalid lenses', () => {
+    const storage = memoryStorage()
+    const lens = { kind: 'sphere' as const, strength: 0.75 }
+    const custom = createCustomPreset('Dome', { ...minimalPreset.model, lens })
+    saveCustomPresets(storage, [custom])
+    expect(loadCustomPresets(storage)[0].model.lens).toEqual(lens)
+    expect(parsePreset(serializePreset(custom)).model.lens).toEqual(lens)
+    expect(createCustomPreset('Off', { ...minimalPreset.model, lens: { kind: 'sphere', strength: 0 } }).model.lens).toBeUndefined()
+    for (const invalid of [{ kind: 'sphere', strength: 2 }, { kind: 'x', strength: 0.5 }]) {
+      expect(() => parsePreset(JSON.stringify({ ...custom, model: { ...custom.model, lens: invalid } }))).toThrow('Invalid preset JSON')
+      expect(() => createCustomPreset('Bad', { ...minimalPreset.model, lens: invalid } as typeof minimalPreset.model)).toThrow('Invalid preset lens')
+    }
+  })
+
   it('rejects JSON that does not match the preset schema', () => {
     expect(() => parsePreset('{"name":"not enough"}')).toThrow('Invalid preset JSON')
   })

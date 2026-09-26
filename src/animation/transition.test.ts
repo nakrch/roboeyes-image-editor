@@ -292,6 +292,24 @@ describe('interruptible retargeting', () => {
   })
 })
 
+describe('lens animation sampling', () => {
+  it('preserves the discrete lens through transition and runtime sampling while the eye moves', () => {
+    const source: FaceModel = { ...baseModel, lens: { kind: 'sphere', strength: 0.8 } }
+    const transition = createFaceTransition('transition:lens', { gaze: { x: 6 } }, 0, 400, 'linear', source)
+    const midpoint = sampleFaceTransition(transition, source, 200)
+    expect(midpoint.gaze.x).toBe(3)
+    expect(midpoint.lens).toEqual(source.lens)
+    const frame = evaluateAnimationFrame({
+      baseModel: source,
+      definition: { version: 1, enabled: true, channels: { 'state-transition': transition } },
+      context: createAnimationFrameContext(200, 123),
+      channelResolvers: { 'state-transition': stateTransitionChannelResolver },
+    })
+    expect(frame.model.gaze.x).toBe(3)
+    expect(frame.model.lens).toEqual(source.lens)
+  })
+})
+
 describe('#98 runtime integration', () => {
   it('round-trips a transition as JSON-safe authored channel data and resolves through the state channel', () => {
     const transition = createFaceTransition(
