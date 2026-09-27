@@ -192,6 +192,19 @@ export function EyeControls({
   }
 
   const singleDerived = independentDerived?.left
+  const rotationPivotRow = (
+    <div className="control-row">
+      <span className="control-label">Rotation pivot</span>
+      <span className="segmented-control" aria-label="Rotation pivot">
+        <button type="button" className={rotationPivot === 'local' ? 'active' : ''} aria-pressed={rotationPivot === 'local'} onClick={() => onRotationPivotChange('local')}>
+          {linkedEyes && !singleEye ? 'Pair' : 'Eye'}
+        </button>
+        <button type="button" className={rotationPivot === 'display' ? 'active' : ''} aria-pressed={rotationPivot === 'display'} onClick={() => onRotationPivotChange('display')}>
+          Display
+        </button>
+      </span>
+    </div>
+  )
 
   return (
     <details className="control-group collapsible-control-group" open>
@@ -241,17 +254,6 @@ export function EyeControls({
             </button>
           </span>
         </div>
-        <div className="control-row">
-          <span className="control-label">Rotation pivot</span>
-          <span className="segmented-control" aria-label="Rotation pivot">
-            <button type="button" className={rotationPivot === 'local' ? 'active' : ''} aria-pressed={rotationPivot === 'local'} onClick={() => onRotationPivotChange('local')}>
-              {linkedEyes && !singleEye ? 'Pair' : 'Eye'}
-            </button>
-            <button type="button" className={rotationPivot === 'display' ? 'active' : ''} aria-pressed={rotationPivot === 'display'} onClick={() => onRotationPivotChange('display')}>
-              Display
-            </button>
-          </span>
-        </div>
 
         {singleEye ? (
           <div className="nested-controls">
@@ -263,6 +265,7 @@ export function EyeControls({
             <NumericControl label="Corner radius" value={left.cornerRadius} min={0} max={80} onChange={(value) => updateIndependentGeometry('left', 'cornerRadius', value)} />
             <NumericControl label="Position X" value={toCenterRelativePosition(model, 'x', left.position.x)} min={singleDerived!.positionRanges.x.min} max={singleDerived!.positionRanges.x.max} step="any" onChange={(value) => updateEyePosition('left', 'x', value)} />
             <NumericControl label="Position Y" value={toCenterRelativePosition(model, 'y', left.position.y)} min={singleDerived!.positionRanges.y.min} max={singleDerived!.positionRanges.y.max} step="any" onChange={(value) => updateEyePosition('left', 'y', value)} />
+            {rotationPivotRow}
             <NumericControl label="Rotation" value={left.rotation} min={singleDerived!.rotationRange.min} max={singleDerived!.rotationRange.max} step="any" onChange={(value) => updateIndependentGeometry('left', 'rotation', value)} />
           </div>
         ) : linkedEyes ? (
@@ -294,6 +297,7 @@ export function EyeControls({
                 fromCenterRelativePosition(current, 'y', value),
               ))}
             />
+            {rotationPivotRow}
             <NumericControl
               label="Rotation"
               value={pairRotation(model)}
@@ -322,6 +326,7 @@ export function EyeControls({
             })}
           </div>
         )}
+        {!singleEye && !linkedEyes && rotationPivotRow}
 
         {!singleEye && (
           <NumericControl
