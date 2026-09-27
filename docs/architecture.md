@@ -37,6 +37,7 @@ renderer・UI・RoboEyes API に依存しない domain model を定義します�
 - gaze
 - expression / eyelid geometry
 - colors / stroke / background
+- optional `FaceModel.lens` sphere distortion `{ kind: 'sphere', strength: 0..1, fit: 'circle' | 'rect' }`; omitted/zero is the undistorted baseline
 - serializable plain data invariants
 
 禁止:
@@ -78,6 +79,7 @@ Preset JSON は runtime playback state を保存しません。
 - exact canvas size
 - transparent / opaque background
 - geometry / expression / transform rendering
+- active sphere lens: sample eye outlines and apertures, rotate, then warp points radially using circular fit for a circular display mask or rectangular fit otherwise; leave overlays and display clipping unchanged
 - standalone SVG serialization
 - transient overlay primitive rendering
 

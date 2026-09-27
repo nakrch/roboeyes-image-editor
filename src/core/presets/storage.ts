@@ -2,7 +2,7 @@ import {
   normalizePresetAnimationDefaults,
   type PresetAnimationDefaults,
 } from '../../animation/persistence'
-import type { DisplayMask, FaceModel } from '../model'
+import { isLensModel, type DisplayMask, type FaceModel } from '../model'
 import { isFacePreset, type FacePreset } from './schema'
 
 export const CUSTOM_PRESET_STORAGE_KEY = 'roboeyes-image-editor.custom-presets.v1'
@@ -48,7 +48,8 @@ export function createCustomPreset(
   animationDefaults: PresetAnimationDefaults = {},
   displayMask: DisplayMask = 'none',
 ): FacePreset {
-  return {
+  if (model.lens !== undefined && !isLensModel(model.lens)) throw new TypeError('Invalid preset lens')
+  return omitDisabledLens({
     id: `custom:${crypto.randomUUID()}`,
     name: uniquePresetName(name, existingPresets),
     version: 1,
@@ -56,20 +57,26 @@ export function createCustomPreset(
     constraints: {},
     animationDefaults: normalizePresetAnimationDefaults(animationDefaults),
     preview: { transparentBackground, ...(displayMask === 'none' ? {} : { displayMask }) },
-  }
+  })
 }
 
 export function removeCustomPreset(presets: readonly FacePreset[], id: string): FacePreset[] {
   return presets.filter((preset) => preset.id !== id)
 }
 
+function omitDisabledLens(preset: FacePreset): FacePreset {
+  if (preset.model.lens?.strength !== 0) return preset
+  const { lens: _lens, ...model } = preset.model
+  return { ...preset, model }
+}
+
 function normalizePresetAuthoringData(value: unknown): FacePreset {
   if (!isFacePreset(value)) throw new Error('Invalid preset JSON')
   try {
-    return {
+    return omitDisabledLens({
       ...structuredClone(value),
       animationDefaults: normalizePresetAnimationDefaults(value.animationDefaults),
-    }
+    })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     throw new Error(`Invalid preset animationDefaults: ${message}`)

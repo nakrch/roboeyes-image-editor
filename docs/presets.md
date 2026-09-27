@@ -10,6 +10,7 @@ The editor applies a face preset by replacing the authored generic `FaceModel` a
 
 - `id` / `name` / schema `version`
 - `model` — generic `FaceModel` defaults, including geometry, expression and colors
+- `model.lens` — optional generic `{ kind: 'sphere', strength: 0..1, fit: 'circle' | 'rect' }`; `fit` is required when a lens is present (`circle` for a circular display mask, `rect` otherwise). Zero-strength lenses are omitted on save, and missing/invalid fits are rejected on load.
 - `constraints` — optional numeric editing constraints keyed by generic property path
 - `animationDefaults` — versioned deterministic animation authoring data; `{}` remains valid for static-only presets
 - `preview` — optional editor preview defaults such as transparent background and display mask (`none` by omission, or `circle`); the mask is inspection metadata, not part of `FaceModel`

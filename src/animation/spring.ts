@@ -205,6 +205,7 @@ function sampleUnboundedSpringModel(
     expression: interpolateExpressionUnbounded(from.expression, to.expression, progress),
     colors: { ...from.colors },
     ...(from.eyeVisibility === undefined ? {} : { eyeVisibility: { ...from.eyeVisibility } }),
+    ...(from.lens === undefined ? {} : { lens: { ...from.lens } }),
   }
 
   for (const geometry of [result.leftEye.geometry, result.rightEye.geometry]) {

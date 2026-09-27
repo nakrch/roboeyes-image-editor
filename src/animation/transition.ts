@@ -5,6 +5,7 @@ import {
   gazeLimits,
   isGazeCanvasSafe,
   resolveEyeExpression,
+  isLensModel,
   type ExpressionModel,
   type EyeExpression,
   type EyeGeometry,
@@ -232,6 +233,11 @@ function parseEyeVisibility(value: unknown, label: string): EyeVisibilityModel {
   return { left: value.left, right: value.right }
 }
 
+function parseLens(value: unknown, label: string): NonNullable<FaceModel['lens']> {
+  if (!isLensModel(value)) throw new TypeError(`${label} must be a sphere lens with strength in [0, 1] and fit circle or rect`)
+  return { kind: 'sphere', strength: value.strength, fit: value.fit }
+}
+
 function parseFaceModel(value: unknown, label: string): FaceModel {
   if (!isRecord(value)) throw new TypeError(`${label} must be an object`)
   if (!isRecord(value.canvas)) throw new TypeError(`${label}.canvas must be an object`)
@@ -262,6 +268,7 @@ function parseFaceModel(value: unknown, label: string): FaceModel {
     ...(value.eyeVisibility === undefined
       ? {}
       : { eyeVisibility: parseEyeVisibility(value.eyeVisibility, `${label}.eyeVisibility`) }),
+    ...(value.lens === undefined ? {} : { lens: parseLens(value.lens, `${label}.lens`) }),
   }
 
   assertTransitionModel(model, label)
@@ -364,6 +371,9 @@ function assertTransitionModel(model: FaceModel, label: string): void {
   if (model.eyeVisibility !== undefined &&
       (typeof model.eyeVisibility.left !== 'boolean' || typeof model.eyeVisibility.right !== 'boolean')) {
     throw new TypeError(`${label}.eyeVisibility must contain boolean left/right values`)
+  }
+  if (model.lens !== undefined && !isLensModel(model.lens)) {
+    throw new TypeError(`${label}.lens must be a valid sphere lens`)
   }
   assertExpression(model.expression, `${label}.expression`)
   if (!canFitEyesInCanvas(model)) {
@@ -551,6 +561,7 @@ export function interpolateFaceModel(
     expression: interpolateExpressionModel(fromModel.expression, toModel.expression, t),
     colors: { ...fromModel.colors },
     ...(fromModel.eyeVisibility === undefined ? {} : { eyeVisibility: { ...fromModel.eyeVisibility } }),
+    ...(fromModel.lens === undefined ? {} : { lens: { ...fromModel.lens } }),
   }
   result = clampTransitionGaze(result)
   assertTransitionModel(result, 'Interpolated transition frame')

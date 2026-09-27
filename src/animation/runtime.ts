@@ -276,6 +276,7 @@ export function cloneFaceModel(model: FaceModel): FaceModel {
     expression,
     colors: { ...model.colors },
     ...(model.eyeVisibility === undefined ? {} : { eyeVisibility: { ...model.eyeVisibility } }),
+    ...(model.lens === undefined ? {} : { lens: { ...model.lens } }),
   }
 }
 
