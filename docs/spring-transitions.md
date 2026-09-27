@@ -34,6 +34,8 @@ Existing easing transitions remain valid as `FaceTransitionDefinition`. Spring t
 
 Both transition kinds target the same generic `FaceStateTarget` surface and therefore support gaze, eye geometry/pose, spacing, rotation, and expression numeric fields without expression-name branches.
 
+Canvas size, colors, `lens`, and `eyeVisibility` are outside `FaceStateTarget` for both kinds and are not transitioned. They retain the transition source model's values (the explicit `from` model when supplied, otherwise the incoming base model).
+
 ## Persistence
 
 Persisted `state-transition` channel data accepts either:

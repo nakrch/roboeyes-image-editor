@@ -112,6 +112,11 @@ Phase 1–3 の完了後、プロジェクトの基準機能は次の通りで�
 - basic Pixel perfect preview
 - deterministic static/temporal regression
 - [#171](https://github.com/nakrch/roboeyes-image-editor/issues/171) — circular display-mask inspection and opt-in clipped export
+- [#169](https://github.com/nakrch/roboeyes-image-editor/issues/169) — Quiet Precision editor layout with outline, inspector, and specimen stage
+- [#173](https://github.com/nakrch/roboeyes-image-editor/issues/173) — optional sphere lens distortion with `fit: 'circle' | 'rect'`
+- [#177](https://github.com/nakrch/roboeyes-image-editor/issues/177) — direct stage eye dragging and rotation pivot
+- [#179](https://github.com/nakrch/roboeyes-image-editor/issues/179) — focused-slider wheel stepping
+- [#182](https://github.com/nakrch/roboeyes-image-editor/issues/182) — inspector overscroll section switching
 
 今後の変更は、この baseline を壊さない個別 Issue として管理します。
 

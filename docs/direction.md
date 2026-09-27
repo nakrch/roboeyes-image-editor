@@ -130,7 +130,8 @@ Preset は固定画像ではなく、再利用可能な authoring data として
 - direct numeric input は Enter または blur で確定し、その時点で validation / clamp / precision normalization を適用して preview へ反映する
 - linked / independent eye editing
 - `Position X / Y` は UI 上では canvas 中心を `0, 0` とする相対座標で扱い、generic model の内部絶対座標とは UI boundary で変換する
-- Controls の先頭に `Display` を置き、resolution / canvas size / transparent background / Pixel perfect preview をまとめる
+- 左の outline navigation は FACE（`Display`、`Eyes`、`Expression`）/ MOTION / LIBRARY（`Presets`）/ OUTPUT（`Export`）を並べ、右の inspector は選択中の 1 section だけを表示する。先頭の `Display` に resolution / canvas size / transparent background / Pixel perfect preview、円形 display mask、sphere lens をまとめる
+- stage の整数倍率（最大 8×）と 1× inspection、stage 上での eye drag、rotation pivot、focused slider の wheel 操作、inspector edge からの section 切り替えは [`editor-interaction.md`](editor-interaction.md) にまとめる
 - Undo / Redo / Reset
 - face / expression preset
 - animation play / pause / stop / restart

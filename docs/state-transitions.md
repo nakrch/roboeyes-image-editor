@@ -51,7 +51,7 @@ The generic target can animate:
 
 Expression names are not part of transition logic. Neutral → Happy, Angry, Tired, Surprised, or a custom expression all use the same generic `ExpressionModel` interpolation.
 
-Canvas size and colors are deliberately not part of the #99 target. They remain discrete/static until a later issue explicitly defines transition semantics for them.
+Canvas size, colors, `lens`, and `eyeVisibility` are deliberately outside the #99 target and are not transitioned. They are carried over from the transition source model (the explicit `from` model when supplied, otherwise the incoming base model).
 
 ## Timing and sampling
 

@@ -22,6 +22,8 @@ The editor uses a calm, light "Quiet Precision" layout (dark mode follows the sy
 - edit left and right eye geometry in real time
 - switch between linked and independent eye controls
 - adjust width, height, corner radius, spacing, position, gaze, rotation, color, background, and canvas size
+- inspect a circular display mask with opt-in clipped export, and apply an optional sphere lens
+- drag eyes directly in the enlarged stage
 - use fixed-size presets such as 128×64, 128×128, 240×240, 320×240, and 320×320
 - use a generic single-eye layout compatible with RoboEyes cyclops behavior
 - Undo / Redo / Reset editing operations
