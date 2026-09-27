@@ -3,6 +3,7 @@ import { canFitEyesInCanvas, type EyeGeometry, type FaceModel, type Point } from
 export type EyeSide = 'left' | 'right'
 export type GeometryKey = 'width' | 'height' | 'cornerRadius' | 'rotation'
 export type RotationRange = { min: number; max: number }
+export type RotationPivot = 'local' | 'display'
 
 const PAIR_ROTATION_MIN = -45
 const PAIR_ROTATION_MAX = 45
@@ -74,15 +75,17 @@ function rotatePointAround(point: Point, center: Point, radians: number): Point 
 }
 
 /**
- * Rotate both eyes as one rigid pair around the midpoint between their centers.
+ * Rotate both eyes as one rigid pair around their midpoint or the display center.
  * `rotation` is an absolute group angle; any pre-existing relative eye tilt is preserved.
  */
-export function rotatePair(model: FaceModel, rotation: number): FaceModel {
+export function rotatePair(model: FaceModel, rotation: number, pivot: RotationPivot = 'local'): FaceModel {
   const currentRotation = pairRotation(model)
   const delta = rotation - currentRotation
   if (delta === 0) return model
 
-  const center = pairRotationCenter(model)
+  const center = pivot === 'display'
+    ? { x: model.canvas.width / 2, y: model.canvas.height / 2 }
+    : pairRotationCenter(model)
   const radians = (delta * Math.PI) / 180
 
   return {
@@ -110,20 +113,21 @@ function refineRotationBoundary(
   baseline: FaceModel,
   safeAngle: number,
   unsafeAngle: number,
+  pivot: RotationPivot,
 ): number {
   let safe = safeAngle
   let unsafe = unsafeAngle
   for (let index = 0; index < ROTATION_REFINE_STEPS; index += 1) {
     const midpoint = (safe + unsafe) / 2
-    if (canFitEyesInCanvas(rotatePair(baseline, midpoint))) safe = midpoint
+    if (canFitEyesInCanvas(rotatePair(baseline, midpoint, pivot))) safe = midpoint
     else unsafe = midpoint
   }
   return safe
 }
 
-function scanRotationBoundary(baseline: FaceModel, direction: -1 | 1): number {
+function scanRotationBoundary(baseline: FaceModel, direction: -1 | 1, pivot: RotationPivot): number {
   const endpoint = direction < 0 ? PAIR_ROTATION_MIN : PAIR_ROTATION_MAX
-  if (canFitEyesInCanvas(rotatePair(baseline, endpoint))) return endpoint
+  if (canFitEyesInCanvas(rotatePair(baseline, endpoint, pivot))) return endpoint
 
   let previous = 0
   for (
@@ -131,8 +135,8 @@ function scanRotationBoundary(baseline: FaceModel, direction: -1 | 1): number {
     direction > 0 ? angle <= endpoint : angle >= endpoint;
     angle += direction * ROTATION_SCAN_STEP
   ) {
-    if (!canFitEyesInCanvas(rotatePair(baseline, angle))) {
-      return refineRotationBoundary(baseline, previous, angle)
+    if (!canFitEyesInCanvas(rotatePair(baseline, angle, pivot))) {
+      return refineRotationBoundary(baseline, previous, angle, pivot)
     }
     previous = angle
   }
@@ -145,21 +149,21 @@ function scanRotationBoundary(baseline: FaceModel, direction: -1 | 1): number {
  * editor's supported ±45° interval and only includes angles for which some gaze
  * translation can keep both rendered eyes fully inside the canvas.
  */
-export function pairRotationLimits(model: FaceModel): RotationRange {
-  const baseline = rotatePair(model, 0)
+export function pairRotationLimits(model: FaceModel, pivot: RotationPivot = 'local'): RotationRange {
+  const baseline = rotatePair(model, 0, pivot)
   if (!canFitEyesInCanvas(baseline)) return { min: 0, max: 0 }
 
   return {
-    min: scanRotationBoundary(baseline, -1),
-    max: scanRotationBoundary(baseline, 1),
+    min: scanRotationBoundary(baseline, -1, pivot),
+    max: scanRotationBoundary(baseline, 1, pivot),
   }
 }
 
 /** Clamp a requested linked rotation to the current canvas-safe interval. */
-export function rotatePairSafely(model: FaceModel, rotation: number): FaceModel {
-  const limits = pairRotationLimits(model)
+export function rotatePairSafely(model: FaceModel, rotation: number, pivot: RotationPivot = 'local'): FaceModel {
+  const limits = pairRotationLimits(model, pivot)
   const safeRotation = Math.min(limits.max, Math.max(limits.min, rotation))
-  return rotatePair(model, safeRotation)
+  return rotatePair(model, safeRotation, pivot)
 }
 
 export function setHorizontalLayout(

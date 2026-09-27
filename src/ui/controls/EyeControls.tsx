@@ -38,6 +38,7 @@ import {
   updateEyeGeometry,
   type EyeSide,
   type GeometryKey,
+  type RotationPivot,
 } from '../editor/modelEditing'
 import {
   isSingleEyeLayout,
@@ -49,6 +50,8 @@ import { NumericControl } from './NumericControl'
 type EyeControlsProps = {
   model: FaceModel
   linkedEyes: boolean
+  rotationPivot: RotationPivot
+  onRotationPivotChange: (value: RotationPivot) => void
   onChange: (updater: (current: FaceModel) => FaceModel) => void
   onLinkedEyesChange: (value: boolean) => void
   onSingleEyeLayoutChange: (enabled: boolean) => void
@@ -57,6 +60,8 @@ type EyeControlsProps = {
 export function EyeControls({
   model,
   linkedEyes,
+  rotationPivot,
+  onRotationPivotChange,
   onChange,
   onLinkedEyesChange,
   onSingleEyeLayoutChange,
@@ -73,7 +78,7 @@ export function EyeControls({
     const xAbsolutePositionRange = rigidEyePositionRange(model, 'x', pairCenterX(model))
     const yAbsolutePositionRange = rigidEyePositionRange(model, 'y', pairCenterY(model))
     return {
-      rotationLimits: pairRotationLimits(model),
+      rotationLimits: pairRotationLimits(model, rotationPivot),
       dimensionRanges: linkedEyeDimensionRanges(model),
       positionRanges: {
         x: centerRelativePositionRange(
@@ -90,7 +95,7 @@ export function EyeControls({
         ),
       },
     }
-  }, [model])
+  }, [model, rotationPivot])
 
   const independentDerived = useMemo(() => {
     if (linkedEyes && !singleEye) return undefined
@@ -106,7 +111,7 @@ export function EyeControls({
 
       return {
         dimensionRanges: independentEyeDimensionRanges(model, side),
-        rotationRange: independentEyeRotationRange(model, side),
+        rotationRange: independentEyeRotationRange(model, side, rotationPivot),
         positionRanges: {
           x: centerRelativePositionRange(
             model,
@@ -128,7 +133,7 @@ export function EyeControls({
       left: deriveSide('left'),
       right: deriveSide('right'),
     }
-  }, [linkedEyes, model, singleEye])
+  }, [linkedEyes, model, rotationPivot, singleEye])
 
   const spacingDerived = useMemo(() => ({
     spacing: anchoredPairSpacing(model),
@@ -165,7 +170,7 @@ export function EyeControls({
           : next
       }
       if (key === 'rotation') {
-        return setIndependentEyeRotationSafely(current, side, value)
+        return setIndependentEyeRotationSafely(current, side, value, rotationPivot)
       }
 
       return updateEyeGeometry(current, side, (geometry) => ({ ...geometry, [key]: value }))
@@ -236,6 +241,17 @@ export function EyeControls({
             </button>
           </span>
         </div>
+        <div className="control-row">
+          <span className="control-label">Rotation pivot</span>
+          <span className="segmented-control" aria-label="Rotation pivot">
+            <button type="button" className={rotationPivot === 'local' ? 'active' : ''} aria-pressed={rotationPivot === 'local'} onClick={() => onRotationPivotChange('local')}>
+              {linkedEyes && !singleEye ? 'Pair' : 'Eye'}
+            </button>
+            <button type="button" className={rotationPivot === 'display' ? 'active' : ''} aria-pressed={rotationPivot === 'display'} onClick={() => onRotationPivotChange('display')}>
+              Display
+            </button>
+          </span>
+        </div>
 
         {singleEye ? (
           <div className="nested-controls">
@@ -284,7 +300,7 @@ export function EyeControls({
               min={linkedDerived.rotationLimits.min}
               max={linkedDerived.rotationLimits.max}
               step="any"
-              onChange={(value) => onChange((current) => rotatePairSafely(current, value))}
+              onChange={(value) => onChange((current) => rotatePairSafely(current, value, rotationPivot))}
             />
           </div>
         ) : (

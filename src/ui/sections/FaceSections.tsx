@@ -57,7 +57,7 @@ export function EyesSection({ controller }: Props) {
   return (
     <section className="re-section" aria-labelledby="re-eyes-title">
       <header className="re-section-header"><h2 id="re-eyes-title">Eyes</h2><p>Geometry, position and gaze</p></header>
-      <EyeControls model={controller.model} linkedEyes={controller.linkedEyes} onChange={controller.updateModel} onLinkedEyesChange={controller.setLinkedEyes} onSingleEyeLayoutChange={controller.setSingleEyeLayout} />
+      <EyeControls model={controller.model} linkedEyes={controller.linkedEyes} rotationPivot={controller.rotationPivot} onRotationPivotChange={controller.setRotationPivot} onChange={controller.updateModel} onLinkedEyesChange={controller.setLinkedEyes} onSingleEyeLayoutChange={controller.setSingleEyeLayout} />
       <div className="re-group"><h3 className="re-group-title">Gaze</h3>
         <NumericControl label="Gaze X" value={controller.model.gaze.x} min={gaze.x.min} max={gaze.x.max} step="any" onChange={(value) => controller.updateModel((current) => setGazeSafely(current, 'x', value))} />
         <NumericControl label="Gaze Y" value={controller.model.gaze.y} min={gaze.y.min} max={gaze.y.max} step="any" onChange={(value) => controller.updateModel((current) => setGazeSafely(current, 'y', value))} />

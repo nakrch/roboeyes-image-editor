@@ -52,6 +52,7 @@ import {
 import { evaluateEditorAnimationPreviewFrame, nextRuntimeEvent } from './animationPreview'
 import { ContinuousEditProvider } from './continuousEdit'
 import { commitHistory, redoHistory, undoHistory, type HistoryState } from './history'
+import type { RotationPivot } from './modelEditing'
 import {
   disableSingleEyeLayout,
   enableSingleEyeLayout,
@@ -81,6 +82,8 @@ export type EditorController = {
   reducedMotion: boolean
   linkedEyes: boolean
   setLinkedEyes: (value: boolean) => void
+  rotationPivot: RotationPivot
+  setRotationPivot: (value: RotationPivot) => void
   pixelPerfect: boolean
   setPixelPerfect: (value: boolean) => void
   canUndo: boolean
@@ -160,6 +163,7 @@ export function useEditorController(): EditorController {
   const continuousEdit = useRef({ active: false, committed: false })
   const twoEyeExpression = useRef<FaceModel['expression']>(structuredClone(initialPreset.model.expression))
   const [linkedEyes, setLinkedEyes] = useState(true)
+  const [rotationPivot, setRotationPivot] = useState<RotationPivot>('local')
   const [pixelPerfect, setPixelPerfect] = useState(false)
   const [activePresetId, setActivePresetId] = useState(initialPreset.id)
   const [activeExpressionPresetId, setActiveExpressionPresetId] = useState(() =>
@@ -535,7 +539,7 @@ export function useEditorController(): EditorController {
 
   return { model, transparentBackground, displayMask, animationDefaults, singleEye, displayedModel,
     displayedOverlays: displayedFrame.transientEffects.overlays, resolveAnimationFrame, reducedMotion,
-    linkedEyes, setLinkedEyes, pixelPerfect, setPixelPerfect,
+    linkedEyes, setLinkedEyes, rotationPivot, setRotationPivot, pixelPerfect, setPixelPerfect,
     canUndo: history.past.length !== 0, canRedo: history.future.length !== 0, undo, redo, reset,
     continuousEdit: { begin: beginContinuousEdit, end: endContinuousEdit },
     updateModel, setTransparentBackground, setDisplayMask, setLensStrength, setSingleEyeLayout, updateAnimationDefaults,
