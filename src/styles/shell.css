@@ -60,7 +60,8 @@ body {
 .re-app .re-outline-link:not([aria-current='page']):hover:not(:disabled), .re-app .re-outline-link:not([aria-current='page']):focus-visible { background: transparent; color: var(--re-accent); border-color: transparent; }
 .re-app .re-outline-link[aria-current='page']:hover:not(:disabled) { border-left-color: var(--re-accent); background: var(--re-accent-soft); }
 .re-app .re-outline-number { color: var(--re-ink-3); font: 10px var(--re-font-mono); }
-.re-app .re-inspector { min-width: 0; min-height: 0; border-left: 1px solid var(--re-line); padding: 36px 28px 64px; background: var(--re-surface); overflow-x: hidden; overflow-y: auto; }
+/* overscroll-behavior: contain keeps Chrome's wheel scroll latch on the inspector even at its edge; otherwise an overscroll gesture latches to the page and the next section cannot scroll until the wheel pauses (Issue #182). */
+.re-app .re-inspector { min-width: 0; min-height: 0; border-left: 1px solid var(--re-line); padding: 36px 28px 64px; background: var(--re-surface); overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain; }
 .re-app .re-stage { min-width: 0; min-height: 0; overflow-y: auto; padding: 34px clamp(24px, 5vw, 76px) 50px; display: flex; flex-direction: column; align-items: stretch; }
 .re-app .re-section-next, .re-app .re-section-previous-bar { display: grid; gap: var(--re-space-2); width: 100%; color: var(--re-ink-3); font: 10px var(--re-font-mono); font-variant-numeric: tabular-nums; letter-spacing: .08em; text-align: left; }
 .re-app .re-section-next { margin-top: var(--re-space-5); padding: var(--re-space-4) 0; border: 0; border-top: 1px solid var(--re-line); border-radius: 0; }
