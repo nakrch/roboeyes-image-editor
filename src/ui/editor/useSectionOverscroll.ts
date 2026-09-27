@@ -32,6 +32,10 @@ export function useSectionOverscroll(
     setProgressState((current) => (current.direction === direction && current.value === value ? current : { direction, value }))
   const pendingScroll = useRef<OverscrollDirection | null>(null)
   const timer = useRef<number | null>(null)
+  // scrollTop seen by the previous wheel event (or set programmatically). Any difference means the
+  // wheel is still moving content: Chromium applies passive wheel scrolling before dispatching the
+  // event, so the edge state alone would count an event's own scroll as overscroll.
+  const lastScrollTop = useRef(0)
   const latest = useRef({ neighbors, select })
   latest.current = { neighbors, select }
 
@@ -46,7 +50,7 @@ export function useSectionOverscroll(
     clearProgress()
     pendingScroll.current = direction
     if (section === selected) {
-      if (inspectorRef.current) inspectorRef.current.scrollTop = 0
+      if (inspectorRef.current) lastScrollTop.current = inspectorRef.current.scrollTop = 0
       pendingScroll.current = null
     } else select(section)
   }
@@ -54,6 +58,7 @@ export function useSectionOverscroll(
   useLayoutEffect(() => {
     if (inspectorRef.current) {
       inspectorRef.current.scrollTop = pendingScroll.current === 'previous' ? inspectorRef.current.scrollHeight : 0
+      lastScrollTop.current = inspectorRef.current.scrollTop
     }
     pendingScroll.current = null
   }, [selected])
@@ -61,19 +66,12 @@ export function useSectionOverscroll(
   useEffect(() => {
     const inspector = inspectorRef.current
     if (!inspector) return
-    // Chromium applies passive wheel scrolling before dispatching the event, so the edge state read
-    // in the handler may already include this event's own scroll. Any recent scroll, or a scrollTop
-    // change within the current wheel stream, means the wheel is still moving content.
-    let lastScrollAt = Number.NEGATIVE_INFINITY
-    let lastWheel: { at: number; scrollTop: number } | null = null
-    const onScroll = (event: Event) => { lastScrollAt = event.timeStamp }
+    lastScrollTop.current = inspector.scrollTop
     const onWheel = (event: WheelEvent) => {
       if (event.defaultPrevented || event.ctrlKey || !['auto', 'scroll'].includes(getComputedStyle(inspector).overflowY)) return
       const scrollTop = inspector.scrollTop
-      const moved = nestedScrollConsumes(event.target, inspector, event.deltaY)
-        || event.timeStamp - lastScrollAt < SECTION_OVERSCROLL_IDLE_MS
-        || (lastWheel !== null && event.timeStamp - lastWheel.at < SECTION_OVERSCROLL_IDLE_MS && lastWheel.scrollTop !== scrollTop)
-      lastWheel = { at: event.timeStamp, scrollTop }
+      const moved = nestedScrollConsumes(event.target, inspector, event.deltaY) || scrollTop !== lastScrollTop.current
+      lastScrollTop.current = scrollTop
       const state = tracker.current.wheel({
         deltaX: event.deltaX, deltaY: event.deltaY, deltaMode: event.deltaMode,
         atTop: !moved && scrollTop <= 1,
@@ -97,10 +95,8 @@ export function useSectionOverscroll(
         }
       }
     }
-    inspector.addEventListener('scroll', onScroll, { passive: true })
     inspector.addEventListener('wheel', onWheel, { passive: true })
     return () => {
-      inspector.removeEventListener('scroll', onScroll)
       inspector.removeEventListener('wheel', onWheel)
       if (timer.current !== null) clearTimeout(timer.current)
     }

@@ -1,4 +1,4 @@
-import { WHEEL_LINE_PX } from '../controls/wheelSliderStep'
+import { WHEEL_DISCRETE_MIN_PX, WHEEL_LINE_PX } from '../controls/wheelSliderStep'
 
 /** Three notches at 100% display scaling (100px) or 125% (80px). */
 export const SECTION_OVERSCROLL_THRESHOLD_PX = 240
@@ -22,7 +22,13 @@ export type SectionOverscrollState = {
 
 const idle: SectionOverscrollState = { direction: null, progress: 0, switchTo: null }
 
-/** Tracks one wheel stream; locking prevents ordinary scrolling and momentum from chaining section changes. */
+/**
+ * Tracks one wheel stream. Overscroll accumulates only at the matching edge and restarts whenever
+ * content scrolls. Fine (trackpad-sized) deltas are additionally locked after normal scrolling or a
+ * switch until the stream pauses, so fling momentum cannot punch through an edge or chain switches.
+ * Notch-sized mouse-wheel events have no momentum and ignore the lock, so a continuous spin keeps
+ * flowing: scroll the content, then a fixed detent at each edge.
+ */
 export class SectionOverscrollTracker {
   private readonly thresholdPx: number
   private readonly idleMs: number
@@ -43,18 +49,18 @@ export class SectionOverscrollTracker {
     this.lastTimeStamp = input.timeStamp
 
     if (input.deltaY === 0 || Math.abs(input.deltaX) > Math.abs(input.deltaY)) return idle
-    if (this.locked) return idle
+
+    const pixels = Math.abs(input.deltaY) * (input.deltaMode === 1 ? WHEEL_LINE_PX : input.deltaMode === 2 ? input.pageHeightPx : 1)
+    if (this.locked && pixels < WHEEL_DISCRETE_MIN_PX) return idle
 
     const direction: OverscrollDirection = input.deltaY > 0 ? 'next' : 'previous'
     if (direction === 'next' ? !input.atBottom : !input.atTop) {
-      // A wheel event that scrolls content normally disarms switching until the next stream.
+      // Normal content scrolling restarts the detent and disarms fine deltas until the next stream.
       this.locked = true
       this.direction = null
       this.accumulated = 0
       return idle
     }
-
-    const pixels = Math.abs(input.deltaY) * (input.deltaMode === 1 ? WHEEL_LINE_PX : input.deltaMode === 2 ? input.pageHeightPx : 1)
     if (this.direction !== direction) {
       this.direction = direction
       this.accumulated = 0
@@ -63,7 +69,7 @@ export class SectionOverscrollTracker {
     if (this.accumulated >= this.thresholdPx) {
       this.accumulated = 0
       this.direction = null
-      // Keep the rest of this stream locked, including trackpad momentum.
+      // Lock fine deltas for the rest of this stream, including trackpad momentum.
       this.locked = true
       return { direction, progress: 1, switchTo: direction }
     }
