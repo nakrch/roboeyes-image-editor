@@ -75,6 +75,8 @@ Preserve these completed capabilities unless the active Issue deliberately chang
 - RoboEyes adapter
 - deterministic SVG renderer
 - realtime static editor with the "Quiet Precision" UI (Issue #169)
+- direct eye dragging in the enlarged specimen stage (linked = rigid pair, independent = grabbed eye, single-eye layout), clamped by the same safety helpers as the Position sliders; one drag = one undo step (Issue #177)
+- rotation pivot choice: local (eye center, or pair midpoint when linked) or display center; both are editor transforms baked into `position` + `rotation`, so the model/renderer are unchanged (Issue #177)
 - generic expression model and presets
 - deterministic state/spring animation
 - blink/wink/open/close/sleep
@@ -95,7 +97,7 @@ Do not expand the project into a free-form video/keyframe timeline or generic ch
 The editor UI follows "Quiet Precision" (Issue #169). Keep new UI consistent with it:
 
 - Layout: compact header (Undo / Redo / Reset / Export), left outline nav (FACE: Display, Eyes, Expression / MOTION / LIBRARY: Presets / OUTPUT: Export), center specimen stage, right panel showing only the selected section. Narrow viewports stack header → sticky stage → horizontal section tabs → panel.
-- The specimen stage is the visual focus: largest integer scale that fits (fractional only below 1×), a true 1× view, and a `W × H px · transparent|opaque · N×` caption (appending ` · circle mask` when active). The transport sits under the stage.
+- The specimen stage is the visual focus: largest integer scale that fits (fractional only below 1×), a true 1× view, and a `W × H px · transparent|opaque · N×` caption (appending ` · circle mask` when active). Eyes in the enlarged view are draggable; the 1× view is inspection-only. The transport sits under the stage.
 - Visual language: light-first warm paper/ink with a single accent; a signal color only for live state. Hierarchy comes from type, spacing, and 1px hairlines. No gradients, cards, pill badges, or radius above 6px; shadows only for overlays. Numbers use tabular/mono digits.
 - Styling uses tokens only (`--re-*`, light + `prefers-color-scheme: dark`) in `src/styles/`, with the `re-` class prefix. Respect `prefers-reduced-motion`.
 - Code layout: `src/ui/editor/useEditorController.ts` owns editor state and actions; `src/ui/editor/EditorShell.tsx` is the view; stage in `src/ui/stage/`, sections in `src/ui/sections/`. Sections reuse the existing control components and safety helpers instead of duplicating logic.

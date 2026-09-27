@@ -4,7 +4,8 @@ import {
   visibleEyesOverlap,
   type FaceModel,
 } from '../../core/model'
-import { updateEyeGeometry, type EyeSide } from './modelEditing'
+import { updateEyeGeometry, type EyeSide, type RotationPivot } from './modelEditing'
+import { isSingleEyeLayout, moveSingleEye } from './singleEyeLayout'
 
 export type EyeRotationRange = { min: number; max: number }
 
@@ -13,8 +14,29 @@ const ROTATION_MAX = 45
 const SCAN_STEPS = 360
 const REFINE_STEPS = 24
 
-function applyRotation(model: FaceModel, side: EyeSide, value: number): FaceModel {
-  return updateEyeGeometry(model, side, (geometry) => ({ ...geometry, rotation: value }))
+function applyRotation(model: FaceModel, side: EyeSide, value: number, pivot: RotationPivot): FaceModel {
+  if (pivot === 'local') {
+    return updateEyeGeometry(model, side, (geometry) => ({ ...geometry, rotation: value }))
+  }
+
+  const geometry = side === 'left' ? model.leftEye.geometry : model.rightEye.geometry
+  const radians = ((value - geometry.rotation) * Math.PI) / 180
+  const centerX = model.canvas.width / 2
+  const centerY = model.canvas.height / 2
+  const x = geometry.position.x - centerX
+  const y = geometry.position.y - centerY
+  const position = {
+    x: centerX + x * Math.cos(radians) - y * Math.sin(radians),
+    y: centerY + x * Math.sin(radians) + y * Math.cos(radians),
+  }
+  const moved = side === 'left' && isSingleEyeLayout(model)
+    ? moveSingleEye(model, position.x, position.y)
+    : model
+  return updateEyeGeometry(moved, side, (current) => ({
+    ...current,
+    position,
+    rotation: value,
+  }))
 }
 
 function isRotationCandidateSafe(model: FaceModel): boolean {
@@ -76,9 +98,13 @@ function findAnchor(
   return best
 }
 
-export function independentEyeRotationRange(model: FaceModel, side: EyeSide): EyeRotationRange {
+export function independentEyeRotationRange(
+  model: FaceModel,
+  side: EyeSide,
+  pivot: RotationPivot = 'local',
+): EyeRotationRange {
   const geometry = side === 'left' ? model.leftEye.geometry : model.rightEye.geometry
-  const apply = (value: number) => applyRotation(model, side, value)
+  const apply = (value: number) => applyRotation(model, side, value, pivot)
   const anchor = findAnchor(geometry.rotation, apply)
   if (anchor === undefined) return { min: geometry.rotation, max: geometry.rotation }
 
@@ -92,9 +118,10 @@ export function setIndependentEyeRotationSafely(
   model: FaceModel,
   side: EyeSide,
   value: number,
+  pivot: RotationPivot = 'local',
 ): FaceModel {
-  const range = independentEyeRotationRange(model, side)
+  const range = independentEyeRotationRange(model, side, pivot)
   const safe = Math.min(range.max, Math.max(range.min, value))
-  const next = applyRotation(model, side, safe)
+  const next = applyRotation(model, side, safe, pivot)
   return isRotationCandidateSafe(next) ? next : model
 }

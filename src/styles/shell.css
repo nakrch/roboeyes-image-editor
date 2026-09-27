@@ -64,7 +64,9 @@ body {
 .re-app .re-stage { min-width: 0; padding: 34px clamp(24px, 5vw, 76px) 50px; display: flex; flex-direction: column; align-items: stretch; }
 .re-app .re-stage-heading { display: flex; justify-content: space-between; color: var(--re-ink-3); font: 10px var(--re-font-mono); letter-spacing: .1em; padding-bottom: 18px; }
 .re-app .re-specimen { min-height: 370px; height: clamp(370px, 54vh, 650px); width: 100%; display: grid; place-items: center; overflow: hidden; background: var(--re-stage); border: 1px solid var(--re-line); }
-.re-app .re-specimen-frame { flex: none; }
+.re-app .re-specimen-frame { flex: none; touch-action: none; }
+.re-app .re-specimen-frame [data-eye] { cursor: grab; }
+.re-app .re-specimen-frame--dragging [data-eye] { cursor: grabbing; }
 .re-app .re-specimen-frame, .re-app .re-native-frame { position: relative; }
 .re-app .re-mask-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .re-app .re-mask-outside { fill: var(--re-mask-dim); }

@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { displayMaskCircle } from '../../core/model'
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react'
+import { displayMaskCircle, type FaceModel } from '../../core/model'
 import { renderFaceToSvg } from '../../renderers/svg'
+import { applyStageDrag, pointerToCanvas } from '../editor/stageDrag'
+import type { EyeSide } from '../editor/modelEditing'
 import type { EditorController } from '../editor/useEditorController'
 
 type Props = { controller: EditorController }
@@ -20,6 +22,41 @@ export function SpecimenStage({ controller }: Props) {
   const svg = useMemo(() => renderFaceToSvg(model, { transparentBackground, overlays }), [model, overlays, transparentBackground])
   const specimenRef = useRef<HTMLDivElement>(null)
   const [available, setAvailable] = useState({ width: 0, height: 0 })
+  const drag = useRef<{ pointerId: number; side: EyeSide; startModel: FaceModel; startX: number; startY: number; dx: number; dy: number } | null>(null)
+  const [dragging, setDragging] = useState(false)
+  const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (drag.current || !event.isPrimary || event.button !== 0) return
+    const target = event.target
+    if (!(target instanceof Element)) return
+    const eye = target.closest('[data-eye]')
+    if (!eye || !event.currentTarget.contains(eye)) return
+    const side = eye.getAttribute('data-eye')
+    if (side !== 'left' && side !== 'right') return
+    const startModel = controller.model
+    const start = pointerToCanvas(event.clientX, event.clientY, event.currentTarget.getBoundingClientRect(), startModel.canvas)
+    event.currentTarget.setPointerCapture(event.pointerId)
+    drag.current = { pointerId: event.pointerId, side, startModel, startX: start.x, startY: start.y, dx: 0, dy: 0 }
+    controller.continuousEdit.begin()
+    setDragging(true)
+  }
+  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const active = drag.current
+    if (!active || active.pointerId !== event.pointerId) return
+    const position = pointerToCanvas(event.clientX, event.clientY, event.currentTarget.getBoundingClientRect(), active.startModel.canvas)
+    const dx = position.x - active.startX
+    const dy = position.y - active.startY
+    if (dx === active.dx && dy === active.dy) return
+    active.dx = dx
+    active.dy = dy
+    controller.updateModel(() => applyStageDrag(active.startModel, active.side, controller.linkedEyes, { dx, dy }))
+  }
+  const endDrag = (event: PointerEvent<HTMLDivElement>) => {
+    if (drag.current?.pointerId !== event.pointerId) return
+    drag.current = null
+    controller.continuousEdit.end()
+    setDragging(false)
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+  }
   const { width, height } = model.canvas
   const circle = displayMask === 'circle' ? displayMaskCircle(model.canvas) : null
   const playing = controller.playback.clock.status === 'playing'
@@ -41,7 +78,7 @@ export function SpecimenStage({ controller }: Props) {
     <div className="re-stage" aria-label="Face specimen">
       <div className="re-stage-heading"><span>SPECIMEN / LIVE VIEW</span></div>
       <div ref={specimenRef} className={`re-specimen ${transparentBackground ? 're-checkerboard' : ''}`}>
-        <div className="re-specimen-frame" role="img" aria-label="Enlarged robot face preview" style={{ width: width * scale, height: height * scale }}><div dangerouslySetInnerHTML={{ __html: svg }} />{circle && <MaskOverlay width={width} height={height} {...circle} />}</div>
+        <div className={`re-specimen-frame${dragging ? ' re-specimen-frame--dragging' : ''}`} role="img" aria-label="Enlarged robot face preview" style={{ width: width * scale, height: height * scale }} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endDrag} onPointerCancel={endDrag} onLostPointerCapture={endDrag}><div dangerouslySetInnerHTML={{ __html: svg }} />{circle && <MaskOverlay width={width} height={height} {...circle} />}</div>
       </div>
       <div className="re-stage-foot">
         <div className="re-native-view"><span className="re-native-label">1× / ACTUAL SIZE</span><div className={`re-native-frame ${transparentBackground ? 're-checkerboard' : ''}`} role="img" aria-label="Actual pixel size robot face preview" style={{ width, height }}><div dangerouslySetInnerHTML={{ __html: svg }} />{circle && <MaskOverlay width={width} height={height} {...circle} />}</div></div>
