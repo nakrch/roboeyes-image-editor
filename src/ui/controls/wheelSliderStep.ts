@@ -1,4 +1,4 @@
-import { roundNumericValue, type NumericStep } from './numericInputDraft'
+import { normalizeNumericControlValue, roundNumericValue, type NumericStep } from './numericInputDraft'
 
 /** Nominal CSS-pixel distance of one mouse-wheel notch (and of accumulated fine deltas per step). */
 export const WHEEL_NOTCH_PX = 100
@@ -58,4 +58,73 @@ export function consumeWheelSteps(accumulated: number, delta: number): { steps: 
   const total = start + delta
   const steps = Math.trunc(total / WHEEL_NOTCH_PX) + 0
   return { steps, remainder: total - steps * WHEEL_NOTCH_PX + 0 }
+}
+
+/** Idle time after the last wheel event that closes the undo group. */
+export const WHEEL_SESSION_IDLE_MS = 400
+
+export type WheelInput = { deltaX: number; deltaY: number; deltaMode: number; shiftKey: boolean }
+export type WheelSliderState = { value: number; min: number; max: number; step: NumericStep }
+export type WheelSessionHooks = {
+  /** Open the undo group for this wheel sequence. */
+  begin: () => void
+  /** Close the undo group opened by `begin`. */
+  end: () => void
+  setTimer: (callback: () => void, ms: number) => number
+  clearTimer: (id: number) => void
+}
+
+type ActiveWheelSequence = { accumulated: number; target: number; timer: number }
+
+/**
+ * One wheel sequence on a slider: accumulates deltas, tracks the target value
+ * across events that arrive before React re-renders, and owns one undo group
+ * that closes after `WHEEL_SESSION_IDLE_MS` of inactivity or on `end()`.
+ */
+export class WheelSliderSession {
+  private readonly hooks: WheelSessionHooks
+  private active: ActiveWheelSequence | null = null
+
+  constructor(hooks: WheelSessionHooks) {
+    this.hooks = hooks
+  }
+
+  /** Apply one wheel event; returns the next value, or `null` when unchanged. */
+  wheel(input: WheelInput, slider: WheelSliderState): number | null {
+    const sequence = this.active
+    const { steps, remainder } = consumeWheelSteps(
+      sequence?.accumulated ?? 0,
+      wheelIncreasePixels(input.deltaX, input.deltaY, input.deltaMode),
+    )
+    const target = sequence?.target ?? slider.value
+    if (sequence) this.hooks.clearTimer(sequence.timer)
+    else this.hooks.begin()
+    const next = steps === 0
+      ? target
+      : normalizeNumericControlValue(
+        target + steps * wheelStepSize(slider.min, slider.max, slider.step, input.shiftKey),
+        slider.min,
+        slider.max,
+        slider.step,
+      )
+    this.active = {
+      accumulated: remainder,
+      target: next,
+      timer: this.hooks.setTimer(() => this.end(), WHEEL_SESSION_IDLE_MS),
+    }
+    return next === slider.value ? null : next
+  }
+
+  /**
+   * Close the current wheel sequence. Other gestures on the slider call this
+   * first so a pending idle timer or stale target cannot leak into them.
+   * No-op when no wheel sequence is active.
+   */
+  end(): void {
+    const sequence = this.active
+    if (!sequence) return
+    this.active = null
+    this.hooks.clearTimer(sequence.timer)
+    this.hooks.end()
+  }
 }

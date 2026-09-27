@@ -12,7 +12,7 @@ import {
   valueFromTouchSliderDrag,
   type TouchSliderIntent,
 } from './touchSliderGesture'
-import { consumeWheelSteps, wheelIncreasePixels, wheelStepSize } from './wheelSliderStep'
+import { WheelSliderSession } from './wheelSliderStep'
 
 type NumericControlProps = {
   label: string
@@ -31,15 +31,6 @@ type TouchDragState = {
   trackWidth: number
   intent: TouchSliderIntent
 }
-
-type WheelSession = {
-  accumulated: number
-  target: number
-  idleTimer: number
-}
-
-/** Idle time after the last wheel step that closes the undo group. */
-const WHEEL_SESSION_IDLE_MS = 400
 
 const RANGE_KEYS = new Set([
   'ArrowLeft',
@@ -77,19 +68,16 @@ export function NumericControl({
   }, [max, min, step, value])
 
   const rangeRef = useRef<HTMLInputElement>(null)
-  const wheelSession = useRef<WheelSession | null>(null)
   const latest = useRef({ displayedValue, min, max, step, onChange, continuousEdit })
   useLayoutEffect(() => {
     latest.current = { displayedValue, min, max, step, onChange, continuousEdit }
   })
-
-  const endWheelSession = () => {
-    const session = wheelSession.current
-    if (!session) return
-    window.clearTimeout(session.idleTimer)
-    wheelSession.current = null
-    latest.current.continuousEdit.end()
-  }
+  const [wheelSession] = useState(() => new WheelSliderSession({
+    begin: () => latest.current.continuousEdit.begin(),
+    end: () => latest.current.continuousEdit.end(),
+    setTimer: (callback, ms) => window.setTimeout(callback, ms),
+    clearTimer: (id) => window.clearTimeout(id),
+  }))
 
   useEffect(() => {
     const range = rangeRef.current
@@ -100,35 +88,20 @@ export function NumericControl({
       if (document.activeElement !== range) return
       event.preventDefault()
       const current = latest.current
-      const session = wheelSession.current
-      const { steps, remainder } = consumeWheelSteps(
-        session?.accumulated ?? 0,
-        wheelIncreasePixels(event.deltaX, event.deltaY, event.deltaMode),
-      )
-      const target = session?.target ?? current.displayedValue
-      if (session) window.clearTimeout(session.idleTimer)
-      else current.continuousEdit.begin()
-      const next = steps === 0
-        ? target
-        : normalizeNumericControlValue(
-          target + steps * wheelStepSize(current.min, current.max, current.step, event.shiftKey),
-          current.min,
-          current.max,
-          current.step,
-        )
-      wheelSession.current = {
-        accumulated: remainder,
-        target: next,
-        idleTimer: window.setTimeout(endWheelSession, WHEEL_SESSION_IDLE_MS),
-      }
-      if (next !== current.displayedValue) current.onChange(next)
+      const next = wheelSession.wheel(event, {
+        value: current.displayedValue,
+        min: current.min,
+        max: current.max,
+        step: current.step,
+      })
+      if (next !== null) current.onChange(next)
     }
     range.addEventListener('wheel', onWheel, { passive: false })
     return () => {
       range.removeEventListener('wheel', onWheel)
-      endWheelSession()
+      wheelSession.end()
     }
-  }, [])
+  }, [wheelSession])
 
   const emitNormalizedChange = (next: number) => {
     const normalized = normalizeNumericControlValue(next, min, max, step)
@@ -164,6 +137,7 @@ export function NumericControl({
           value={displayedValue}
           style={{ touchAction: 'pan-y' }}
           onPointerDown={(event) => {
+            wheelSession.end()
             if (event.pointerType === 'mouse') {
               event.currentTarget.setPointerCapture(event.pointerId)
               continuousEdit.begin()
@@ -226,14 +200,17 @@ export function NumericControl({
             suppressTouchClick.current = false
           }}
           onKeyDown={(event) => {
-            if (RANGE_KEYS.has(event.key) && !event.repeat) continuousEdit.begin()
+            if (!RANGE_KEYS.has(event.key)) return
+            // Close a pending wheel sequence first; begin() is a no-op while a group is open.
+            wheelSession.end()
+            continuousEdit.begin()
           }}
           onKeyUp={(event) => {
             if (RANGE_KEYS.has(event.key)) continuousEdit.end()
           }}
           onBlur={() => {
             endTouchDrag()
-            endWheelSession()
+            wheelSession.end()
             continuousEdit.end()
           }}
           onChange={(event) => {
