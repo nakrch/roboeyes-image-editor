@@ -30,6 +30,10 @@
 - [`behavior-profiles.md`](behavior-profiles.md) — composable temporal behavior profiles
 - [`transient-effects.md`](transient-effects.md) — transient overlay/effect layer
 
+## Editor interaction
+
+- [`editor-interaction.md`](editor-interaction.md) — editor layout、stage の倍率と eye drag、rotation pivot、slider wheel 操作、inspector の section 切り替え
+
 ## Animation authoring and persistence
 
 - [`animation-programs.md`](animation-programs.md) — ordered state programs、hold/transition、playback mode

@@ -97,7 +97,7 @@ A fixture change should be treated as a visible renderer/expression change, not 
 1. Confirm the change is intentional against the relevant source/reference implementation.
 2. Update the expression/model implementation first.
 3. Inspect the changed textual paths/transforms.
-4. Run the full test/build suite.
+4. Run the full test/build suite (`npm test` and `npm run build`).
 5. Expand the Visual Regression Gallery and inspect every affected visible card in the PR Preview.
 6. Confirm `Matches fixture` / `Changed` still reflects only the fixed card render, not Motion preview output.
 7. Validate expression apply, Curious explicit gaze behavior, and Motion preview in the PR Preview when those controls change.

@@ -33,6 +33,8 @@ The `gaze-pose` channel accepts an idle-gaze definition:
 
 `xRange` / `yRange` are absolute generic `FaceModel.gaze` units. If an axis range is omitted, the full canvas-safe range for that axis is used.
 
+These omitted-field defaults differ from the Motion panel's initial values when no `gaze-pose` channel is authored. The panel initially shows idle wander off, `intervalMs = 1000`, and `variationMs = 3000`, with an initial channel definition containing explicit `xRange = [-24, 24]` / `yRange = [-10, 10]`; enabling or editing idle wander writes that definition. The interval and variation match `DEFAULT_IDLE_GAZE`, but its omitted X/Y ranges instead use the canvas-safe range. An imported idle-gaze channel with omitted fields is normalized with the core defaults; the panel shows its stored timing values, without inserting its no-channel range values.
+
 Ranges may be degenerate (`min === max`) for deterministic fixed targets. An authored range with `min > max` is rejected. If an authored range has no intersection with the current canvas-safe range, evaluation fails deterministically instead of generating an invalid off-canvas target.
 
 ## Scheduling semantics

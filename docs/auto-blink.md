@@ -58,6 +58,8 @@ Reference-compatible defaults are:
 - base/minimum interval `1000 ms`
 - additional variation `4000 ms`
 
+These are core defaults for omitted fields, not the Motion panel's initial values when no auto-blink is authored. With no `autoBlink` configuration, the panel shows auto-blink off with `intervalMs = 2500` and `variationMs = 1500`; enabling or editing it writes those panel values (the same cadence as the built-in Default / Idle behavior profile). On preset import, an existing `autoBlink` configuration with omitted fields is normalized with the core defaults instead: `{ enabled: true }` is stored and shown as `1000 / 4000`, and `{ enabled: true, intervalMs: 500 }` as `500 / 4000`. The panel shows the stored values once the channel is present.
+
 `variationMs = 0` is valid and produces an exact fixed interval.
 
 ## First blink

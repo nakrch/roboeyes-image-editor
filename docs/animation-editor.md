@@ -52,7 +52,7 @@ The editor exposes:
 - idle wander enable/interval/variation
 - continuous H/V motion amplitude, period, and waveform
 - lightweight ordered state sequences
-- per-step Expression target, transition duration/easing, and hold duration
+- per-step Expression target, transition duration, Spring / Easing mode switch (with a Spring preset selector or easing selector), and hold duration
 - sequence reorder/add/delete and once/loop/ping-pong playback mode
 
 Behavior profiles keep their optional recommended Expression identity separate from the authored static Expression. In the realtime Preview, a profile's recommended Expression is applied as a temporary preview layer so profiles such as Frozen-like and Angry are visually distinguishable. The authored `FaceModel.expression` and Expression preset identity are not overwritten.
