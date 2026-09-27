@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useContinuousEdit } from '../editor/continuousEdit'
 import {
   formatNumericControlValue,
@@ -12,6 +12,7 @@ import {
   valueFromTouchSliderDrag,
   type TouchSliderIntent,
 } from './touchSliderGesture'
+import { consumeWheelSteps, wheelIncreasePixels, wheelStepSize } from './wheelSliderStep'
 
 type NumericControlProps = {
   label: string
@@ -30,6 +31,15 @@ type TouchDragState = {
   trackWidth: number
   intent: TouchSliderIntent
 }
+
+type WheelSession = {
+  accumulated: number
+  target: number
+  idleTimer: number
+}
+
+/** Idle time after the last wheel step that closes the undo group. */
+const WHEEL_SESSION_IDLE_MS = 400
 
 const RANGE_KEYS = new Set([
   'ArrowLeft',
@@ -66,6 +76,60 @@ export function NumericControl({
     }
   }, [max, min, step, value])
 
+  const rangeRef = useRef<HTMLInputElement>(null)
+  const wheelSession = useRef<WheelSession | null>(null)
+  const latest = useRef({ displayedValue, min, max, step, onChange, continuousEdit })
+  useLayoutEffect(() => {
+    latest.current = { displayedValue, min, max, step, onChange, continuousEdit }
+  })
+
+  const endWheelSession = () => {
+    const session = wheelSession.current
+    if (!session) return
+    window.clearTimeout(session.idleTimer)
+    wheelSession.current = null
+    latest.current.continuousEdit.end()
+  }
+
+  useEffect(() => {
+    const range = rangeRef.current
+    if (!range) return
+    // Registered natively because React wheel listeners are passive and cannot
+    // stop page scrolling. Only a focused slider consumes the wheel.
+    const onWheel = (event: WheelEvent) => {
+      if (document.activeElement !== range) return
+      event.preventDefault()
+      const current = latest.current
+      const session = wheelSession.current
+      const { steps, remainder } = consumeWheelSteps(
+        session?.accumulated ?? 0,
+        wheelIncreasePixels(event.deltaX, event.deltaY, event.deltaMode),
+      )
+      const target = session?.target ?? current.displayedValue
+      if (session) window.clearTimeout(session.idleTimer)
+      else current.continuousEdit.begin()
+      const next = steps === 0
+        ? target
+        : normalizeNumericControlValue(
+          target + steps * wheelStepSize(current.min, current.max, current.step, event.shiftKey),
+          current.min,
+          current.max,
+          current.step,
+        )
+      wheelSession.current = {
+        accumulated: remainder,
+        target: next,
+        idleTimer: window.setTimeout(endWheelSession, WHEEL_SESSION_IDLE_MS),
+      }
+      if (next !== current.displayedValue) current.onChange(next)
+    }
+    range.addEventListener('wheel', onWheel, { passive: false })
+    return () => {
+      range.removeEventListener('wheel', onWheel)
+      endWheelSession()
+    }
+  }, [])
+
   const emitNormalizedChange = (next: number) => {
     const normalized = normalizeNumericControlValue(next, min, max, step)
     if (normalized !== value) onChange(normalized)
@@ -92,6 +156,7 @@ export function NumericControl({
       <span>{label}</span>
       <div className="control-inputs">
         <input
+          ref={rangeRef}
           type="range"
           min={bounds.min}
           max={bounds.max}
@@ -168,6 +233,7 @@ export function NumericControl({
           }}
           onBlur={() => {
             endTouchDrag()
+            endWheelSession()
             continuousEdit.end()
           }}
           onChange={(event) => {
