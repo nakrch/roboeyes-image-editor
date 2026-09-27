@@ -108,8 +108,18 @@ export function NumericControl({
     if (normalized !== value) onChange(normalized)
   }
 
+  /**
+   * Close the slider's undo group. A wheel sequence that started while another
+   * gesture held the group open is closed with it, so its target/timer cannot
+   * outlive the group.
+   */
+  const endGesture = () => {
+    wheelSession.end()
+    continuousEdit.end()
+  }
+
   const endTouchDrag = () => {
-    if (touchDrag.current?.intent === 'horizontal') continuousEdit.end()
+    if (touchDrag.current?.intent === 'horizontal') endGesture()
     touchDrag.current = null
   }
 
@@ -182,14 +192,14 @@ export function NumericControl({
           }}
           onPointerUp={(event) => {
             if (event.pointerType === 'mouse') {
-              continuousEdit.end()
+              endGesture()
               return
             }
             endTouchDrag()
           }}
           onPointerCancel={(event) => {
             if (event.pointerType === 'mouse') {
-              continuousEdit.end()
+              endGesture()
               return
             }
             endTouchDrag()
@@ -206,12 +216,11 @@ export function NumericControl({
             continuousEdit.begin()
           }}
           onKeyUp={(event) => {
-            if (RANGE_KEYS.has(event.key)) continuousEdit.end()
+            if (RANGE_KEYS.has(event.key)) endGesture()
           }}
           onBlur={() => {
             endTouchDrag()
-            wheelSession.end()
-            continuousEdit.end()
+            endGesture()
           }}
           onChange={(event) => {
             if (touchDrag.current || suppressTouchClick.current) return
