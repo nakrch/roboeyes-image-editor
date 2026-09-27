@@ -8,6 +8,7 @@ import { ExportSection } from '../sections/ExportSection'
 import type { EditorSectionId } from '../sections/sectionIds'
 import { SpecimenStage } from '../stage/SpecimenStage'
 import { useSectionOverscroll } from './useSectionOverscroll'
+import { SectionNextButton, SectionPreviousOverlay } from './SectionOverscrollIndicators'
 
 type NavigationGroup = { label: string; sections: { id: EditorSectionId; name: string; number: string }[] }
 
@@ -71,9 +72,9 @@ export function EditorShell() {
           <nav className="re-outline" aria-label="Editor sections">{navigation.map((group) => <div className="re-outline-group" key={group.label}><span className="re-outline-label">{group.label}</span>{group.sections.map((item) => <button type="button" key={item.id} className="re-outline-link" aria-current={selected === item.id ? 'page' : undefined} onClick={() => changeSection(item.id)}><span>{item.name}</span><span className="re-outline-number">{item.number}</span></button>)}</div>)}</nav>
           <SpecimenStage controller={controller} />
           <aside ref={inspectorRef} className="re-inspector" aria-label="Selected editor section">
-            {previous && progress.direction === 'previous' && progress.value > 0 && <div className="re-section-previous" aria-hidden="true"><div className="re-section-previous-bar"><span>PREVIOUS&nbsp; {previous.number} {previous.name} ↑</span><span className="re-section-progress" style={{ transform: `scaleX(${progress.value})` }} /></div></div>}
+            {previous && <SectionPreviousOverlay store={progress} section={previous} />}
             {content}
-            {next && <button type="button" className="re-section-next" aria-label={`Next section: ${next.name}`} onClick={() => changeSection(next.id, 'next')}><span>NEXT&nbsp; {next.number} {next.name} ↓</span><span className="re-section-progress" style={{ transform: `scaleX(${progress.direction === 'next' ? progress.value : 0})` }} /></button>}
+            {next && <SectionNextButton store={progress} section={next} onClick={() => changeSection(next.id, 'next')} />}
           </aside>
         </main>
       </ContinuousEditProvider>

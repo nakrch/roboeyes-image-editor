@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { SECTION_OVERSCROLL_IDLE_MS, SectionOverscrollTracker } from './sectionOverscroll'
 import type { OverscrollDirection } from './sectionOverscroll'
 import type { EditorSectionId } from '../sections/sectionIds'
@@ -19,6 +19,31 @@ function nestedScrollConsumes(target: EventTarget | null, inspector: HTMLElement
   return false
 }
 
+export type OverscrollProgress = { direction: OverscrollDirection | null; value: number }
+
+/**
+ * Edge progress lives outside React state so wheel events only re-render the small indicators,
+ * never the whole editor shell.
+ */
+export class OverscrollProgressStore {
+  private current: OverscrollProgress = { direction: null, value: 0 }
+  private readonly listeners = new Set<() => void>()
+  readonly get = () => this.current
+  readonly subscribe = (listener: () => void) => {
+    this.listeners.add(listener)
+    return () => { this.listeners.delete(listener) }
+  }
+  set(direction: OverscrollDirection | null, value: number) {
+    if (this.current.direction === direction && this.current.value === value) return
+    this.current = { direction, value }
+    this.listeners.forEach((listener) => listener())
+  }
+}
+
+export function useOverscrollProgress(store: OverscrollProgressStore): OverscrollProgress {
+  return useSyncExternalStore(store.subscribe, store.get)
+}
+
 export function useSectionOverscroll(
   selected: EditorSectionId,
   neighbors: { next?: EditorSectionId; previous?: EditorSectionId },
@@ -26,10 +51,8 @@ export function useSectionOverscroll(
 ) {
   const inspectorRef = useRef<HTMLElement>(null)
   const tracker = useRef(new SectionOverscrollTracker())
-  const [progress, setProgressState] = useState<{ direction: OverscrollDirection | null; value: number }>({ direction: null, value: 0 })
-  // Normal scrolling emits wheel events continuously; only re-render the shell when the indicator changes.
-  const setProgress = (direction: OverscrollDirection | null, value: number) =>
-    setProgressState((current) => (current.direction === direction && current.value === value ? current : { direction, value }))
+  const [progress] = useState(() => new OverscrollProgressStore())
+  const setProgress = (direction: OverscrollDirection | null, value: number) => progress.set(direction, value)
   const pendingScroll = useRef<OverscrollDirection | null>(null)
   const timer = useRef<number | null>(null)
   // scrollTop seen by the previous wheel event (or set programmatically). Any difference means the
